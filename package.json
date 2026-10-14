@@ -1,0 +1,46 @@
+{
+  "name": "cruse-fintech-portal",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Portal Web Seguro & Ecosistema Fintech — Microfinanciera Cruse SOFOM E.N.R.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "user:create": "tsx scripts/createUser.ts",
+    "seed:dev": "tsx scripts/seedDevUsers.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "date-fns": "^4.4.0",
+    "decimal.js": "^10.6.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "groq-sdk": "^1.5.0",
+    "kysely": "^0.29.6",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "pg": "^8.23.1",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "twilio": "^6.1.2",
+    "vite": "^6.2.3",
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2"
+  }
+}

@@ -1,0 +1,284 @@
+/**
+ * Contratos de tipos centralizados para el Ecosistema Microfinanciera Cruse
+ * Conforme a la Regla 6 (SQA): TypeScript Estricto sin any
+ */
+
+export type ThemeMode = 'light' | 'dark';
+
+export type ProductId = 'normal' | 'express' | 'especial';
+
+export interface LoanProduct {
+  id: ProductId;
+  name: string;
+  tagline: string;
+  minAmount: number;
+  maxAmount: number;
+  terms: number[]; // Plazos disponibles en quincenas
+  interestRateText: string;
+  nominalRateFortnightly: number;
+  nominalRateMonthly: number;
+  annualRate: number;
+  catInformativePercent: number;
+  lifeInsuranceFortnightly: number;
+  lifeInsuranceCoverageMxn: number;
+  openingCommissionPercent: number;
+  requiresProofOfAddress: boolean;
+  requiresCreditBureau: boolean;
+  disbursementTime: string;
+}
+
+export interface AmortizationRow {
+  period: number;
+  balance: string;
+  capital: string;
+  interest: string;
+  vat: string;
+  insurance: string;
+  payment: string;
+}
+
+export interface SimulationResult {
+  schedule: AmortizationRow[];
+  fortnightlyPayment: number;
+  totalToPay: number;
+  totalInterest: number;
+  totalVat: number;
+  totalInsurance: number;
+  catPercent: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'assistant';
+  text: string;
+  timestamp: string;
+  isQuickPrompt?: boolean;
+}
+
+export interface CompanyInfo {
+  name: string;
+  shortName: string;
+  tagline: string;
+  foundedYear: number;
+  hqCity: string;
+  address: string;
+  officePhone: string;
+  cellPhone: string;
+  email: string;
+  website: string;
+  businessHours: string;
+  asofomMemberSince: number;
+  qualityCertification: string;
+  primaryAgreements: string[];
+  uneContact: {
+    title: string;
+    email: string;
+    phone: string;
+    city: string;
+  };
+}
+
+export interface RequirementItem {
+  id: string;
+  title: string;
+  description: string;
+  copies: number;
+  appliesTo: 'all' | 'normal' | 'express';
+  icon: 'id' | 'receipt' | 'home';
+}
+
+// ==============================================================================
+// TIPOS DE FASE 2: AUTENTICACIÓN 2FA, AUDITORÍA WORM, ESCÁNER Y EXPEDIENTES
+// ==============================================================================
+
+export type UserRole = 'admin' | 'oficial_cumplimiento' | 'promotor';
+
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  totpEnrolled: boolean;
+}
+
+export interface AuthSession {
+  user: AuthenticatedUser;
+  token: string;
+  expiresAt: string;
+}
+
+/** Contexto de identidad del servidor: ÚNICA fuente del actor en endpoints privados (A.3). */
+export interface AuthContext {
+  user: AuthenticatedUser;
+  sessionId: string;
+}
+
+/** Permisos de la matriz RBAC (fuente de verdad en src/config/rbacPolicy.ts). */
+export type RbacPermission =
+  | 'expedientes:create'
+  | 'expedientes:list'
+  | 'expedientes:activate'
+  | 'audit:read'
+  | 'reconciliation:process'
+  | 'reconciliation:read'
+  | 'reconciliation:sample-data'
+  | 'dashboard:read_kpis'
+  | 'dashboard:read'
+  | 'dashboard:read_pii';
+
+/** Datos de enrolamiento TOTP: solo se entregan mientras el usuario NO está enrolado. */
+export interface TotpEnrollment {
+  otpauthUri: string;
+  manualKey: string;
+}
+
+/** Respuesta de POST /api/auth/login (paso 1: contraseña validada). */
+export interface LoginChallengeResponse {
+  requireTotp: true;
+  tempToken: string;
+  name: string;
+  role: UserRole;
+  enrollment?: TotpEnrollment;
+}
+
+export type AuditAction =
+  | 'LOGIN_2FA_SUCCESS'
+  | 'LOGIN_FAILURE'
+  | 'LOGOUT'
+  | 'ACCESS_DENIED'
+  | 'EXPEDIENTE_CREATE'
+  | 'EXPEDIENTE_SYNC'
+  | 'EXPEDIENTE_PURGE'
+  | 'EXPEDIENTE_VIEW'
+  | 'EXPEDIENTE_ACTIVATE'
+  | 'LAYOUT_SIF_GENERATE'
+  | 'SCREEN_VIEW'
+  | 'RECONCILIATION_BATCH_SEALED'
+  | 'RECONCILIATION_BATCH_REJECTED'
+  | 'PAYMENT_APPLIED';
+
+export interface AuditEvent {
+  id: string;
+  ts: string;
+  actorEmail: string;
+  actorRole: UserRole | 'sistema';
+  action: AuditAction;
+  outcome: 'success' | 'failure' | 'denied';
+  sourceIp: string;
+  sourceSummary: string;
+  curpMasked?: string;
+  blindCurpPrefix?: string;
+  expedienteId?: string;
+  details?: string;
+  prevHash: string;
+  recordHash: string;
+}
+
+export interface IneQualityFlags {
+  isBlur: boolean;
+  isTooDark: boolean;
+  isTooBright: boolean;
+  isTilted: boolean;
+  isAcceptable: boolean;
+  laplacianScore: number;
+  avgBrightness: number;
+  edgeRatio: number;
+  feedbackText: string;
+}
+
+export interface ExpedienteItem {
+  id: string;
+  createdAt: string;
+  fullName: string;
+  curpMasked: string;
+  blindCurp: string;
+  voterId?: string;
+  address: string;
+  phone: string;
+  requestedAmount: number;
+  termFortnights: number;
+  productType: ProductId;
+  status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado';
+  promotorEmail: string;
+  encryptedThumbPayload?: string;
+  kekVersion?: number;
+}
+
+export type SyncAckSuccess = {
+  ok: true;
+  status: 200 | 409;
+  syncId: string;
+  expedienteId: string;
+  thumbSaved?: boolean;
+};
+
+export type SyncAckFailure = {
+  ok: false;
+  status: number;
+  error: string;
+};
+
+export type SyncAck = SyncAckSuccess | SyncAckFailure;
+
+// ==============================================================================
+// TIPOS DE FASE 4: MOTOR DE CONCILIACIÓN QUINCENAL AUTOMATIZADO
+// ==============================================================================
+
+export type ReconciliationItemStatus =
+  | 'MATCH_EXACT'
+  | 'DISCREPANCY_UNDERPAYMENT'
+  | 'MISSING_IN_PAYROLL'
+  | 'DISCREPANCY_OVERPAYMENT';
+
+export interface PayrollRecordInput {
+  curp: string;
+  employeeName: string;
+  actualPayment: number;
+  agreementName?: string;
+}
+
+export interface ReconciliationItem {
+  id: string;
+  batchId: string;
+  expedienteId?: string;
+  blindCurp: string;
+  curpMasked: string;
+  employeeName: string;
+  expectedPayment: number;
+  actualPayment: number;
+  difference: number;
+  status: ReconciliationItemStatus;
+  auditNotes: string;
+}
+
+export interface ReconciliationBatch {
+  id: string;
+  createdAt: string;
+  agreementName: string;
+  fortnightPeriod: string;
+  totalRecords: number;
+  totalAmountExpected: number;
+  totalAmountReceived: number;
+  status: 'procesado' | 'cerrado_con_discrepancias' | 'conciliado_total';
+  officerEmail: string;
+  batchManifestHash: string;
+  notes?: string;
+  items?: ReconciliationItem[];
+}
+
+export interface ReconciliationProcessResult {
+  batch: ReconciliationBatch;
+  items: ReconciliationItem[];
+  summary: {
+    totalRecords: number;
+    matchExactCount: number;
+    underpaymentCount: number;
+    missingInPayrollCount: number;
+    overpaymentCount: number;
+    totalExpected: number;
+    totalReceived: number;
+    netDifference: number;
+  };
+}
+
+
