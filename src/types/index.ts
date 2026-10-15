@@ -124,7 +124,8 @@ export type RbacPermission =
   | 'reconciliation:sample-data'
   | 'dashboard:read_kpis'
   | 'dashboard:read'
-  | 'dashboard:read_pii';
+  | 'dashboard:read_pii'
+  | 'users:manage';
 
 /** Datos de enrolamiento TOTP: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
@@ -155,7 +156,9 @@ export type AuditAction =
   | 'SCREEN_VIEW'
   | 'RECONCILIATION_BATCH_SEALED'
   | 'RECONCILIATION_BATCH_REJECTED'
-  | 'PAYMENT_APPLIED';
+  | 'PAYMENT_APPLIED'
+  | 'USER_CREATE'
+  | 'USER_UPDATE';
 
 export interface AuditEvent {
   id: string;

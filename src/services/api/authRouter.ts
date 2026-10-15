@@ -99,7 +99,7 @@ authRouter.post('/login', async (req: Request, res: Response) => {
 
     smsSendRateLimiter.recordFailure(smsRateKeyUser);
     smsSendRateLimiter.recordFailure(smsRateKeyIp);
-    await sendSmsOtp(user.id);
+    await sendSmsOtp(user.id, user.phone_number || undefined);
 
     const body: LoginChallengeResponse = {
       requireTotp: true,

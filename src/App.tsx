@@ -36,6 +36,7 @@ export default function App() {
       <AdminAuditView
         session={session}
         onLogout={() => {
+          localStorage.removeItem('auth_token');
           setSession(null);
           setCurrentView('public');
         }}
@@ -114,6 +115,7 @@ export default function App() {
         isOpen={show2FaModal}
         onClose={() => setShow2FaModal(false)}
         onLoginSuccess={(newSession) => {
+          localStorage.setItem('auth_token', newSession.token);
           setSession(newSession);
           setCurrentView('private');
         }}

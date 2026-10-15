@@ -16,6 +16,7 @@ import { reconciliationRouter } from './reconciliationRouter';
 import { expedientesRouter } from './expedientesRouter';
 import { auditRouter } from './auditRouter';
 import { dashboardRouter } from './dashboardRouter';
+import { usersRouter } from './usersRouter';
 
 export const privateApiRouter = Router();
 
@@ -30,6 +31,9 @@ privateApiRouter.use('/reconciliation', reconciliationRouter);
 
 // Sub-enrutador de auditoría forense WORM
 privateApiRouter.use('/audit', auditRouter);
+
+// Sub-enrutador de administración de usuarios y accesos 2FA
+privateApiRouter.use('/users', usersRouter);
 
 // Sub-enrutador de expedientes (promotores/secure, expedientes)
 privateApiRouter.use('/', expedientesRouter);

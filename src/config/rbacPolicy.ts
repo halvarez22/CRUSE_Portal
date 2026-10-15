@@ -18,6 +18,7 @@ export const RBAC_POLICY: Readonly<Record<RbacPermission, readonly UserRole[]>> 
   'dashboard:read_kpis': ['admin', 'oficial_cumplimiento', 'promotor'],
   'dashboard:read': ['admin', 'oficial_cumplimiento'],
   'dashboard:read_pii': ['oficial_cumplimiento', 'admin'],
+  'users:manage': ['admin'],
 };
 
 /** Permisos que solo existen fuera de producción (en producción la ruta responde 404). */

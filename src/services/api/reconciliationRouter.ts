@@ -20,6 +20,11 @@ import {
   generateSifLogicSystemsCsv,
 } from '../reconciliation/reconciliationReports';
 import {
+  ReconciliationBatch,
+  ReconciliationItem,
+  ReconciliationItemStatus,
+} from '../../types';
+import {
   SAMPLE_STSGECH_PAYROLL,
   SAMPLE_SUPREMO_TRIBUNAL_PAYROLL,
 } from '../reconciliation/samplePayrollData';
@@ -42,7 +47,7 @@ reconciliationRouter.get('/sample-data', requireAuth('reconciliation:sample-data
 reconciliationRouter.post('/process', requireAuth('reconciliation:process'), async (req: Request, res: Response) => {
   try {
     // CRUSE-APO-2026-005 A.3: officerEmail del cuerpo se ignora; el oficial es el de la sesión validada.
-    const { agreementName, fortnightPeriod, records, notes } = req.body;
+    const { agreementName, fortnightPeriod, records } = req.body;
 
     if (!agreementName || !fortnightPeriod || !Array.isArray(records) || records.length === 0) {
       return res.status(400).json({
@@ -55,6 +60,7 @@ reconciliationRouter.post('/process', requireAuth('reconciliation:process'), asy
     const ip = extractClientIp(req.headers);
     const ua = req.headers['user-agent'];
     const sourceSummary = buildSourceSummary(ip, ua);
+    void sourceSummary;
 
     // 1. Ejecutar el motor de cruce dinámico (con decimal.js)
     const result = await processReconciliationBatch(
@@ -68,32 +74,39 @@ reconciliationRouter.post('/process', requireAuth('reconciliation:process'), asy
     const batchQuery = await db.query<Record<string, unknown>>(`SELECT * FROM reconciliation_batches WHERE id = ?`, [result.batchId]);
     const itemsQuery = await db.query<Record<string, unknown>>(`SELECT * FROM reconciliation_items WHERE batch_id = ?`, [result.batchId]);
     
-    const batch = {
-      id: batchQuery.rows[0].id,
-      createdAt: batchQuery.rows[0].created_at,
-      agreementName: batchQuery.rows[0].agreement_name,
-      fortnightPeriod: batchQuery.rows[0].fortnight_period,
-      totalRecords: Number(batchQuery.rows[0].total_records),
-      totalAmountExpected: Number(batchQuery.rows[0].total_amount_expected),
-      totalAmountReceived: Number(batchQuery.rows[0].total_amount_received),
-      status: batchQuery.rows[0].status,
-      officerEmail: batchQuery.rows[0].officer_email,
-      batchManifestHash: batchQuery.rows[0].batch_manifest_hash,
-      notes: batchQuery.rows[0].notes,
+    const batchRow = batchQuery.rows[0] ?? {};
+    const rawBatchStatus = String(batchRow.status ?? 'procesado');
+    const validBatchStatus: ReconciliationBatch['status'] =
+      rawBatchStatus === 'cerrado_con_discrepancias' || rawBatchStatus === 'conciliado_total'
+        ? rawBatchStatus
+        : 'procesado';
+
+    const batch: ReconciliationBatch = {
+      id: String(batchRow.id ?? result.batchId),
+      createdAt: String(batchRow.created_at ?? new Date().toISOString()),
+      agreementName: String(batchRow.agreement_name ?? agreementName),
+      fortnightPeriod: String(batchRow.fortnight_period ?? fortnightPeriod),
+      totalRecords: Number(batchRow.total_records ?? 0),
+      totalAmountExpected: Number(batchRow.total_amount_expected ?? 0),
+      totalAmountReceived: Number(batchRow.total_amount_received ?? 0),
+      status: validBatchStatus,
+      officerEmail: String(batchRow.officer_email ?? email),
+      batchManifestHash: String(batchRow.batch_manifest_hash ?? ''),
+      notes: batchRow.notes ? String(batchRow.notes) : undefined,
     };
     
-    const items = itemsQuery.rows.map((row: Record<string, unknown>) => ({
-      id: row.id,
-      batchId: row.batch_id,
-      expedienteId: row.expediente_id,
-      blindCurp: row.blind_curp,
-      curpMasked: row.curp_masked,
-      employeeName: row.employee_name,
-      expectedPayment: Number(row.expected_payment),
-      actualPayment: Number(row.actual_payment),
-      difference: Number(row.difference),
-      status: row.status,
-      auditNotes: row.audit_notes,
+    const items: ReconciliationItem[] = itemsQuery.rows.map((row: Record<string, unknown>) => ({
+      id: String(row.id ?? ''),
+      batchId: String(row.batch_id ?? result.batchId),
+      expedienteId: row.expediente_id ? String(row.expediente_id) : undefined,
+      blindCurp: String(row.blind_curp ?? ''),
+      curpMasked: String(row.curp_masked ?? ''),
+      employeeName: String(row.employee_name ?? ''),
+      expectedPayment: Number(row.expected_payment ?? 0),
+      actualPayment: Number(row.actual_payment ?? 0),
+      difference: Number(row.difference ?? 0),
+      status: String(row.status ?? 'MATCH_EXACT') as ReconciliationItemStatus,
+      auditNotes: String(row.audit_notes ?? ''),
     }));
 
     const summary = {

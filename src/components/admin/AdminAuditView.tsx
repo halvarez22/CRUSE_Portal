@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Download, Hash, Clock, User, Filter, Eye, FileCheck2 } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Download, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
+import { UserManagementView } from './UserManagementView';
+import { DashboardLayout } from '../dashboard/DashboardLayout';
 
 interface AdminAuditViewProps {
   session: AuthSession;
@@ -15,7 +17,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   onLogout,
   onBackToPortal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'audit' | 'expedientes' | 'reconciliation'>('audit');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'users'>('dashboard');
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   const [actionFilter, setActionFilter] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
 
-  // Cargar eventos de bitácora
+  // Cargar eventos de bitácora con Bearer token
   const fetchAuditEvents = useCallback(async () => {
     setLoading(true);
     try {
@@ -42,7 +44,11 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
       if (searchEmail) query.append('actorEmail', searchEmail);
       query.append('limit', '100');
 
-      const res = await fetch(`/api/audit/events?${query.toString()}`);
+      const res = await fetch(`/api/audit/events?${query.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
       const data = await res.json();
       if (data.events) {
         setEvents(data.events);
@@ -52,12 +58,16 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [actionFilter, searchEmail]);
+  }, [actionFilter, searchEmail, session.token]);
 
-  // Cargar expedientes
+  // Cargar expedientes con Bearer token
   const fetchExpedientes = useCallback(async () => {
     try {
-      const res = await fetch('/api/expedientes');
+      const res = await fetch('/api/expedientes', {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
       const data = await res.json();
       if (data.expedientes) {
         setExpedientes(data.expedientes);
@@ -65,18 +75,23 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     } catch (err) {
       console.error('Error cargando expedientes:', err);
     }
-  }, []);
+  }, [session.token]);
 
   useEffect(() => {
+    localStorage.setItem('auth_token', session.token);
     fetchAuditEvents();
     fetchExpedientes();
-  }, [fetchAuditEvents, fetchExpedientes]);
+  }, [fetchAuditEvents, fetchExpedientes, session.token]);
 
   // Ejecutar verificación criptográfica de la cadena SHA-256
   const handleVerifyChain = async () => {
     setIntegrityStatus({ verified: false, verifying: true });
     try {
-      const res = await fetch('/api/audit/verify');
+      const res = await fetch('/api/audit/verify', {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
       const result = await res.json();
       setIntegrityStatus({
         verified: true,
@@ -127,7 +142,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#249E82]" />
-              <h1 className="text-base font-bold text-white">Módulo de Cumplimiento & Bitácora Forense (WORM)</h1>
+              <h1 className="text-base font-bold text-white">Centro de Control Operativo & Cumplimiento Forense (WORM)</h1>
             </div>
             <p className="text-xs text-slate-400">
               {session.user.name} — <span className="text-[#00D1FF] font-medium">{session.user.role.replace('_', ' ').toUpperCase()}</span>
@@ -138,7 +153,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>2FA TOTP Autenticado</span>
+            <span>2FA SMS Autenticado</span>
           </div>
           <button
             onClick={onLogout}
@@ -150,8 +165,19 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
       </header>
 
       {/* Navegación por pestañas */}
-      <div className="max-w-7xl w-full mx-auto px-6 pt-6 flex items-center justify-between">
-        <div className="flex gap-2 p-1 rounded-2xl bg-white/5 border border-white/10">
+      <div className="max-w-7xl w-full mx-auto px-6 pt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2 p-1 rounded-2xl bg-white/5 border border-white/10">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'dashboard'
+                ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Dashboard Cartera (317)</span>
+          </button>
           <button
             onClick={() => setActiveTab('audit')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
@@ -161,7 +187,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <Hash className="w-4 h-4" />
-            <span>Bitácora Forense Inmutable (5 Años)</span>
+            <span>Bitácora Forense (5 Años)</span>
           </button>
           <button
             onClick={() => setActiveTab('expedientes')}
@@ -172,7 +198,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Expedientes de Nómina ({expedientes.length})</span>
+            <span>Expedientes ({expedientes.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('reconciliation')}
@@ -185,6 +211,19 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             <FileCheck2 className="w-4 h-4" />
             <span>Conciliación Quincenal</span>
           </button>
+          {session.user.role === 'admin' && (
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+                activeTab === 'users'
+                  ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Usuarios y Accesos 2FA</span>
+            </button>
+          )}
         </div>
 
         {activeTab === 'audit' && (
@@ -247,6 +286,8 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
 
       {/* Contenido Principal */}
       <main className="max-w-7xl w-full mx-auto p-6 flex-1 flex flex-col">
+        {activeTab === 'dashboard' && <DashboardLayout />}
+
         {activeTab === 'audit' && (
           <div className="space-y-4">
             {/* Filtros de Bitácora */}
@@ -403,6 +444,10 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
 
         {activeTab === 'reconciliation' && (
           <ReconciliationView session={session} onBatchProcessed={fetchExpedientes} />
+        )}
+
+        {activeTab === 'users' && session.user.role === 'admin' && (
+          <UserManagementView session={session} />
         )}
       </main>
     </div>
