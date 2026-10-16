@@ -10,21 +10,29 @@ export const dashboardRouter = Router();
 // ==============================================================================
 // GET /api/dashboard/kpis
 // ==============================================================================
-dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (req, res) => {
+dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (_req, res) => {
   try {
     const placedCapitalResult = await db.query<{ total_colocado: number | null }>(`
-      SELECT SUM(principal_original) AS total_colocado 
+      SELECT COALESCE(SUM(principal_original), 0) AS total_colocado 
       FROM loan_accounts
     `);
 
     const activeCapitalResult = await db.query<{ capital_vigente: number | null }>(`
-      SELECT SUM(balance_after) AS capital_vigente 
-      FROM loan_payment_applications 
-      WHERE (expediente_id, created_at) IN (
-        SELECT expediente_id, MAX(created_at) 
-        FROM loan_payment_applications 
-        GROUP BY expediente_id
-      )
+      SELECT COALESCE(SUM(
+        COALESCE(latest_lpa.balance_after, la.principal_original)
+      ), 0) AS capital_vigente
+      FROM loan_accounts la
+      INNER JOIN expedientes e ON e.id = la.expediente_id
+      LEFT JOIN (
+        SELECT l1.expediente_id, l1.balance_after
+        FROM loan_payment_applications l1
+        INNER JOIN (
+          SELECT expediente_id, MAX(created_at) AS max_created_at
+          FROM loan_payment_applications
+          GROUP BY expediente_id
+        ) l2 ON l1.expediente_id = l2.expediente_id AND l1.created_at = l2.max_created_at
+      ) latest_lpa ON latest_lpa.expediente_id = la.expediente_id
+      WHERE e.status IN ('activo', 'capturado')
     `);
 
     const activeLoansResult = await db.query<{ creditos_activos: number }>(`
@@ -34,24 +42,40 @@ dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (req, res
     `);
 
     const overdueResult = await db.query<{ cartera_vencida: number | null }>(`
-      SELECT SUM(vencido_por_cuota) AS cartera_vencida
+      SELECT COALESCE(SUM(vencido_por_credito), 0) AS cartera_vencida
       FROM (
-        SELECT a.expected_payment - COALESCE(SUM(l.applied_payment), 0) AS vencido_por_cuota
-        FROM amortization_schedules a
-        LEFT JOIN loan_payment_applications l 
-          ON a.loan_account_id = l.expediente_id 
-          AND a.period_number = l.period_number
-        WHERE a.due_date < CURRENT_DATE
-        GROUP BY a.id, a.expected_payment
-        HAVING COALESCE(SUM(l.applied_payment), 0) < a.expected_payment
+        SELECT
+          CASE
+            WHEN MAX(CASE
+              WHEN am.due_date < CURRENT_DATE AND COALESCE(lpa_sum.total_received, 0) < am.expected_payment
+              THEN 1 ELSE 0
+            END) = 1
+            THEN la.principal_original - COALESCE(lpa_tot.total_applied_capital, 0)
+            ELSE 0
+          END AS vencido_por_credito
+        FROM loan_accounts la
+        INNER JOIN expedientes e ON e.id = la.expediente_id
+        LEFT JOIN amortization_schedules am ON la.expediente_id = am.loan_account_id
+        LEFT JOIN (
+          SELECT expediente_id, fortnight_period, SUM(amount_received) AS total_received
+          FROM loan_payment_applications
+          GROUP BY expediente_id, fortnight_period
+        ) lpa_sum ON la.expediente_id = lpa_sum.expediente_id AND lpa_sum.fortnight_period = CAST(am.period_number AS TEXT)
+        LEFT JOIN (
+          SELECT expediente_id, SUM(applied_capital) AS total_applied_capital
+          FROM loan_payment_applications
+          GROUP BY expediente_id
+        ) lpa_tot ON la.expediente_id = lpa_tot.expediente_id
+        WHERE e.status = 'activo'
+        GROUP BY la.expediente_id, la.principal_original, lpa_tot.total_applied_capital
       ) AS sub
     `);
 
     return res.json({
-      totalColocado: placedCapitalResult.rows[0]?.total_colocado || 0,
-      capitalVigente: activeCapitalResult.rows[0]?.capital_vigente || 0,
-      creditosActivos: activeLoansResult.rows[0]?.creditos_activos || 0,
-      carteraVencida: overdueResult.rows[0]?.cartera_vencida || 0
+      totalColocado: Number(placedCapitalResult.rows[0]?.total_colocado ?? 0),
+      capitalVigente: Number(activeCapitalResult.rows[0]?.capital_vigente ?? 0),
+      creditosActivos: Number(activeLoansResult.rows[0]?.creditos_activos ?? 0),
+      carteraVencida: Number(overdueResult.rows[0]?.cartera_vencida ?? 0)
     });
   } catch (err: unknown) {
     console.error('Error fetching KPIs:', err);
