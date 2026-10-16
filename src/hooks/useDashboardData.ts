@@ -18,8 +18,16 @@ export function useDashboardData() {
       headers['Authorization'] = `Bearer ${token}`;
     }
     const res = await fetch(url, { headers });
+    const contentType = res.headers.get('content-type') || '';
     if (!res.ok) {
-      throw new Error(`Error fetching ${url}: ${res.statusText}`);
+      if (contentType.includes('application/json')) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.error || `Error fetching ${url}: ${res.statusText}`);
+      }
+      throw new Error(`Error fetching ${url}: ${res.status} ${res.statusText}`);
+    }
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Respuesta inválida del servidor en ${url} (se esperaba JSON y se recibió ${contentType || 'contenido no-JSON'})`);
     }
     return res.json();
   };

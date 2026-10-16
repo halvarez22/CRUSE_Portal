@@ -1,9 +1,8 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { requireAuth } from '../auth/authMiddleware';
 import { db } from '../db/connectionPool';
 import { getServerKms } from '../crypto/serverKeyring';
 import { decryptEnvelope } from '../crypto/cryptoService';
-import { kyselyBuilder } from '../db/kyselyConfig';
 
 export const dashboardRouter = Router();
 
@@ -71,8 +70,10 @@ dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (_req, re
       ) AS sub
     `);
 
+    const totalColocado = Number(placedCapitalResult.rows[0]?.total_colocado ?? 0);
     return res.json({
-      totalColocado: Number(placedCapitalResult.rows[0]?.total_colocado ?? 0),
+      capitalColocado: totalColocado,
+      totalColocado,
       capitalVigente: Number(activeCapitalResult.rows[0]?.capital_vigente ?? 0),
       creditosActivos: Number(activeLoansResult.rows[0]?.creditos_activos ?? 0),
       carteraVencida: Number(overdueResult.rows[0]?.cartera_vencida ?? 0)
@@ -86,15 +87,26 @@ dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (_req, re
 // ==============================================================================
 // GET /api/dashboard/latest_loans
 // ==============================================================================
-dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, res) => {
+dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (_req, res) => {
   try {
-    const result = await db.query<any>(`
+    const result = await db.query<{
+      id: string;
+      created_at: string;
+      raw_full_name: string | null;
+      curp_masked: string;
+      requested_amount: number;
+      product_type: string | null;
+      status: string;
+      principal_original: number | null;
+      fortnightly_payment: number | null;
+    }>(`
       SELECT 
         e.id, 
         e.created_at, 
         e.full_name as raw_full_name,
         e.curp_masked,
         e.requested_amount,
+        e.product_type,
         e.status,
         l.principal_original,
         l.fortnightly_payment
@@ -110,13 +122,17 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, 
         p.length > 1 ? p[0] + '*'.repeat(p.length - 1) : p
       ).join(' ');
 
+      const amount = Number(row.principal_original || row.requested_amount || 0);
       return {
         id: row.id,
         createdAt: row.created_at,
+        date: row.created_at,
         maskedName,
+        fullName: maskedName,
         curpMasked: row.curp_masked,
-        amount: row.principal_original || row.requested_amount,
+        amount,
         payment: row.fortnightly_payment,
+        productType: row.product_type || 'normal',
         status: row.status
       };
     });
@@ -131,18 +147,31 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, 
 // ==============================================================================
 // GET /api/dashboard/expedientes/:id/details (PII Unmasked)
 // ==============================================================================
-dashboardRouter.get('/expedientes/:id/details', requireAuth('dashboard:read_pii'), async (req, res) => {
+export async function handleGetExpedientDetails(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    
-    const result = await db.query<any>(`SELECT * FROM expedientes WHERE id = ?`, [id]);
+
+    const result = await db.query<{
+      id: string;
+      created_at: string;
+      full_name: string;
+      curp_masked: string;
+      voter_id: string | null;
+      address: string;
+      phone: string;
+      requested_amount: number;
+      term_fortnights: number;
+      product_type: string;
+      status: string;
+      encrypted_thumb_payload: string | null;
+    }>(`SELECT * FROM expedientes WHERE id = ?`, [id]);
     const record = result.rows[0];
 
     if (!record) {
       return res.status(404).json({ error: 'Expediente no encontrado' });
     }
 
-    let decryptedThumb = null;
+    let decryptedThumb: string | null = null;
     if (record.encrypted_thumb_payload) {
       try {
         const kms = getServerKms();
@@ -156,11 +185,16 @@ dashboardRouter.get('/expedientes/:id/details', requireAuth('dashboard:read_pii'
 
     return res.json({
       id: record.id,
-      fullName: record.full_name, 
-      address: record.address,
-      phone: record.phone,
-      productType: record.product_type,
-      requestedAmount: record.requested_amount,
+      fullName: record.full_name,
+      curp: record.curp_masked || 'NO REGISTRADO',
+      rfc: 'NO REGISTRADO EN EXPEDIENTE',
+      voterId: record.voter_id || 'NO REGISTRADO',
+      address: record.address || 'SIN DATO',
+      phone: record.phone || 'SIN DATO',
+      productType: record.product_type || 'normal',
+      requestedAmount: Number(record.requested_amount ?? 0),
+      termFortnights: Number(record.term_fortnights ?? 0),
+      status: record.status || 'capturado',
       createdAt: record.created_at,
       thumbData: decryptedThumb
     });
@@ -168,4 +202,7 @@ dashboardRouter.get('/expedientes/:id/details', requireAuth('dashboard:read_pii'
     console.error('Error fetching expedient details:', err);
     return res.status(500).json({ error: 'Error reading details' });
   }
-});
+}
+
+dashboardRouter.get('/expedientes/:id/details', requireAuth('dashboard:read_pii'), handleGetExpedientDetails);
+

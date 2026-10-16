@@ -142,6 +142,11 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// Guardián JSON 404 para cualquier ruta /api/* no registrada (evita caer en el catch-all HTML de la SPA)
+app.use('/api', (_req, res) => {
+  return res.status(404).json({ error: 'Endpoint de API no encontrado' });
+});
+
 // Start Express Server with Vite integration
 async function startServer() {
   // Regla 5 SSD (CRUSE-APO-2026-005 A.1): sin secretos válidos el servidor no arranca
@@ -170,8 +175,17 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(
+      express.static(distPath, {
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+          }
+        },
+      })
+    );
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

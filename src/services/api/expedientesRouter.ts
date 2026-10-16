@@ -10,6 +10,7 @@ import { auditEventStore } from '../audit/auditEventStore';
 import { maskCurp, extractClientIp, buildSourceSummary } from '../audit/auditMask';
 import { db } from '../db/connectionPool';
 import { requireAuth, getAuth } from '../auth/authMiddleware';
+import { handleGetExpedientDetails } from './dashboardRouter';
 
 export const expedientesRouter = Router();
 
@@ -187,3 +188,7 @@ expedientesRouter.get('/expedientes', requireAuth('expedientes:list'), async (_r
     return res.json({ expedientes: [], total: 0 });
   }
 });
+
+// Alias compatible para clientes con ruta previa /api/expedientes/:id/details
+expedientesRouter.get('/expedientes/:id/details', requireAuth('dashboard:read_pii'), handleGetExpedientDetails);
+
