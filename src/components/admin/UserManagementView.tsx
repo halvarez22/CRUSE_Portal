@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Smartphone, Shield, CheckCircle2, XCircle, RefreshCw, KeyRound, Mail, User } from 'lucide-react';
+import { UserPlus, Smartphone, Shield, CheckCircle2, XCircle, RefreshCw, KeyRound, Mail, User, Eye, EyeOff } from 'lucide-react';
 import { AuthSession, UserRole } from '../../types';
 
 interface ManagedUser {
@@ -34,6 +34,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
   const [role, setRole] = useState<UserRole>('oficial_cumplimiento');
   const [phoneNumber, setPhoneNumber] = useState('+52');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchUsers = useCallback(async () => {
@@ -204,14 +205,27 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   minLength={10}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-white focus:border-[#00D1FF] focus:outline-none"
+                  className="w-full pl-9 pr-10 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-white focus:border-[#00D1FF] focus:outline-none"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label="Mostrar u ocultar contraseña"
+                  aria-pressed={showPassword}
+                  className="absolute right-3 top-2 p-0.5 rounded-lg text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00D1FF] transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
             </div>
 

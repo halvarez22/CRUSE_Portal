@@ -60,11 +60,25 @@ class DatabaseConnectionPool {
   private dbPath: string;
 
   constructor() {
-    const dataDir = path.join(process.cwd(), 'db', 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    const defaultDir = path.join(process.cwd(), 'db', 'data');
+    const defaultDbPath = path.join(defaultDir, 'cruse_fintech.db');
+    const configuredPath = process.env.CRUSE_DB_PATH?.trim();
+
+    if (configuredPath) {
+      const targetDir = path.dirname(configuredPath);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      if (!fs.existsSync(configuredPath) && fs.existsSync(defaultDbPath)) {
+        fs.copyFileSync(defaultDbPath, configuredPath);
+      }
+      this.dbPath = configuredPath;
+    } else {
+      if (!fs.existsSync(defaultDir)) {
+        fs.mkdirSync(defaultDir, { recursive: true });
+      }
+      this.dbPath = defaultDbPath;
     }
-    this.dbPath = path.join(dataDir, 'cruse_fintech.db');
   }
 
   /**

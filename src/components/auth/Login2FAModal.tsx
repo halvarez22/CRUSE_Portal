@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, KeyRound, Lock, ArrowRight, AlertTriangle, CheckCircle2, UserCheck } from 'lucide-react';
+import { X, ShieldCheck, KeyRound, Lock, ArrowRight, AlertTriangle, CheckCircle2, UserCheck, Eye, EyeOff } from 'lucide-react';
 import { AuthSession, UserRole, LoginChallengeResponse, TotpEnrollment } from '../../types';
 import { TotpEnrollmentPanel } from './TotpEnrollmentPanel';
 
@@ -17,6 +17,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
   const [step, setStep] = useState<'credentials' | 'totp'>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [totpCode, setTotpCode] = useState('');
   const [tempToken, setTempToken] = useState('');
   const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
@@ -34,6 +35,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
     setTempToken('');
     setEnrollment(null);
     setTotpCode('');
+    setShowPassword(false);
     setRemainingAttempts(null);
     setErrorMsg(null);
   };
@@ -41,6 +43,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
   const handleClose = () => {
     resetChallenge();
     setPassword('');
+    setShowPassword(false);
     onClose();
   };
 
@@ -67,6 +70,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
       setUserRole(challenge.role);
       setUserName(challenge.name);
       setPassword('');
+      setShowPassword(false);
       setStep('totp');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Error al procesar credenciales');
@@ -188,14 +192,27 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl glass-input text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
                   placeholder="••••••••••••"
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label="Mostrar u ocultar contraseña"
+                  aria-pressed={showPassword}
+                  className="absolute right-3 top-2.5 p-0.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82] transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
             </div>
 
