@@ -39,6 +39,7 @@ Parámetros Inmutables del Negocio (financialConstants):
    - Montos: $1,000 a $20,000 MXN en plazos de 6, 14 y 20 quincenas.
    - Tasa fija: 3.33% quincenal sin IVA (48.00% anual). CAT informativo: 136.66% sin IVA.
    - Desembolso en menos de 2 horas vía SPEI sin póliza de seguro de vida quincenal.
+   - Requisitos: 2 copias de INE vigente y los últimos 2 recibos de nómina. No se requiere comprobante de domicilio, seguro de vida ni aval.
 3. Capacidad de Pago Máxima:
    - Hasta el 35% del sueldo neto libre quincenal.
 4. Atención y UNE:

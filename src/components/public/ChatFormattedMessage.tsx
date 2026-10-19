@@ -8,28 +8,20 @@ interface ChatFormattedMessageProps {
 /**
  * Renderizador seguro de Markdown ligero a nodos React nativos (CRUSE-APO-2026-016).
  * - Regla 5 SSD (Zero-XSS): Prohibido usar dangerouslySetInnerHTML.
- * - Normaliza etiquetas <br>, <br/>, <br /> previas al parseo de bloques.
- * - Soporta encabezados (###), listas ordenadas (1.), viñetas (- / * / •),
- *   tablas básicas (| col | col |) con fallback resiliente, y negritas (**texto**).
+ * - Preserva filas de tablas Markdown (| col | col |) que contengan <br> internos en sus celdas.
+ * - Soporta encabezados (###), listas (1., -), separadores (---), citas (>), tablas y negritas (**texto**).
  */
 export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text, isUser = false }) => {
-  // Condición 1: Normalización de <br> previo a cualquier análisis de bloques
-  const normalizedText = (text || '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/\r\n/g, '\n');
-
-  // Parseo inline seguro de **negritas** hacia nodos <strong>
   const renderInline = (content: string, keyPrefix: string): React.ReactNode[] => {
     const parts = content.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, idx) => {
       if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-        const cleanBold = part.slice(2, -2);
         return (
           <strong
             key={`${keyPrefix}-b-${idx}`}
             className={isUser ? 'font-extrabold text-white' : 'font-bold text-[#041734] dark:text-white'}
           >
-            {cleanBold}
+            {part.slice(2, -2)}
           </strong>
         );
       }
@@ -37,7 +29,37 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
     });
   };
 
-  const lines = normalizedText.split('\n');
+  // Renderiza celdas de tabla respetando saltos <br> internos como bloques seguros
+  const renderCellContent = (cellText: string, keyPrefix: string): React.ReactNode => {
+    const segments = (cellText || '—').split(/<br\s*\/?>/gi).map((s) => s.trim()).filter(Boolean);
+    if (segments.length <= 1) {
+      return renderInline(segments[0] || '—', keyPrefix);
+    }
+    return (
+      <div className="space-y-1">
+        {segments.map((seg, sIdx) => (
+          <div key={`${keyPrefix}-seg-${sIdx}`} className="leading-snug">
+            {renderInline(seg, `${keyPrefix}-s-${sIdx}`)}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Paso 1: Dividir por \n y expandir <br> únicamente en líneas que NO sean filas de tabla
+  const rawLines = (text || '').replace(/\r\n/g, '\n').split('\n');
+  const lines: string[] = [];
+  for (const rawLine of rawLines) {
+    const trimmed = rawLine.trim();
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      lines.push(trimmed);
+    } else {
+      for (const sub of rawLine.split(/<br\s*\/?>/gi)) {
+        lines.push(sub);
+      }
+    }
+  }
+
   const blocks: React.ReactNode[] = [];
   let i = 0;
 
@@ -49,7 +71,29 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
       continue;
     }
 
-    // 1. Bloque de Tabla Markdown (| col1 | col2 |) con sanitización y fallback seguro
+    // 1. Separador horizontal (---)
+    if (/^-{3,}$/.test(line)) {
+      blocks.push(<hr key={`hr-${i}`} className="my-3 border-slate-200 dark:border-white/10" />);
+      i++;
+      continue;
+    }
+
+    // 2. Bloque de cita / Nota (> ...)
+    if (line.startsWith('>')) {
+      const quoteText = line.replace(/^>\s*/, '');
+      blocks.push(
+        <blockquote
+          key={`bq-${i}`}
+          className="border-l-4 border-[#249E82] pl-3 py-1 my-2 text-xs sm:text-sm italic text-slate-600 dark:text-slate-300 bg-[#249E82]/5 rounded-r-lg"
+        >
+          {renderInline(quoteText, `bq-${i}`)}
+        </blockquote>
+      );
+      i++;
+      continue;
+    }
+
+    // 3. Bloque de Tabla Markdown (| col1 | col2 |)
     if (line.startsWith('|') && line.endsWith('|')) {
       const tableLines: string[] = [];
       while (i < lines.length && lines[i]!.trim().startsWith('|') && lines[i]!.trim().endsWith('|')) {
@@ -59,12 +103,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
 
       const validRows = tableLines
         .filter((row) => !/^\|[\s\-:|]+\|$/.test(row))
-        .map((row) =>
-          row
-            .slice(1, -1)
-            .split('|')
-            .map((cell) => cell.trim())
-        )
+        .map((row) => row.slice(1, -1).split('|').map((cell) => cell.trim()))
         .filter((cells) => cells.length > 0);
 
       if (validRows.length > 0) {
@@ -77,7 +116,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
                 <tr className="bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-white/10">
                   {headerCells.map((cell, cIdx) => (
                     <th key={`th-${cIdx}`} className="py-2 px-3 font-bold text-[#041734] dark:text-[#00D1FF]">
-                      {renderInline(cell || 'N/A', `th-${i}-${cIdx}`)}
+                      {renderCellContent(cell || 'N/A', `th-${i}-${cIdx}`)}
                     </th>
                   ))}
                 </tr>
@@ -88,7 +127,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
                     <tr key={`tr-${rIdx}`} className="hover:bg-slate-50/50 dark:hover:bg-white/5">
                       {headerCells.map((_, cIdx) => (
                         <td key={`td-${rIdx}-${cIdx}`} className="py-2 px-3 align-top">
-                          {renderInline(rowCells[cIdx] || '—', `td-${i}-${rIdx}-${cIdx}`)}
+                          {renderCellContent(rowCells[cIdx] || '—', `td-${i}-${rIdx}-${cIdx}`)}
                         </td>
                       ))}
                     </tr>
@@ -102,7 +141,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
       continue;
     }
 
-    // 2. Encabezados (### o ##)
+    // 4. Encabezados (### o ##)
     const headingMatch = /^(#{1,4})\s+(.+)$/.exec(line);
     if (headingMatch) {
       blocks.push(
@@ -119,7 +158,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
       continue;
     }
 
-    // 3. Listas Ordenadas (1. , 2. )
+    // 5. Listas Ordenadas (1. , 2. )
     if (/^\d+\.\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\d+\.\s+/.test(lines[i]!.trim())) {
@@ -138,7 +177,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
       continue;
     }
 
-    // 4. Listas de Viñetas (- , * , • )
+    // 6. Listas de Viñetas (- , * , • )
     if (/^[-*•]\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^[-*•]\s+/.test(lines[i]!.trim())) {
@@ -157,7 +196,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
       continue;
     }
 
-    // 5. Párrafo estándar
+    // 7. Párrafo estándar
     blocks.push(
       <p key={`p-${i}`} className="mb-2 last:mb-0 leading-relaxed">
         {renderInline(line, `p-${i}`)}
