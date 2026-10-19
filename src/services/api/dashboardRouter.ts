@@ -1,10 +1,38 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../auth/authMiddleware';
+import { requireAuth, getAuth } from '../auth/authMiddleware';
+import { isRoleAuthorized } from '../../config/rbacPolicy';
 import { db } from '../db/connectionPool';
 import { getServerKms } from '../crypto/serverKeyring';
 import { decryptEnvelope } from '../crypto/cryptoService';
 
 export const dashboardRouter = Router();
+
+export interface DecryptedExpedientePii {
+  fullName?: string;
+  curp?: string;
+  rfc?: string;
+  voterId?: string;
+  address?: string;
+  phone?: string;
+}
+
+export async function decryptExpedientePiiIfAuthorized(
+  encryptedPiiPayload: string | null | undefined,
+  canReadPii: boolean
+): Promise<DecryptedExpedientePii | null> {
+  if (!canReadPii || !encryptedPiiPayload) {
+    return null;
+  }
+  try {
+    const kms = getServerKms();
+    const envelopeObj = JSON.parse(encryptedPiiPayload);
+    const jsonStr = await decryptEnvelope(envelopeObj, kms);
+    return JSON.parse(jsonStr) as DecryptedExpedientePii;
+  } catch (err) {
+    console.error('Fallo al desencriptar encrypted_pii_payload:', err);
+    return null;
+  }
+}
 
 // ==============================================================================
 // GET /api/dashboard/kpis
@@ -87,57 +115,93 @@ dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (_req, re
 // ==============================================================================
 // GET /api/dashboard/latest_loans
 // ==============================================================================
-dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (_req, res) => {
+dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, res) => {
   try {
+    const auth = getAuth(req);
+    const canReadPii = isRoleAuthorized('dashboard:read_pii', auth.user.role);
+
     const result = await db.query<{
       id: string;
       created_at: string;
+      convenio: string | null;
       raw_full_name: string | null;
       curp_masked: string;
       requested_amount: number;
+      term_fortnights: number;
       product_type: string | null;
       status: string;
+      encrypted_pii_payload: string | null;
       principal_original: number | null;
       fortnightly_payment: number | null;
     }>(`
       SELECT 
         e.id, 
-        e.created_at, 
+        e.created_at,
+        e.convenio,
         e.full_name as raw_full_name,
         e.curp_masked,
         e.requested_amount,
+        e.term_fortnights,
         e.product_type,
         e.status,
+        e.encrypted_pii_payload,
         l.principal_original,
         l.fortnightly_payment
       FROM expedientes e
       LEFT JOIN loan_accounts l ON e.id = l.expediente_id
       ORDER BY e.created_at DESC, e.id DESC
-      LIMIT 50
     `);
 
-    const maskedRows = result.rows.map(row => {
-      const nameParts = (row.raw_full_name || '').split(' ');
-      const maskedName = nameParts.map((p: string) => 
-        p.length > 1 ? p[0] + '*'.repeat(p.length - 1) : p
-      ).join(' ');
+    const rows = await Promise.all(
+      result.rows.map(async (row) => {
+        const nameParts = (row.raw_full_name || '').split(' ');
+        const fallbackMaskedName = nameParts
+          .map((p: string) => (p.length > 1 ? p[0] + '*'.repeat(p.length - 1) : p))
+          .join(' ');
 
-      const amount = Number(row.principal_original || row.requested_amount || 0);
-      return {
-        id: row.id,
-        createdAt: row.created_at,
-        date: row.created_at,
-        maskedName,
-        fullName: maskedName,
-        curpMasked: row.curp_masked,
-        amount,
-        payment: row.fortnightly_payment,
-        productType: row.product_type || 'normal',
-        status: row.status
-      };
-    });
+        const amount = Number(row.principal_original || row.requested_amount || 0);
 
-    return res.json(maskedRows);
+        // Condición 3 (CRUSE-APO-2026-015): Validación explícita del permiso dashboard:read_pii
+        if (!canReadPii) {
+          return {
+            id: row.id,
+            convenio: row.convenio || 'STSGECH',
+            createdAt: row.created_at,
+            date: row.created_at,
+            maskedName: fallbackMaskedName,
+            fullName: fallbackMaskedName,
+            curpMasked: row.curp_masked,
+            amount,
+            payment: Number(row.fortnightly_payment ?? 0),
+            termFortnights: Number(row.term_fortnights ?? 0),
+            productType: row.product_type || 'normal',
+            status: row.status
+          };
+        } else {
+          const decryptedPii = await decryptExpedientePiiIfAuthorized(row.encrypted_pii_payload, true);
+          const unmaskedName = decryptedPii?.fullName || row.raw_full_name || fallbackMaskedName;
+          const unmaskedCurp = decryptedPii?.curp || row.curp_masked;
+
+          return {
+            id: row.id,
+            convenio: row.convenio || 'STSGECH',
+            createdAt: row.created_at,
+            date: row.created_at,
+            maskedName: fallbackMaskedName,
+            fullName: unmaskedName,
+            curpMasked: unmaskedCurp,
+            curp: unmaskedCurp,
+            amount,
+            payment: Number(row.fortnightly_payment ?? 0),
+            termFortnights: Number(row.term_fortnights ?? 0),
+            productType: row.product_type || 'normal',
+            status: row.status
+          };
+        }
+      })
+    );
+
+    return res.json(rows);
   } catch (err: unknown) {
     console.error('Error fetching latest loans:', err);
     return res.status(500).json({ error: 'Error fetching loans' });
@@ -150,6 +214,8 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (_req,
 export async function handleGetExpedientDetails(req: Request, res: Response) {
   try {
     const { id } = req.params;
+    const auth = getAuth(req);
+    const canReadPii = isRoleAuthorized('dashboard:read_pii', auth.user.role);
 
     const result = await db.query<{
       id: string;
@@ -164,6 +230,7 @@ export async function handleGetExpedientDetails(req: Request, res: Response) {
       product_type: string;
       status: string;
       encrypted_thumb_payload: string | null;
+      encrypted_pii_payload: string | null;
     }>(`SELECT * FROM expedientes WHERE id = ?`, [id]);
     const record = result.rows[0];
 
@@ -183,14 +250,16 @@ export async function handleGetExpedientDetails(req: Request, res: Response) {
       }
     }
 
+    const decryptedPii = await decryptExpedientePiiIfAuthorized(record.encrypted_pii_payload, canReadPii);
+
     return res.json({
       id: record.id,
-      fullName: record.full_name,
-      curp: record.curp_masked || 'NO REGISTRADO',
-      rfc: 'NO REGISTRADO EN EXPEDIENTE',
-      voterId: record.voter_id || 'NO REGISTRADO',
-      address: record.address || 'SIN DATO',
-      phone: record.phone || 'SIN DATO',
+      fullName: decryptedPii?.fullName || record.full_name,
+      curp: decryptedPii?.curp || record.curp_masked || 'NO REGISTRADO',
+      rfc: decryptedPii?.rfc || 'NO REGISTRADO EN EXPEDIENTE',
+      voterId: decryptedPii?.voterId || record.voter_id || 'NO REGISTRADO',
+      address: decryptedPii?.address || record.address || 'SIN DATO',
+      phone: decryptedPii?.phone || record.phone || 'SIN DATO',
       productType: record.product_type || 'normal',
       requestedAmount: Number(record.requested_amount ?? 0),
       termFortnights: Number(record.term_fortnights ?? 0),
@@ -205,4 +274,5 @@ export async function handleGetExpedientDetails(req: Request, res: Response) {
 }
 
 dashboardRouter.get('/expedientes/:id/details', requireAuth('dashboard:read_pii'), handleGetExpedientDetails);
+
 

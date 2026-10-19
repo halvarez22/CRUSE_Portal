@@ -7,10 +7,14 @@ export interface DashboardKPIs {
 
 export interface LatestLoan {
   id: string;
+  convenio?: string;
   fullName: string;
   curpMasked: string;
+  curp?: string;
   amount: number;
-  status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado';
+  payment?: number;
+  termFortnights?: number;
+  status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado' | 'activo' | 'liquidado';
   date: string;
   productType: 'normal' | 'express' | 'especial';
 }

@@ -192,18 +192,22 @@ export interface IneQualityFlags {
 export interface ExpedienteItem {
   id: string;
   createdAt: string;
+  convenio?: string;
   fullName: string;
   curpMasked: string;
+  curp?: string;
   blindCurp: string;
   voterId?: string;
   address: string;
   phone: string;
   requestedAmount: number;
+  fortnightlyPayment?: number;
   termFortnights: number;
   productType: ProductId;
-  status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado';
+  status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado' | 'activo' | 'liquidado';
   promotorEmail: string;
   encryptedThumbPayload?: string;
+  encryptedPiiPayload?: string;
   kekVersion?: number;
 }
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Download, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
 import { UserManagementView } from './UserManagementView';
+import { ExpedientesTableView } from './ExpedientesTableView';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
 
 interface AdminAuditViewProps {
@@ -110,22 +111,6 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     }
   };
 
-  // Simulación de descarga de Layout para Logic Systems (SIF / CIB)
-  const handleDownloadSifLayout = () => {
-    const header = 'CONVENIO,RFC,NOMBRE,IMPORTE_PRESTAMO,PLAZO_QUINCENAS,CUOTA_QUINCENAL,FECHA_REGISTRO\n';
-    const rows = expedientes.map(exp => {
-      return `STSGECH,${exp.curpMasked.slice(0, 10)},"${exp.fullName}",${exp.requestedAmount},${exp.termFortnights},569.44,${exp.createdAt.slice(0, 10)}`;
-    }).join('\n');
-
-    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `CRUSE_LAYOUT_SIF_CIB_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header Institucional de Control */}
@@ -176,7 +161,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard Cartera (317)</span>
+            <span>Dashboard Cartera ({expedientes.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('audit')}
@@ -238,16 +223,6 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
               <ShieldCheck className="w-4 h-4" />
             )}
             <span>Verificar Integridad SHA-256</span>
-          </button>
-        )}
-
-        {activeTab === 'expedientes' && (
-          <button
-            onClick={handleDownloadSifLayout}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#396CAE] to-[#249E82] hover:opacity-90 text-white text-xs font-semibold shadow-lg shadow-[#396CAE]/20 flex items-center gap-2 transition-all"
-          >
-            <Download className="w-4 h-4" />
-            <span>Descargar Layout SIF / CIB</span>
           </button>
         )}
       </div>
@@ -393,53 +368,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         )}
 
         {activeTab === 'expedientes' && (
-          /* Pestaña de Expedientes Recibidos */
-          <div className="space-y-4">
-            <div className="rounded-3xl glass-panel border border-white/10 overflow-hidden shadow-2xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-white/5 border-b border-white/10 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
-                    <tr>
-                      <th className="py-3 px-4">Folio</th>
-                      <th className="py-3 px-4">Cliente / Solicitante</th>
-                      <th className="py-3 px-4">CURP (Enmascarado)</th>
-                      <th className="py-3 px-4">Monto Solicitado</th>
-                      <th className="py-3 px-4">Plazo</th>
-                      <th className="py-3 px-4">Promotor Asignado</th>
-                      <th className="py-3 px-4">Estatus</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {expedientes.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center text-slate-400">
-                          No hay expedientes pendientes de conciliación. Usa la PWA móvil de promotores para capturar uno.
-                        </td>
-                      </tr>
-                    ) : (
-                      expedientes.map((exp) => (
-                        <tr key={exp.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="py-3 px-4 font-mono text-[#00D1FF] font-semibold">{exp.id}</td>
-                          <td className="py-3 px-4 font-medium text-slate-200">{exp.fullName}</td>
-                          <td className="py-3 px-4 font-mono text-emerald-400">{exp.curpMasked}</td>
-                          <td className="py-3 px-4 font-bold text-slate-200">
-                            ${exp.requestedAmount.toLocaleString()} MXN
-                          </td>
-                          <td className="py-3 px-4 text-slate-300 font-semibold">{exp.termFortnights} quincenas</td>
-                          <td className="py-3 px-4 text-slate-400 text-[11px]">{exp.promotorEmail}</td>
-                          <td className="py-3 px-4">
-                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              {exp.status.toUpperCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <ExpedientesTableView expedientes={expedientes} token={session.token} />
         )}
 
         {activeTab === 'reconciliation' && (
@@ -453,3 +382,4 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     </div>
   );
 };
+
