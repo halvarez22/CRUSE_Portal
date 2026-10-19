@@ -128,3 +128,125 @@ export function calculateSimulation(
       : FINANCIAL_CONSTANTS.CAT_EXPRESS_PERCENT,
   };
 }
+
+export interface MaxLoanOption {
+  productType: ProductId;
+  productLabel: string;
+  termFortnights: number;
+  maxPrincipal: number;
+  fortnightlyPayment: number;
+  totalToPay: number;
+  catPercent: number;
+}
+
+export interface SalaryCapacityAnalysis {
+  inputSalary: number;
+  frequency: 'mensual' | 'quincenal';
+  monthlyNetSalary: number;
+  fortnightlyNetSalary: number;
+  maxFortnightlyDeduction: number;
+  options: MaxLoanOption[];
+}
+
+/**
+ * Calcula de forma 100% determinista (Decimal.js) la capacidad de descuento quincenal (35%)
+ * y el monto máximo de préstamo para cada plazo oficial de Crédito Clásico y Crédito Express,
+ * aplicando múltiplos limpios ($1,000 en Clásico, $500 en Express), topes de producto ($500k / $20k)
+ * y validación cruzada garantizando fortnightlyPayment <= maxFortnightlyDeduction.
+ */
+export function calculateMaxLoanBySalary(
+  netSalaryAmount: number,
+  frequency: 'mensual' | 'quincenal'
+): SalaryCapacityAnalysis {
+  const rawSalary = new Decimal(netSalaryAmount);
+  const monthlyNetDec = frequency === 'mensual' ? rawSalary : rawSalary.times(2);
+  const fortnightlyNetDec =
+    frequency === 'quincenal'
+      ? rawSalary
+      : rawSalary.dividedBy(2).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+
+  const maxDeductionDec = fortnightlyNetDec
+    .times(FINANCIAL_CONSTANTS.MAX_PAYMENT_CAPACITY_RATIO)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  const maxDeduction = maxDeductionDec.toNumber();
+
+  const configs: Array<{
+    productType: ProductId;
+    productLabel: string;
+    terms: number[];
+    minAmount: number;
+    maxAmount: number;
+    step: number;
+    factorBase: Decimal;
+  }> = [
+    {
+      productType: 'normal',
+      productLabel: 'Crédito Clásico',
+      terms: [24, 48, 72],
+      minAmount: 10000,
+      maxAmount: 500000,
+      step: 1000,
+      factorBase: new Decimal(FINANCIAL_CONSTANTS.NORMAL_AMORTIZATION_FACTOR_24Q),
+    },
+    {
+      productType: 'express',
+      productLabel: 'Crédito Express',
+      terms: [6, 14, 20],
+      minAmount: 1000,
+      maxAmount: 20000,
+      step: 500,
+      factorBase: new Decimal(FINANCIAL_CONSTANTS.EXPRESS_AMORTIZATION_FACTOR_6Q),
+    },
+  ];
+
+  const options: MaxLoanOption[] = [];
+
+  for (const cfg of configs) {
+    for (const term of cfg.terms) {
+      // Despeje algebraico exacto desde Cuota = (P * factorBase) / term => P = (Cuota * term) / factorBase
+      const rawMaxP = maxDeductionDec.times(term).dividedBy(cfg.factorBase);
+      // Ajuste hacia abajo (floor) al múltiplo limpio ($1,000 o $500) y tope máximo del producto
+      let candidateP = rawMaxP
+        .dividedBy(cfg.step)
+        .floor()
+        .times(cfg.step);
+
+      if (candidateP.greaterThan(cfg.maxAmount)) {
+        candidateP = new Decimal(cfg.maxAmount);
+      }
+
+      if (candidateP.lessThan(cfg.minAmount)) {
+        continue;
+      }
+
+      // Validación cruzada obligatoria con calculateSimulation() para garantizar cuota <= maxDeduction
+      let sim = calculateSimulation(candidateP.toNumber(), term, cfg.productType);
+      while (sim.fortnightlyPayment > maxDeduction && candidateP.minus(cfg.step).greaterThanOrEqualTo(cfg.minAmount)) {
+        candidateP = candidateP.minus(cfg.step);
+        sim = calculateSimulation(candidateP.toNumber(), term, cfg.productType);
+      }
+
+      if (sim.fortnightlyPayment <= maxDeduction) {
+        options.push({
+          productType: cfg.productType,
+          productLabel: cfg.productLabel,
+          termFortnights: term,
+          maxPrincipal: candidateP.toNumber(),
+          fortnightlyPayment: sim.fortnightlyPayment,
+          totalToPay: sim.totalToPay,
+          catPercent: sim.catPercent,
+        });
+      }
+    }
+  }
+
+  return {
+    inputSalary: rawSalary.toNumber(),
+    frequency,
+    monthlyNetSalary: monthlyNetDec.toNumber(),
+    fortnightlyNetSalary: fortnightlyNetDec.toNumber(),
+    maxFortnightlyDeduction: maxDeduction,
+    options,
+  };
+}
+

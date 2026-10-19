@@ -3,6 +3,7 @@ import { Bot, Send, Sparkles, User, AlertCircle, RefreshCw } from 'lucide-react'
 import { FAQ_CHAT_PROMPTS } from '../../data/cruseData';
 import { ChatMessage } from '../../types';
 import { ChatFormattedMessage } from './ChatFormattedMessage';
+import { evaluateDeterministicFinancialQuery } from '../../services/ai/chatFinancialCalculator';
 
 export const AiAssistantPublic: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -36,7 +37,13 @@ export const AiAssistantPublic: React.FC = () => {
     /(\+?\d{1,3}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}/, // Phone
   ];
 
-  const buildLocalFallbackReply = (query: string): string => {
+  const buildLocalFallbackReply = (query: string, historyTurns: Array<{ role: string; content: string }>): string => {
+    const det = evaluateDeterministicFinancialQuery(query, historyTurns);
+    if (det.detected) {
+      if (det.needsClarification && det.clarificationReply) return det.clarificationReply;
+      if (det.fallbackMarkdownReply) return det.fallbackMarkdownReply;
+    }
+
     const matchedFaq = FAQ_CHAT_PROMPTS.find(
       (faq) =>
         query.toLowerCase().includes(faq.title.toLowerCase().slice(0, 10)) ||
@@ -82,9 +89,9 @@ export const AiAssistantPublic: React.FC = () => {
       timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const historyPayload = messages.slice(-4).map((m) => ({
+    const historyPayload = messages.slice(-6).map((m) => ({
       role: m.sender,
-      content: m.text,
+      content: m.text.slice(0, 1500),
     }));
 
     setMessages((prev) => [...prev, userMessage]);
@@ -108,7 +115,7 @@ export const AiAssistantPublic: React.FC = () => {
       const botMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
-        text: data.reply || buildLocalFallbackReply(query),
+        text: data.reply || buildLocalFallbackReply(query, historyPayload),
         timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -118,7 +125,7 @@ export const AiAssistantPublic: React.FC = () => {
       const fallbackMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
-        text: buildLocalFallbackReply(query),
+        text: buildLocalFallbackReply(query, historyPayload),
         timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, fallbackMessage]);
