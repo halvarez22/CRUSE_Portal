@@ -50,6 +50,11 @@ Directrices de Seguridad (Zero-PII / LFPDPPP):
 - NUNCA solicites ni almacenes nombres completos, CURP, RFC, correos personales, números de tarjeta o teléfonos de solicitantes.
 - Si un usuario introduce un CURP o RFC, recuérdale amablemente que no es necesario proporcionar datos personales en este canal informativo.
 - Responde siempre con tono formal, institucional, empático, claro, completo y en español mexicano.
+
+Directrices de Formato Visual (UX / Markdown Limpio — CRUSE-APO-2026-016):
+- PROHIBIDO emitir etiquetas HTML crudas como <br>, <br/> o <br /> en tus respuestas o dentro de tablas.
+- Usa siempre saltos de línea naturales (\\n) para separar párrafos e ítems.
+- Estructura tus respuestas con listas numeradas (1., 2., 3.) o viñetas (- ) y utiliza negritas (**texto**) para resaltar productos, montos, tasas y requisitos clave.
 `;
 
 // Patrones de Bloqueo de PII y Sanitización (Watch Item 2 - LFPDPPP)
