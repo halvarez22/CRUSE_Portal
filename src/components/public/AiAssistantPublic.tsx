@@ -24,13 +24,32 @@ export const AiAssistantPublic: React.FC = () => {
     /(\+?\d{1,3}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}/, // Phone
   ];
 
-  const handleSendMessage = (textToSend?: string) => {
+  const buildLocalFallbackReply = (query: string): string => {
+    const matchedFaq = FAQ_CHAT_PROMPTS.find(
+      (faq) =>
+        query.toLowerCase().includes(faq.title.toLowerCase().slice(0, 10)) ||
+        faq.prompt.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (matchedFaq) {
+      return matchedFaq.answer;
+    } else if (query.toLowerCase().includes('tasa') || query.toLowerCase().includes('interes')) {
+      return 'En Microfinanciera Cruse manejamos dos productos principales: Crédito Clásico al 1.97% quincenal fija sin IVA (47.50% anual, CAT 88.05%) y Crédito Express al 3.33% quincenal (48.00% anual). Ambos con 0% comisión por apertura y descuento directo en nómina.';
+    } else if (query.toLowerCase().includes('requisito') || query.toLowerCase().includes('papel') || query.toLowerCase().includes('documento')) {
+      return 'Solo requieres 3 documentos: 2 copias de tu INE/IFE vigente, 1 copia de tu último recibo de nómina y 1 copia de comprobante de domicilio reciente (CFE/agua no mayor a 3 meses para el Crédito Clásico). ¡Sin aval!';
+    } else if (query.toLowerCase().includes('seguro') || query.toLowerCase().includes('35000') || query.toLowerCase().includes('muerte') || query.toLowerCase().includes('fallecimiento')) {
+      return 'El Crédito Clásico incluye una póliza institucional de Seguro de Vida por $35,000.00 MXN ($22.85 quincenales ya integrados en tu cuota). En caso de siniestro, liquida la deuda por completo y el excedente se entrega en efectivo a tus beneficiarios.';
+    }
+    return 'Gracias por tu consulta. Nuestros créditos se otorgan con retención vía nómina en Chihuahua para trabajadores del Gobierno del Estado y Supremo Tribunal. Puedes calcular tu cuota exacta en nuestro Simulador o comunicarte a la oficina central al (614) 411-15-44.';
+  };
+
+  const handleSendMessage = async (textToSend?: string) => {
     const query = (textToSend || inputText).trim();
     if (!query) return;
 
     setValidationError(null);
 
-    // Watch Item 2: Sanitization & Zero PII Enforcement
+    // Barrera 1 (Cliente): Watch Item 2 - Sanitization & Zero PII Enforcement
     if (query.length > 2000) {
       setValidationError('Tu mensaje supera el límite permitido de 2,000 caracteres.');
       return;
@@ -51,45 +70,49 @@ export const AiAssistantPublic: React.FC = () => {
       timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
     };
 
+    const historyPayload = messages.slice(-4).map((m) => ({
+      role: m.sender,
+      content: m.text,
+    }));
+
     setMessages((prev) => [...prev, userMessage]);
     if (!textToSend) setInputText('');
     setIsTyping(true);
 
-    // Match FAQ prompt or smart contextual response
-    setTimeout(() => {
-      let replyText = '';
-      const matchedFaq = FAQ_CHAT_PROMPTS.find(
-        (faq) =>
-          query.toLowerCase().includes(faq.title.toLowerCase().slice(0, 10)) ||
-          faq.prompt.toLowerCase().includes(query.toLowerCase())
-      );
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: query, history: historyPayload }),
+      });
 
-      if (matchedFaq) {
-        replyText = matchedFaq.answer;
-      } else if (query.toLowerCase().includes('tasa') || query.toLowerCase().includes('interes')) {
-        replyText =
-          'En Microfinanciera Cruse manejamos dos productos principales: Crédito Clásico al 1.97% quincenal fija sin IVA (47.50% anual, CAT 88.05%) y Crédito Express al 3.33% quincenal (48.00% anual). Ambos con 0% comisión por apertura y descuento directo en nómina.';
-      } else if (query.toLowerCase().includes('requisito') || query.toLowerCase().includes('papel') || query.toLowerCase().includes('documento')) {
-        replyText =
-          'Solo requieres 3 documentos: 2 copias de tu INE/IFE vigente, 1 copia de tu último recibo de nómina y 1 copia de comprobante de domicilio reciente (CFE/agua no mayor a 3 meses para el Crédito Clásico). ¡Sin aval!';
-      } else if (query.toLowerCase().includes('seguro') || query.toLowerCase().includes('35000') || query.toLowerCase().includes('muerte') || query.toLowerCase().includes('fallecimiento')) {
-        replyText =
-          'El Crédito Clásico incluye una póliza institucional de Seguro de Vida por $35,000.00 MXN ($22.85 quincenales ya integrados en tu cuota). En caso de siniestro, liquida la deuda por completo y el excedente se entrega en efectivo a tus beneficiarios.';
-      } else {
-        replyText =
-          'Gracias por tu consulta. Nuestros créditos se otorgan con retención vía nómina en Chihuahua para trabajadores del Gobierno del Estado y Supremo Tribunal. Puedes calcular tu cuota exacta en nuestro Simulador o comunicarte a la oficina central al (614) 411-15-44.';
+      const data = await response.json();
+
+      if (!response.ok) {
+        setValidationError(data.error || 'No se pudo procesar tu consulta.');
+        return;
       }
 
       const botMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
-        text: replyText,
+        text: data.reply || buildLocalFallbackReply(query),
         timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, botMessage]);
+    } catch {
+      // Fallback resiliente (Regla 4 U-First) únicamente en caso de error de red
+      const fallbackMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        sender: 'assistant',
+        text: buildLocalFallbackReply(query),
+        timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, fallbackMessage]);
+    } finally {
       setIsTyping(false);
-    }, 600);
+    }
   };
 
   return (
