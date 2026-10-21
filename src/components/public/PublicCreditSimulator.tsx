@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Calculator, ShieldAlert, Sparkles, FileText, ChevronRight, CheckCircle, Info } from 'lucide-react';
+import { Calculator, ShieldAlert, Sparkles, FileText, ChevronRight, CheckCircle } from 'lucide-react';
 import { ProductId } from '../../types';
 import { LOAN_PRODUCTS } from '../../data/cruseData';
 import { FINANCIAL_CONSTANTS, calculateSimulation } from '../../config/financialConstants';
+import { PreApplicationModal } from './PreApplicationModal';
 
 export const PublicCreditSimulator: React.FC = () => {
   const [productType, setProductType] = useState<ProductId>('normal');
@@ -14,6 +15,7 @@ export const PublicCreditSimulator: React.FC = () => {
   const [amount, setAmount] = useState<number>(25000);
   const [selectedTerm, setSelectedTerm] = useState<number>(24);
   const [showAmortizationModal, setShowAmortizationModal] = useState<boolean>(false);
+  const [showPreAppModal, setShowPreAppModal] = useState<boolean>(false);
 
   // Switch product logic
   const handleSelectProduct = (type: ProductId) => {
@@ -51,10 +53,10 @@ export const PublicCreditSimulator: React.FC = () => {
         </div>
 
         {/* Simulator Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Controls Column (7 cols) */}
-          <div className="lg:col-span-7 glass-panel rounded-3xl p-6 sm:p-8">
+          <div className="lg:col-span-7 glass-panel rounded-3xl p-6 sm:p-8 h-full flex flex-col justify-between">
             
             {/* Product Switcher Tabs */}
             <div className="flex bg-slate-200/80 dark:bg-slate-900/90 p-1.5 rounded-2xl border border-slate-300/80 dark:border-white/10 mb-8">
@@ -167,7 +169,7 @@ export const PublicCreditSimulator: React.FC = () => {
           </div>
 
           {/* Results Summary Card (5 cols) */}
-          <div className="lg:col-span-5 glass-slab-emerald rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xl">
+          <div className="lg:col-span-5 glass-slab-emerald rounded-3xl p-6 sm:p-8 h-full flex flex-col justify-between shadow-xl">
             
             <div>
               <span className="text-xs uppercase tracking-wider font-bold text-slate-600 dark:text-slate-300 block mb-2">
@@ -236,7 +238,7 @@ export const PublicCreditSimulator: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => alert(`Iniciando pre-solicitud para ${activeProduct.name} por $${amount.toLocaleString('es-MX')} a ${selectedTerm} quincenas. En la Fase 3, esto conecta a la App Móvil con Firma Digital!`)}
+                onClick={() => setShowPreAppModal(true)}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#249E82] to-[#1E9F81] text-white font-black text-sm shadow-lg hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 glow-teal"
               >
                 <span>Solicitar Crédito Ahora</span>
@@ -247,6 +249,22 @@ export const PublicCreditSimulator: React.FC = () => {
           </div>
 
         </div>
+
+        {/* Institutional SweetAlert2-style Pre-Application Confirmation Modal */}
+        <PreApplicationModal
+          isOpen={showPreAppModal}
+          onClose={() => setShowPreAppModal(false)}
+          data={{
+            productId: productType,
+            productName: activeProduct.name,
+            amount,
+            selectedTerm,
+            fortnightlyPayment: simulation.fortnightlyPayment,
+            interestRateText: activeProduct.interestRateText,
+            totalToPay: simulation.totalToPay,
+            catPercent: simulation.catPercent,
+          }}
+        />
 
         {/* Amortization Schedule Modal */}
         {showAmortizationModal && (
