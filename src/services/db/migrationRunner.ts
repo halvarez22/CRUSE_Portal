@@ -74,9 +74,9 @@ export async function runMigrations(): Promise<MigrationStatus> {
     // Ejecutar migración y medir tiempo en transacción atómica
     const startTime = Date.now();
     
-    // Si la migración es la 006 (u otra que requiera DROP/ALTER de tablas con FK),
+    // Si la migración es la 006 o 009 (que requiere DROP/ALTER de tablas con FK),
     // desactivar llaves foráneas temporalmente ANTES de la transacción (requerimiento de SQLite).
-    const needsFkDisabled = file.includes('remediation_schema');
+    const needsFkDisabled = file.includes('remediation_schema') || file.includes('definitive_business_model');
     
     if (needsFkDisabled) {
       await db.executeScript('PRAGMA foreign_keys = OFF;');

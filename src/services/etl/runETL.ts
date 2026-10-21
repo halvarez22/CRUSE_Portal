@@ -1,4 +1,5 @@
 import xlsx from 'xlsx';
+import crypto from 'crypto';
 import { db } from '../db/connectionPool';
 import { computeServerBlindIndex, getServerKms } from '../crypto/serverKeyring';
 import { encryptEnvelope } from '../crypto/cryptoService';
@@ -174,11 +175,15 @@ export async function runLoansETL(filePath: string) {
       const existingLoan = tx.query(`SELECT expediente_id FROM loan_accounts WHERE expediente_id = ?`, [item.expedienteId]);
 
       if (existingLoan.rowCount === 0) {
+        const loanAccountId = `la_${crypto.randomUUID()}`;
+        const countRes = tx.query<{ total: number }>('SELECT COUNT(*) AS total FROM loan_accounts');
+        const nextSeq = (countRes.rows[0]?.total ?? 0) + 1;
+        const contractNo = `CNT-2026-${String(nextSeq).padStart(4, '0')}`;
         tx.execute(
           `INSERT INTO loan_accounts (
-            expediente_id, principal_original, fortnightly_payment, first_deduction_period, activated_at, activated_by
-          ) VALUES (?, ?, ?, ?, datetime('now'), ?)`,
-          [item.expedienteId, item.capital, item.cuota, item.firstDeductionPeriod, 'ETL_MIGRATION']
+            id, contract_number, expediente_id, principal_original, current_principal_balance, fortnightly_payment, first_deduction_period, activated_at, activated_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)`,
+          [loanAccountId, contractNo, item.expedienteId, item.capital, item.capital, item.cuota, item.firstDeductionPeriod, 'ETL_MIGRATION']
         );
         insertedLoans++;
       } else {

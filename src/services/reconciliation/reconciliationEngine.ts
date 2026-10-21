@@ -43,7 +43,7 @@ export function processReconciliationBatch(
     
     // Obtener todos los préstamos activos para este convenio (MISSING_IN_PAYROLL detection)
     const activeLoans = tx.query<any>(`
-      SELECT l.expediente_id, l.fortnightly_payment, e.blind_curp, e.curp_masked, e.full_name, e.product_type
+      SELECT l.id AS loan_account_id, l.expediente_id, l.fortnightly_payment, e.blind_curp, e.curp_masked, e.full_name, e.product_type
       FROM loan_accounts l
       JOIN expedientes e ON l.expediente_id = e.id
       WHERE e.convenio = ? AND e.status = 'activo'
@@ -150,14 +150,14 @@ export function processReconciliationBatch(
 
         tx.execute(`
           INSERT INTO loan_payment_applications (
-            id, expediente_id, batch_id, reconciliation_item_id, fortnight_period, amount_received,
+            id, loan_account_id, expediente_id, batch_id, reconciliation_item_id, fortnight_period, amount_received,
             due_insurance, due_interest, due_vat, due_capital,
             applied_insurance, applied_interest, applied_vat, applied_capital,
             balance_before, balance_after,
             arrears_insurance_after, arrears_interest_after, arrears_vat_after, credit_balance_after
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-          appId, loanInfo.expediente_id, batchId, itemId, fortnightPeriod, actualAmount.toNumber(),
+          appId, loanInfo.loan_account_id || loanInfo.expediente_id, loanInfo.expediente_id, batchId, itemId, fortnightPeriod, actualAmount.toNumber(),
           due.insurance.toNumber(), due.interest.toNumber(), due.vat.toNumber(), due.capital.toNumber(),
           app.applied.insurance.toNumber(), app.applied.interest.toNumber(), app.applied.vat.toNumber(), app.applied.capital.toNumber(),
           currentState.balance.toNumber(), app.next.balance.toNumber(),
