@@ -115,10 +115,14 @@ export function calculateSimulation(
   }
 
   const totalToPayDec = fortnightlyPaymentDec.times(term);
+  const monthlyPaymentEquivalentDec = fortnightlyPaymentDec
+    .times(2)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
   return {
     schedule,
     fortnightlyPayment: fortnightlyPaymentDec.toNumber(),
+    monthlyPaymentEquivalent: monthlyPaymentEquivalentDec.toNumber(),
     totalToPay: totalToPayDec.toNumber(),
     totalInterest: totalInterest.toDecimalPlaces(2).toNumber(),
     totalVat: totalVat.toDecimalPlaces(2).toNumber(),

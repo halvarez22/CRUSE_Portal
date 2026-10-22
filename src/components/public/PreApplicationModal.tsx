@@ -8,6 +8,7 @@ export interface PreApplicationData {
   amount: number;
   selectedTerm: number;
   fortnightlyPayment: number;
+  monthlyPaymentEquivalent: number;
   interestRateText: string;
   totalToPay: number;
   catPercent: string | number;
@@ -132,9 +133,12 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
             </div>
             <div className="glass-card rounded-xl p-3">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Descuento Quincenal</span>
-              <strong className="text-base sm:text-lg font-black font-mono text-[#059669] dark:text-[#4CD360]">
+              <strong className="text-base sm:text-lg font-black font-mono text-[#059669] dark:text-[#4CD360] block">
                 ${data.fortnightlyPayment.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </strong>
+              <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+                Mensual: ${data.monthlyPaymentEquivalent.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
             </div>
           </div>
 

@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Calculator, ShieldAlert, Sparkles, FileText, ChevronRight, CheckCircle } from 'lucide-react';
+import { Calculator, ShieldAlert, Sparkles, FileText, ChevronRight, CheckCircle, FileSpreadsheet, Printer } from 'lucide-react';
 import { ProductId } from '../../types';
 import { LOAN_PRODUCTS } from '../../data/cruseData';
 import { FINANCIAL_CONSTANTS, calculateSimulation } from '../../config/financialConstants';
 import { PreApplicationModal } from './PreApplicationModal';
+import { exportAmortizationToExcel, exportAmortizationToPdf, AmortizationExportParams } from '../../utils/amortizationExport';
 
 export const PublicCreditSimulator: React.FC = () => {
   const [productType, setProductType] = useState<ProductId>('normal');
@@ -33,6 +34,24 @@ export const PublicCreditSimulator: React.FC = () => {
   const simulation = useMemo(() => {
     return calculateSimulation(amount, selectedTerm, productType);
   }, [amount, selectedTerm, productType]);
+
+  const exportParams: AmortizationExportParams = useMemo(
+    () => ({
+      productName: activeProduct.name,
+      amount,
+      selectedTerm,
+      interestRateText: activeProduct.interestRateText,
+      fortnightlyPayment: simulation.fortnightlyPayment,
+      monthlyPaymentEquivalent: simulation.monthlyPaymentEquivalent,
+      totalInterest: simulation.totalInterest,
+      totalVat: simulation.totalVat,
+      totalInsurance: simulation.totalInsurance,
+      totalToPay: simulation.totalToPay,
+      catPercent: simulation.catPercent,
+      schedule: simulation.schedule,
+    }),
+    [activeProduct, amount, selectedTerm, simulation]
+  );
 
   return (
     <section id="simulador" className="py-12 lg:py-20 relative">
@@ -184,7 +203,13 @@ export const PublicCreditSimulator: React.FC = () => {
                 <span className="text-3xl sm:text-4xl font-black text-[#041734] dark:text-white font-mono block">
                   ${simulation.fortnightlyPayment.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
-                <span className="text-xs text-[#059669] dark:text-[#4CD360] font-semibold mt-1 inline-flex items-center gap-1">
+                <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                  <span>Importe mensual (2 quincenas):</span>
+                  <strong className="font-mono font-bold text-[#041734] dark:text-white">
+                    ${simulation.monthlyPaymentEquivalent.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN
+                  </strong>
+                </div>
+                <span className="text-xs text-[#059669] dark:text-[#4CD360] font-semibold mt-2 inline-flex items-center gap-1">
                   <CheckCircle className="w-3.5 h-3.5" />
                   Descuento directo por nómina institucional
                 </span>
@@ -260,6 +285,7 @@ export const PublicCreditSimulator: React.FC = () => {
             amount,
             selectedTerm,
             fortnightlyPayment: simulation.fortnightlyPayment,
+            monthlyPaymentEquivalent: simulation.monthlyPaymentEquivalent,
             interestRateText: activeProduct.interestRateText,
             totalToPay: simulation.totalToPay,
             catPercent: simulation.catPercent,
@@ -271,22 +297,42 @@ export const PublicCreditSimulator: React.FC = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
             <div className="glass-panel w-full max-w-4xl max-h-[85vh] rounded-3xl p-6 flex flex-col justify-between overflow-hidden shadow-2xl border border-white/20">
               
-              <div className="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
+              <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-slate-200 dark:border-white/10 mb-4">
                 <div>
                   <h3 className="text-lg font-black text-[#041734] dark:text-white">
                     Tabla de Amortización Quincenal Oficial
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {activeProduct.name} — ${amount.toLocaleString('es-MX')} MXN a {selectedTerm} quincenas
+                    {activeProduct.name} — ${amount.toLocaleString('es-MX')} MXN a {selectedTerm} quincenas ({selectedTerm / 2} meses)
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAmortizationModal(false)}
-                  className="p-2 rounded-xl glass-card text-slate-500 hover:text-white text-xs font-bold"
-                >
-                  Cerrar ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => exportAmortizationToExcel(exportParams)}
+                    className="px-3 py-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all inline-flex items-center gap-1.5"
+                    title="Descargar corrida financiera en Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Exportar Excel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportAmortizationToPdf(exportParams)}
+                    className="px-3 py-2 rounded-xl bg-[#396CAE]/15 hover:bg-[#396CAE]/25 border border-[#396CAE]/40 text-[#041734] dark:text-[#00D1FF] text-xs font-bold transition-all inline-flex items-center gap-1.5"
+                    title="Imprimir o Guardar como PDF Oficial"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Exportar PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAmortizationModal(false)}
+                    className="p-2 rounded-xl glass-card text-slate-500 hover:text-[#041734] dark:hover:text-white text-xs font-bold"
+                  >
+                    Cerrar ✕
+                  </button>
+                </div>
               </div>
 
               {/* Scrollable Schedule Table */}

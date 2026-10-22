@@ -40,6 +40,7 @@ export interface AmortizationRow {
 export interface SimulationResult {
   schedule: AmortizationRow[];
   fortnightlyPayment: number;
+  monthlyPaymentEquivalent: number;
   totalToPay: number;
   totalInterest: number;
   totalVat: number;
