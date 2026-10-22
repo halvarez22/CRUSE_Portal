@@ -1,5 +1,5 @@
 /**
- * MATRIZ RBAC — CRUSE-APO-2026-005 (Bloque A.3)
+ * MATRIZ RBAC — CRUSE-APO-2026-005 (Bloque A.3) y CRUSE-APO-2026-021 (Servicios 3FN v4)
  *
  * Única fuente de verdad de autorización por rol (Regla 2 HRU). Ningún router decide
  * permisos por su cuenta: todos usan requireAuth(permission) con estas entradas.
@@ -15,6 +15,11 @@ export const RBAC_POLICY: Readonly<Record<RbacPermission, readonly UserRole[]>> 
   'reconciliation:process': ['oficial_cumplimiento', 'admin'],
   'reconciliation:read': ['admin', 'oficial_cumplimiento'],
   'reconciliation:sample-data': ['admin', 'oficial_cumplimiento'],
+  'reconciliation:manual-override': ['admin', 'oficial_cumplimiento'],
+  'special_credit:manage': ['admin', 'oficial_cumplimiento'],
+  'notes:manage': ['admin', 'oficial_cumplimiento'],
+  'funding:read': ['admin', 'oficial_cumplimiento'],
+  'funding:manage': ['admin'],
   'dashboard:read_kpis': ['admin', 'oficial_cumplimiento', 'promotor'],
   'dashboard:read': ['admin', 'oficial_cumplimiento'],
   'dashboard:read_pii': ['oficial_cumplimiento', 'admin'],

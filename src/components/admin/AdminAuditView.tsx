@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
 import { UserManagementView } from './UserManagementView';
 import { ExpedientesTableView } from './ExpedientesTableView';
+import { FundingManagementView } from './FundingManagementView';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
 
 interface AdminAuditViewProps {
@@ -18,12 +19,11 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   onLogout,
   onBackToPortal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'users'>('dashboard');
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Estado de verificación de integridad criptográfica
   const [integrityStatus, setIntegrityStatus] = useState<{
     verified: boolean;
     valid?: boolean;
@@ -32,11 +32,9 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     verifying?: boolean;
   }>({ verified: false });
 
-  // Filtros
   const [actionFilter, setActionFilter] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
 
-  // Cargar eventos de bitácora con Bearer token
   const fetchAuditEvents = useCallback(async () => {
     setLoading(true);
     try {
@@ -46,14 +44,10 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
       query.append('limit', '100');
 
       const res = await fetch(`/api/audit/events?${query.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
+        headers: { Authorization: `Bearer ${session.token}` },
       });
       const data = await res.json();
-      if (data.events) {
-        setEvents(data.events);
-      }
+      if (data.events) setEvents(data.events);
     } catch (err) {
       console.error('Error cargando bitácora forense:', err);
     } finally {
@@ -61,18 +55,13 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     }
   }, [actionFilter, searchEmail, session.token]);
 
-  // Cargar expedientes con Bearer token
   const fetchExpedientes = useCallback(async () => {
     try {
       const res = await fetch('/api/expedientes', {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
+        headers: { Authorization: `Bearer ${session.token}` },
       });
       const data = await res.json();
-      if (data.expedientes) {
-        setExpedientes(data.expedientes);
-      }
+      if (data.expedientes) setExpedientes(data.expedientes);
     } catch (err) {
       console.error('Error cargando expedientes:', err);
     }
@@ -84,14 +73,11 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     fetchExpedientes();
   }, [fetchAuditEvents, fetchExpedientes, session.token]);
 
-  // Ejecutar verificación criptográfica de la cadena SHA-256
   const handleVerifyChain = async () => {
     setIntegrityStatus({ verified: false, verifying: true });
     try {
       const res = await fetch('/api/audit/verify', {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
+        headers: { Authorization: `Bearer ${session.token}` },
       });
       const result = await res.json();
       setIntegrityStatus({
@@ -113,7 +99,6 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Header Institucional de Control */}
       <header className="px-6 py-4 bg-slate-900/90 border-b border-white/10 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md">
         <div className="flex items-center gap-4">
           <button
@@ -149,15 +134,12 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         </div>
       </header>
 
-      {/* Navegación por pestañas */}
       <div className="max-w-7xl w-full mx-auto px-6 pt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2 p-1 rounded-2xl bg-white/5 border border-white/10">
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'dashboard'
-                ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30'
-                : 'text-slate-400 hover:text-white'
+              activeTab === 'dashboard' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
             }`}
           >
             <LayoutDashboard className="w-4 h-4" />
@@ -166,9 +148,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           <button
             onClick={() => setActiveTab('audit')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'audit'
-                ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30'
-                : 'text-slate-400 hover:text-white'
+              activeTab === 'audit' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
             }`}
           >
             <Hash className="w-4 h-4" />
@@ -177,9 +157,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           <button
             onClick={() => setActiveTab('expedientes')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'expedientes'
-                ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30'
-                : 'text-slate-400 hover:text-white'
+              activeTab === 'expedientes' ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30' : 'text-slate-400 hover:text-white'
             }`}
           >
             <FileText className="w-4 h-4" />
@@ -188,21 +166,26 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           <button
             onClick={() => setActiveTab('reconciliation')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'reconciliation'
-                ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30'
-                : 'text-slate-400 hover:text-white'
+              activeTab === 'reconciliation' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
             }`}
           >
             <FileCheck2 className="w-4 h-4" />
             <span>Conciliación Quincenal</span>
           </button>
+          <button
+            onClick={() => setActiveTab('funding')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'funding' ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Landmark className="w-4 h-4" />
+            <span>Fondeo e Inversionistas (3FN v4)</span>
+          </button>
           {session.user.role === 'admin' && (
             <button
               onClick={() => setActiveTab('users')}
               className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-                activeTab === 'users'
-                  ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30'
-                  : 'text-slate-400 hover:text-white'
+                activeTab === 'users' ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30' : 'text-slate-400 hover:text-white'
               }`}
             >
               <Users className="w-4 h-4" />
@@ -217,17 +200,12 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             disabled={integrityStatus.verifying}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-[#249E82] hover:from-emerald-500 hover:to-[#1e856e] text-white text-xs font-semibold shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all"
           >
-            {integrityStatus.verifying ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <ShieldCheck className="w-4 h-4" />
-            )}
+            {integrityStatus.verifying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
             <span>Verificar Integridad SHA-256</span>
           </button>
         )}
       </div>
 
-      {/* Banner de Verificación Criptográfica */}
       {integrityStatus.verified && (
         <div className="max-w-7xl w-full mx-auto px-6 mt-4 animate-fade-in">
           <div
@@ -245,9 +223,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
               )}
               <div>
                 <p className="font-bold text-sm">
-                  {integrityStatus.valid
-                    ? '✅ Certificación de Integridad Forense Exitosa'
-                    : '⚠️ Alerta de Integridad Comprometida'}
+                  {integrityStatus.valid ? '✅ Certificación de Integridad Forense Exitosa' : '⚠️ Alerta de Integridad Comprometida'}
                 </p>
                 <p className="mt-0.5">{integrityStatus.details}</p>
               </div>
@@ -259,13 +235,11 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         </div>
       )}
 
-      {/* Contenido Principal */}
       <main className="max-w-7xl w-full mx-auto p-6 flex-1 flex flex-col">
         {activeTab === 'dashboard' && <DashboardLayout />}
 
         {activeTab === 'audit' && (
           <div className="space-y-4">
-            {/* Filtros de Bitácora */}
             <div className="p-4 rounded-2xl glass-card border border-white/10 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -283,6 +257,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
                   <option value="EXPEDIENTE_CREATE">Expediente Creado</option>
                   <option value="EXPEDIENTE_SYNC">Sincronización Nube</option>
                   <option value="EXPEDIENTE_PURGE">Purga Zero-PII</option>
+                  <option value="PAYMENT_APPLIED">Aplicación de Pago / Fondeo</option>
                 </select>
               </div>
 
@@ -304,7 +279,6 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
               </div>
             </div>
 
-            {/* Tabla de Bitácora Forense */}
             <div className="rounded-3xl glass-panel border border-white/10 overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -341,16 +315,10 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
                             >
                               {formatAuditActionLabel(evt.action, evt.curpMasked)}
                             </span>
-                            {evt.details && (
-                              <p className="text-[11px] text-slate-400 mt-1 max-w-xs">{evt.details}</p>
-                            )}
+                            {evt.details && <p className="text-[11px] text-slate-400 mt-1 max-w-xs break-all">{evt.details}</p>}
                           </td>
-                          <td className="py-3 px-4 font-mono font-bold text-slate-300">
-                            {evt.curpMasked || '—'}
-                          </td>
-                          <td className="py-3 px-4 text-slate-400 text-[11px]">
-                            {evt.sourceSummary || evt.sourceIp}
-                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-slate-300">{evt.curpMasked || '—'}</td>
+                          <td className="py-3 px-4 text-slate-400 text-[11px]">{evt.sourceSummary || evt.sourceIp}</td>
                           <td className="py-3 px-4 font-mono text-[10px] text-slate-400">
                             <div className="flex items-center gap-1" title={evt.recordHash}>
                               <span className="text-emerald-400">#</span>
@@ -367,19 +335,14 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           </div>
         )}
 
-        {activeTab === 'expedientes' && (
-          <ExpedientesTableView expedientes={expedientes} token={session.token} />
-        )}
+        {activeTab === 'expedientes' && <ExpedientesTableView expedientes={expedientes} token={session.token} />}
 
-        {activeTab === 'reconciliation' && (
-          <ReconciliationView session={session} onBatchProcessed={fetchExpedientes} />
-        )}
+        {activeTab === 'reconciliation' && <ReconciliationView session={session} onBatchProcessed={fetchExpedientes} />}
 
-        {activeTab === 'users' && session.user.role === 'admin' && (
-          <UserManagementView session={session} />
-        )}
+        {activeTab === 'funding' && <FundingManagementView session={session} />}
+
+        {activeTab === 'users' && session.user.role === 'admin' && <UserManagementView session={session} />}
       </main>
     </div>
   );
 };
-

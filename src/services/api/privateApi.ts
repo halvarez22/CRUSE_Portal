@@ -5,6 +5,7 @@
  * - Autenticación 2FA TOTP con usuarios en BD y sesiones opacas (authRouter, CRUSE-APO-2026-005 A.2/A.3).
  * - Sincronización segura de expedientes con Envelope Encryption y Blind Indexing (OBS-2).
  * - Consulta y verificación criptográfica de la Bitácora Forense WORM de 5 años.
+ * - Servicios 3FN v4 (CRUSE-APO-2026-021): Desglose Manual RN-13, Crédito Especial RN-01, Notas RN-02/RN-04 y Fondeo RN-09/RN-10/RN-11.
  *
  * Regla de identidad (A.3): todo endpoint privado exige requireAuth(permiso) y el actor
  * proviene exclusivamente de req.auth; nunca de req.body ni de req.params.
@@ -17,6 +18,8 @@ import { expedientesRouter } from './expedientesRouter';
 import { auditRouter } from './auditRouter';
 import { dashboardRouter } from './dashboardRouter';
 import { usersRouter } from './usersRouter';
+import { specialCreditAndNotesRouter } from './specialCreditAndNotesRouter';
+import { fundingRouter } from './fundingRouter';
 
 export const privateApiRouter = Router();
 
@@ -26,7 +29,7 @@ privateApiRouter.use('/auth', authRouter);
 // Sub-enrutador del Dashboard de Administración
 privateApiRouter.use('/dashboard', dashboardRouter);
 
-// Sub-enrutador de conciliación quincenal automatizada (Fase 4)
+// Sub-enrutador de conciliación quincenal automatizada y desglose manual (RN-13)
 privateApiRouter.use('/reconciliation', reconciliationRouter);
 
 // Sub-enrutador de auditoría forense WORM
@@ -34,6 +37,12 @@ privateApiRouter.use('/audit', auditRouter);
 
 // Sub-enrutador de administración de usuarios y accesos 2FA
 privateApiRouter.use('/users', usersRouter);
+
+// Sub-enrutador de fondeo e inversionistas 3FN v4 (RN-09, RN-10, RN-11)
+privateApiRouter.use('/funding', fundingRouter);
+
+// Sub-enrutador de línea abierta Crédito Especial (RN-01) y Block de Notas (RN-02, RN-04)
+privateApiRouter.use('/', specialCreditAndNotesRouter);
 
 // Sub-enrutador de expedientes (promotores/secure, expedientes)
 privateApiRouter.use('/', expedientesRouter);

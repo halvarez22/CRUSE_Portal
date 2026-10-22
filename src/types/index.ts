@@ -122,6 +122,11 @@ export type RbacPermission =
   | 'reconciliation:process'
   | 'reconciliation:read'
   | 'reconciliation:sample-data'
+  | 'reconciliation:manual-override'
+  | 'special_credit:manage'
+  | 'notes:manage'
+  | 'funding:read'
+  | 'funding:manage'
   | 'dashboard:read_kpis'
   | 'dashboard:read'
   | 'dashboard:read_pii'
@@ -287,5 +292,3 @@ export interface ReconciliationProcessResult {
     netDifference: number;
   };
 }
-
-
