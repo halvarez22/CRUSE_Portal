@@ -4,7 +4,7 @@
  * @implements RN-01 (Crédito Especial Revolvente sin calendario fijo de amortización)
  * @implements Condición 1 WORM (Cero UPDATE sobre loan_accounts; saldo calculado algebraicamente desde special_credit_movements)
  * @implements Restricción Forense 1 (Precisión máxima Decimal.js en cálculos intermedios; redondeo tardío ROUND_HALF_UP solo al persistir)
- * @implements Restricción Forense 2 (Atomicidad transaccional BEGIN IMMEDIATE ... COMMIT junto con auditEventStore.appendInTx)
+ * @implements Guardrail Forense 1 (CRUSE-APO-2026-023: Sintaxis posicional nativa de PostgreSQL $1, $2... y transacciones asíncronas)
  */
 
 import crypto from 'crypto';
@@ -63,27 +63,21 @@ export interface SpecialCreditBalanceSummary {
   movementsCount: number;
 }
 
-/**
- * Calcula el saldo insoluto vivo de un Crédito Especial dentro de una transacción activa
- * manteniendo la precisión completa de Decimal.js en todas las operaciones intermedias (Anti-Drift).
- *
- * Ecuación algebraica:
- *   Saldo_Vivo = principal_original + SUM(DISPOSICION) + SUM(CARGO_INTERES) - SUM(ABONO)
- *
- * @implements RN-01
- */
-function computeLiveBalanceInTx(tx: TxHandle, loanAccountId: string): {
+async function computeLiveBalanceInTx(
+  tx: TxHandle,
+  loanAccountId: string
+): Promise<{
   account: SpecialCreditAccountRow;
   liveBalanceExact: Decimal;
   totalDisposicionesExact: Decimal;
   totalCargosInteresExact: Decimal;
   totalAbonosExact: Decimal;
   movementsCount: number;
-} {
-  const accRes = tx.query<SpecialCreditAccountRow>(
+}> {
+  const accRes = await tx.query<SpecialCreditAccountRow>(
     `SELECT id, contract_number, expediente_id, principal_original, product_type, status
      FROM loan_accounts
-     WHERE id = ?`,
+     WHERE id = $1`,
     [loanAccountId]
   );
 
@@ -98,10 +92,10 @@ function computeLiveBalanceInTx(tx: TxHandle, loanAccountId: string): {
     );
   }
 
-  const movRes = tx.query<{ movement_type: SpecialMovementType; amount: number }>(
+  const movRes = await tx.query<{ movement_type: SpecialMovementType; amount: number }>(
     `SELECT movement_type, amount
      FROM special_credit_movements
-     WHERE loan_account_id = ?
+     WHERE loan_account_id = $1
      ORDER BY created_at ASC, id ASC`,
     [loanAccountId]
   );
@@ -111,7 +105,6 @@ function computeLiveBalanceInTx(tx: TxHandle, loanAccountId: string): {
   let totalCargosInteresExact = new Decimal(0);
   let totalAbonosExact = new Decimal(0);
 
-  // Restricción Forense 1: Acumulación con precisión máxima de Decimal.js sin redondeo intermedio
   for (const mov of movRes.rows) {
     const movAmount = new Decimal(mov.amount);
     if (mov.movement_type === 'DISPOSICION') {
@@ -138,13 +131,10 @@ function computeLiveBalanceInTx(tx: TxHandle, loanAccountId: string): {
   };
 }
 
-/**
- * Consulta el resumen de saldo vivo de un Crédito Especial sin mutar el estado.
- *
- * @implements RN-01
- */
-export function getSpecialCreditBalanceSummary(loanAccountId: string): SpecialCreditBalanceSummary {
-  return db.transaction((tx) => {
+export async function getSpecialCreditBalanceSummary(
+  loanAccountId: string
+): Promise<SpecialCreditBalanceSummary> {
+  return db.transaction(async (tx) => {
     const {
       account,
       liveBalanceExact,
@@ -152,16 +142,21 @@ export function getSpecialCreditBalanceSummary(loanAccountId: string): SpecialCr
       totalCargosInteresExact,
       totalAbonosExact,
       movementsCount,
-    } = computeLiveBalanceInTx(tx, loanAccountId);
+    } = await computeLiveBalanceInTx(tx, loanAccountId);
 
-    // Redondeo tardío exclusivamente en la frontera de salida
     return {
       loanAccountId: account.id,
       contractNumber: account.contract_number,
       expedienteId: account.expediente_id,
-      principalOriginal: new Decimal(account.principal_original).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
-      totalDisposiciones: totalDisposicionesExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
-      totalCargosInteres: totalCargosInteresExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+      principalOriginal: new Decimal(account.principal_original)
+        .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+        .toNumber(),
+      totalDisposiciones: totalDisposicionesExact
+        .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+        .toNumber(),
+      totalCargosInteres: totalCargosInteresExact
+        .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+        .toNumber(),
       totalAbonos: totalAbonosExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
       liveBalance: liveBalanceExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
       movementsCount,
@@ -169,28 +164,22 @@ export function getSpecialCreditBalanceSummary(loanAccountId: string): SpecialCr
   });
 }
 
-/**
- * Registra atómicamente una disposición, cargo de interés o abono en un Crédito Especial
- * dentro de `special_credit_movements` (WORM) y emite rastro en `audit_events`.
- *
- * @implements RN-01
- */
-export function recordSpecialCreditMovement(input: RecordSpecialMovementInput): SpecialCreditMovementRow {
+export async function recordSpecialCreditMovement(
+  input: RecordSpecialMovementInput
+): Promise<SpecialCreditMovementRow> {
   const rawAmount = new Decimal(input.amount);
   if (!rawAmount.isFinite() || rawAmount.lte(0)) {
     throw new Error('El monto del movimiento de Crédito Especial debe ser estrictamente mayor a 0.');
   }
 
-  return db.transaction((tx) => {
-    const { account, liveBalanceExact } = computeLiveBalanceInTx(tx, input.loanAccountId);
+  return db.transaction(async (tx) => {
+    const { account, liveBalanceExact } = await computeLiveBalanceInTx(tx, input.loanAccountId);
 
-    // Cálculo en precisión completa Decimal.js (Restricción Forense 1)
     const nextBalanceExact =
       input.movementType === 'ABONO'
         ? liveBalanceExact.minus(rawAmount)
         : liveBalanceExact.plus(rawAmount);
 
-    // Validación final con redondeo tardío al centavo
     const balanceBeforePersisted = liveBalanceExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
     const amountPersisted = rawAmount.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
     const balanceAfterPersisted = nextBalanceExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
@@ -206,11 +195,11 @@ export function recordSpecialCreditMovement(input: RecordSpecialMovementInput): 
     const disbursementMethod = input.disbursementMethod ?? null;
     const referenceNumber = input.referenceNumber ?? null;
 
-    tx.execute(
+    await tx.execute(
       `INSERT INTO special_credit_movements (
         id, loan_account_id, movement_date, movement_type, amount,
         balance_before, balance_after, disbursement_method, reference_number, recorded_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         movementId,
         account.id,
@@ -226,8 +215,7 @@ export function recordSpecialCreditMovement(input: RecordSpecialMovementInput): 
       ]
     );
 
-    // Auditoría Forense en la misma transacción (Restricción Forense 2)
-    auditEventStore.appendInTx(tx, {
+    await auditEventStore.appendInTx(tx, {
       action: 'PAYMENT_APPLIED',
       actorEmail: input.actorEmail,
       actorRole: input.actorRole,

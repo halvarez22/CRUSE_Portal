@@ -4,7 +4,6 @@ import { db } from '../db/connectionPool';
 import { computeServerBlindIndex, getServerKms } from '../crypto/serverKeyring';
 import { encryptEnvelope } from '../crypto/cryptoService';
 
-// Utilidad para enmascarar nombre completo en reposo (Zero-PII en claro en disco)
 export function maskFullName(fullName: string): string {
   return (fullName || '')
     .trim()
@@ -13,7 +12,6 @@ export function maskFullName(fullName: string): string {
     .join(' ');
 }
 
-// Utilidad para normalizar fechas de Excel a ISO YYYY-MM-DD
 function parseExcelDate(excelDate: number | string): string | null {
   if (!excelDate) return null;
   let date: Date;
@@ -23,10 +21,9 @@ function parseExcelDate(excelDate: number | string): string | null {
     date = new Date(excelDate);
   }
   if (isNaN(date.getTime())) return null;
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split('T')[0] ?? null;
 }
 
-// Convertir YYYY-MM-DD a YYYY-MM-1Q o YYYY-MM-2Q
 function toDeductionPeriod(dateStr: string | null): string | null {
   if (!dateStr) return null;
   const parts = dateStr.split('-');
@@ -43,7 +40,9 @@ export async function runLoansETL(filePath: string) {
   const wb = xlsx.readFile(filePath);
   const sheetName = wb.SheetNames[0]!;
 
-  const rawData = xlsx.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheetName]!, { raw: true });
+  const rawData = xlsx.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheetName]!, {
+    raw: true,
+  });
   console.log(`[ETL] ${rawData.length} registros encontrados. Iniciando Transformación Criptográfica...`);
 
   const kms = getServerKms();
@@ -68,9 +67,8 @@ export async function runLoansETL(filePath: string) {
   const preparedData: PreparedEtlItem[] = [];
   let skippedMissingId = 0;
 
-  // FASE 1: Transformación Asíncrona (Pre-computar Blind Index + Envelope Encryption AES-GCM-256)
   for (const row of rawData) {
-    if (!row['NOMBRE']) continue; // Saltar filas vacías
+    if (!row['NOMBRE']) continue;
 
     const rawName = String(row['NOMBRE']).trim();
     const rawCurp = row['NUMERO DE EMPLEADO'] ? String(row['NUMERO DE EMPLEADO']).trim() : null;
@@ -94,7 +92,6 @@ export async function runLoansETL(filePath: string) {
     const rawFechaPago = (row['FECHA DE 1ER PAGO '] || row['FECHA DE 1ER PAGO']) as number | string;
     const firstDeductionPeriod = toDeductionPeriod(parseExcelDate(rawFechaPago)) || '2026-01-1Q';
 
-    // Condición 1 (CRUSE-APO-2026-015): Sobre AES-GCM-256 con PII completa desde la fuente original
     const piiCleartext = JSON.stringify({
       fullName: rawName,
       curp: rawCurp,
@@ -122,23 +119,24 @@ export async function runLoansETL(filePath: string) {
     });
   }
 
-  // FASE 2: Carga y Remediación Transaccional (Síncrona)
   let insertedExpedientes = 0;
   let remediatedExpedientes = 0;
   let insertedLoans = 0;
   let skippedIdempotent = 0;
 
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     for (const item of preparedData) {
-      const existingExpediente = tx.query(`SELECT id FROM expedientes WHERE id = ?`, [item.expedienteId]);
+      const existingExpediente = await tx.query(`SELECT id FROM expedientes WHERE id = $1`, [
+        item.expedienteId,
+      ]);
 
       if (existingExpediente.rowCount === 0) {
-        tx.execute(
+        await tx.execute(
           `INSERT INTO expedientes (
             id, blind_curp, curp_masked, full_name, address, phone, requested_amount,
             term_fortnights, product_type, promotor_email, created_at, updated_at,
             convenio, encrypted_pii_payload, kek_version
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?, ?, ?)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $11, $12, $13)`,
           [
             item.expedienteId,
             item.blindCurp,
@@ -157,33 +155,52 @@ export async function runLoansETL(filePath: string) {
         );
         insertedExpedientes++;
       } else {
-        // Remediación criptográfica: sustituir PII en claro por máscara y almacenar sobre AES-GCM-256
-        tx.execute(
+        await tx.execute(
           `UPDATE expedientes
-           SET full_name = ?,
-               curp_masked = ?,
+           SET full_name = $1,
+               curp_masked = $2,
                address = 'CIFRADO_ENVELOPE',
-               encrypted_pii_payload = ?,
-               kek_version = ?,
-               updated_at = datetime('now')
-           WHERE id = ?`,
-          [item.maskedName, item.rawCurpMasked, item.encryptedPiiPayload, item.kekVersion, item.expedienteId]
+               encrypted_pii_payload = $3,
+               kek_version = $4,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $5`,
+          [
+            item.maskedName,
+            item.rawCurpMasked,
+            item.encryptedPiiPayload,
+            item.kekVersion,
+            item.expedienteId,
+          ]
         );
         remediatedExpedientes++;
       }
 
-      const existingLoan = tx.query(`SELECT expediente_id FROM loan_accounts WHERE expediente_id = ?`, [item.expedienteId]);
+      const existingLoan = await tx.query(
+        `SELECT expediente_id FROM loan_accounts WHERE expediente_id = $1`,
+        [item.expedienteId]
+      );
 
       if (existingLoan.rowCount === 0) {
         const loanAccountId = `la_${crypto.randomUUID()}`;
-        const countRes = tx.query<{ total: number }>('SELECT COUNT(*) AS total FROM loan_accounts');
-        const nextSeq = (countRes.rows[0]?.total ?? 0) + 1;
+        const countRes = await tx.query<{ total: number }>(
+          'SELECT COUNT(*) AS total FROM loan_accounts'
+        );
+        const nextSeq = Number(countRes.rows[0]?.total ?? 0) + 1;
         const contractNo = `CNT-2026-${String(nextSeq).padStart(4, '0')}`;
-        tx.execute(
+        await tx.execute(
           `INSERT INTO loan_accounts (
             id, contract_number, expediente_id, principal_original, current_principal_balance, fortnightly_payment, first_deduction_period, activated_at, activated_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)`,
-          [loanAccountId, contractNo, item.expedienteId, item.capital, item.capital, item.cuota, item.firstDeductionPeriod, 'ETL_MIGRATION']
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, $8)`,
+          [
+            loanAccountId,
+            contractNo,
+            item.expedienteId,
+            item.capital,
+            item.capital,
+            item.cuota,
+            item.firstDeductionPeriod,
+            'ETL_MIGRATION',
+          ]
         );
         insertedLoans++;
       } else {
@@ -192,17 +209,17 @@ export async function runLoansETL(filePath: string) {
     }
   });
 
-  // FASE 3: Barrido de Remediación Universal (Garantiza Cero-PII en claro en toda la tabla expedientes, incluyendo semillas previas)
   const remainingUnencrypted = await db.query<{
     id: string;
     full_name: string;
     curp_masked: string;
     address: string;
     phone: string;
-  }>(`SELECT id, full_name, curp_masked, address, phone FROM expedientes WHERE encrypted_pii_payload IS NULL`);
+  }>(
+    `SELECT id, full_name, curp_masked, address, phone FROM expedientes WHERE encrypted_pii_payload IS NULL`
+  );
 
   for (const row of remainingUnencrypted.rows) {
-    // Buscar si en preparedData existe coincidencia por máscara o nombre original para preservar el CURP/No. Empleado completo
     const matched = preparedData.find(
       (p) => p.rawName === row.full_name || p.maskedName === maskFullName(row.full_name)
     );
@@ -225,19 +242,22 @@ export async function runLoansETL(filePath: string) {
 
     await db.execute(
       `UPDATE expedientes
-       SET full_name = ?,
+       SET full_name = $1,
            address = 'CIFRADO_ENVELOPE',
-           encrypted_pii_payload = ?,
-           kek_version = ?,
-           updated_at = datetime('now')
-       WHERE id = ?`,
+           encrypted_pii_payload = $2,
+           kek_version = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4`,
       [maskFullName(row.full_name), envelopeJson, kekVersion, row.id]
     );
     remediatedExpedientes++;
   }
 
   console.log(`[ETL] Carga y Remediación Criptográfica Completa.`);
-  console.log(`[ETL] Expedientes nuevos: ${insertedExpedientes} | Expedientes remediados con AES-GCM-256: ${remediatedExpedientes}`);
-  console.log(`[ETL] Créditos insertados: ${insertedLoans} | Duplicados omitidos: ${skippedIdempotent} | Sin ID: ${skippedMissingId}`);
+  console.log(
+    `[ETL] Expedientes nuevos: ${insertedExpedientes} | Expedientes remediados con AES-GCM-256: ${remediatedExpedientes}`
+  );
+  console.log(
+    `[ETL] Créditos insertados: ${insertedLoans} | Duplicados omitidos: ${skippedIdempotent} | Sin ID: ${skippedMissingId}`
+  );
 }
-

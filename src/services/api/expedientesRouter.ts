@@ -42,7 +42,7 @@ expedientesRouter.post('/promotores/secure', requireAuth('expedientes:create'), 
   const blindCurp = await computeServerBlindIndex(rawCurp);
 
   // 2. Verificar duplicados mediante consulta relacional indexada (Idempotencia)
-  const dupCheck = await db.query<{ id: string }>('SELECT id FROM expedientes WHERE blind_curp = ?', [blindCurp]);
+  const dupCheck = await db.query<{ id: string }>('SELECT id FROM expedientes WHERE blind_curp = $1', [blindCurp]);
   if (dupCheck.rowCount > 0) {
     const existingId = dupCheck.rows[0]!.id;
     await auditEventStore.append({
@@ -118,7 +118,7 @@ expedientesRouter.post('/promotores/secure', requireAuth('expedientes:create'), 
       id, created_at, updated_at, convenio, full_name, curp_masked, blind_curp,
       voter_id, address, phone, requested_amount, term_fortnights,
       product_type, status, promotor_email, encrypted_thumb_payload, encrypted_pii_payload, kek_version
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`,
     [
       newExpediente.id,
       newExpediente.createdAt,

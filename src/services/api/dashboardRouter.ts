@@ -231,7 +231,7 @@ export async function handleGetExpedientDetails(req: Request, res: Response) {
       status: string;
       encrypted_thumb_payload: string | null;
       encrypted_pii_payload: string | null;
-    }>(`SELECT * FROM expedientes WHERE id = ?`, [id]);
+    }>(`SELECT * FROM expedientes WHERE id = $1`, [id]);
     const record = result.rows[0];
 
     if (!record) {

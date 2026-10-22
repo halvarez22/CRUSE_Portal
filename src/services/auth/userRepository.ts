@@ -1,9 +1,9 @@
 /**
- * REPOSITORIO DE USUARIOS INSTITUCIONALES — CRUSE-APO-2026-005 (Bloque A.2)
+ * REPOSITORIO DE USUARIOS INSTITUCIONALES — CRUSE-APO-2026-005 / CRUSE-APO-2026-023
  *
  * - Contraseñas: solo hash scrypt (passwordHasher).
  * - Secreto TOTP: cifrado con Envelope Encryption (AES-GCM-256, KEK vigente) ANTES de persistir.
- * - Exclusivo de servidor: NUNCA importar desde componentes React.
+ * - Guardrail Forense 1: Sintaxis posicional nativa de PostgreSQL ($1, $2...).
  */
 
 import crypto from 'node:crypto';
@@ -38,14 +38,13 @@ let phoneColChecked = false;
 export async function ensureUsersPhoneColumn(): Promise<void> {
   if (phoneColChecked) return;
   try {
-    const info = await db.query<Record<string, unknown>>('PRAGMA table_info(users);');
-    const hasPhone = info.rows.some((r) => String(r.name) === 'phone_number');
-    if (!hasPhone) {
+    if (db.isPostgres()) {
+      await db.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT;');
+    } else {
       await db.execute('ALTER TABLE users ADD COLUMN phone_number TEXT;');
     }
     phoneColChecked = true;
   } catch {
-    // Ignore if already exists
     phoneColChecked = true;
   }
 }
@@ -77,7 +76,7 @@ export function toAuthenticatedUser(row: UserRow): AuthenticatedUser {
     email: row.email,
     name: row.name,
     role: row.role,
-    totpEnrolled: row.totp_enrolled === 1,
+    totpEnrolled: Number(row.totp_enrolled) === 1,
   };
 }
 
@@ -97,19 +96,16 @@ function isEnvelopePayload(value: unknown): value is EnvelopeEncryptedPayload {
 
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
   await ensureUsersPhoneColumn();
-  const res = await db.query<UserRow>('SELECT * FROM users WHERE email = ?', [email]);
+  const res = await db.query<UserRow>('SELECT * FROM users WHERE email = $1', [email]);
   return res.rows[0] ?? null;
 }
 
 export async function findUserById(id: string): Promise<UserRow | null> {
   await ensureUsersPhoneColumn();
-  const res = await db.query<UserRow>('SELECT * FROM users WHERE id = ?', [id]);
+  const res = await db.query<UserRow>('SELECT * FROM users WHERE id = $1', [id]);
   return res.rows[0] ?? null;
 }
 
-/**
- * Descifra el secreto TOTP del usuario (solo en memoria del servidor, nunca se registra).
- */
 export async function decryptTotpSecret(row: UserRow): Promise<string> {
   const parsed: unknown = JSON.parse(row.totp_secret_enc);
   if (!isEnvelopePayload(parsed)) {
@@ -119,7 +115,7 @@ export async function decryptTotpSecret(row: UserRow): Promise<string> {
 }
 
 export async function markTotpEnrolled(userId: string): Promise<void> {
-  await db.execute('UPDATE users SET totp_enrolled = 1 WHERE id = ? AND totp_enrolled = 0', [userId]);
+  await db.execute('UPDATE users SET totp_enrolled = 1 WHERE id = $1 AND totp_enrolled = 0', [userId]);
 }
 
 export interface NewUserInput {
@@ -132,13 +128,9 @@ export interface NewUserInput {
 
 export interface CreatedUserCredentials {
   user: AuthenticatedUser & { phoneNumber?: string | null };
-  /** Secreto TOTP en Base32: se devuelve UNA sola vez al llamador (CLI) y no se persiste en claro. */
   totpSecret: string;
 }
 
-/**
- * Alta de usuario: hash scrypt de la contraseña y secreto TOTP cifrado con la KEK vigente.
- */
 export async function createUser(input: NewUserInput): Promise<CreatedUserCredentials> {
   await ensureUsersPhoneColumn();
   const email = normalizeEmail(input.email);
@@ -150,7 +142,9 @@ export async function createUser(input: NewUserInput): Promise<CreatedUserCreden
     input.password.length < CREDENTIAL_LIMITS.passwordMinLength ||
     input.password.length > CREDENTIAL_LIMITS.passwordMaxLength
   ) {
-    throw new Error(`La contraseña debe tener entre ${CREDENTIAL_LIMITS.passwordMinLength} y ${CREDENTIAL_LIMITS.passwordMaxLength} caracteres.`);
+    throw new Error(
+      `La contraseña debe tener entre ${CREDENTIAL_LIMITS.passwordMinLength} y ${CREDENTIAL_LIMITS.passwordMaxLength} caracteres.`
+    );
   }
   if (await findUserByEmail(email)) throw new Error(`Ya existe un usuario con el correo ${email}.`);
 
@@ -166,7 +160,7 @@ export async function createUser(input: NewUserInput): Promise<CreatedUserCreden
 
   await db.execute(
     `INSERT INTO users (id, email, name, role, phone_number, password_hash, totp_secret_enc, totp_enrolled, active, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?);`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 1, 1, $8);`,
     [id, email, name, input.role, phoneNumber, passwordHash, JSON.stringify(encryptedSecret), new Date().toISOString()]
   );
 
@@ -195,8 +189,8 @@ export async function listAllUsers(): Promise<ManagedUserSummary[]> {
     name: r.name,
     role: isUserRole(r.role) ? r.role : 'promotor',
     phoneNumber: r.phone_number ?? null,
-    active: r.active === 1,
-    createdAt: r.created_at,
+    active: Number(r.active) === 1,
+    createdAt: String(r.created_at),
   }));
 }
 
@@ -225,16 +219,18 @@ export async function updateManagedUser(
   if (updates.newPassword && updates.newPassword.trim()) {
     const pwd = updates.newPassword.trim();
     if (pwd.length < CREDENTIAL_LIMITS.passwordMinLength || pwd.length > CREDENTIAL_LIMITS.passwordMaxLength) {
-      throw new Error(`La contraseña debe tener entre ${CREDENTIAL_LIMITS.passwordMinLength} y ${CREDENTIAL_LIMITS.passwordMaxLength} caracteres.`);
+      throw new Error(
+        `La contraseña debe tener entre ${CREDENTIAL_LIMITS.passwordMinLength} y ${CREDENTIAL_LIMITS.passwordMaxLength} caracteres.`
+      );
     }
     const newHash = await hashPassword(pwd);
     await db.execute(
-      'UPDATE users SET name = ?, role = ?, phone_number = ?, active = ?, password_hash = ? WHERE id = ?',
+      'UPDATE users SET name = $1, role = $2, phone_number = $3, active = $4, password_hash = $5 WHERE id = $6',
       [name, role, phoneNumber, active, newHash, userId]
     );
   } else {
     await db.execute(
-      'UPDATE users SET name = ?, role = ?, phone_number = ?, active = ? WHERE id = ?',
+      'UPDATE users SET name = $1, role = $2, phone_number = $3, active = $4 WHERE id = $5',
       [name, role, phoneNumber, active, userId]
     );
   }

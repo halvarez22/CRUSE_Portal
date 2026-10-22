@@ -1,10 +1,10 @@
 /**
  * RUNNER DE MIGRACIONES CON VALIDACIÓN CRIPTOGRÁFICA DE CHECKSUMS (SHA-256)
  *
- * Implementa el Pilar 2 del expediente CRUSE-APO-2026-003:
- * - Detección automática de alteraciones en scripts de migración ya aplicados.
- * - Ejecución atómica y secuencial versionada.
- * - Registro en la tabla de control _schema_migrations.
+ * Implementa el Pilar 2 de CRUSE-APO-2026-003 y la Migración PostgreSQL CRUSE-APO-2026-023:
+ * - En modo PostgreSQL (DATABASE_URL activo): ejecuta los scripts idempotentes de `db/postgres/`.
+ * - En modo SQLite local: ejecuta los scripts de `db/migrations/`.
+ * - Parametrización posicional nativa ($1, $2, $3, $4) conforme al Guardrail Forense 1.
  */
 
 import fs from 'fs';
@@ -19,12 +19,15 @@ export interface MigrationStatus {
 }
 
 export async function runMigrations(): Promise<MigrationStatus> {
-  const migrationsDir = path.join(process.cwd(), 'db', 'migrations');
+  const isPg = db.isPostgres();
+  const migrationsDir = isPg
+    ? path.join(process.cwd(), 'db', 'postgres')
+    : path.join(process.cwd(), 'db', 'migrations');
+
   if (!fs.existsSync(migrationsDir)) {
     throw new Error(`Directorio de migraciones no encontrado: ${migrationsDir}`);
   }
 
-  // 1. Asegurar tabla de control de migraciones
   await db.executeScript(`
     CREATE TABLE IF NOT EXISTS _schema_migrations (
       version VARCHAR(50) PRIMARY KEY,
@@ -35,7 +38,6 @@ export async function runMigrations(): Promise<MigrationStatus> {
     );
   `);
 
-  // 2. Leer archivos .sql ordenados alfabéticamente
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
@@ -49,13 +51,10 @@ export async function runMigrations(): Promise<MigrationStatus> {
     const version = file.split('_')[0]!;
     const filePath = path.join(migrationsDir, file);
     const content = fs.readFileSync(filePath, 'utf8');
-
-    // Calcular checksum SHA-256 del contenido exacto del archivo
     const checksum = crypto.createHash('sha256').update(content).digest('hex');
 
-    // Verificar si ya fue aplicada
     const res = await db.query<{ checksum: string; version: string }>(
-      'SELECT version, checksum FROM _schema_migrations WHERE version = ?',
+      'SELECT version, checksum FROM _schema_migrations WHERE version = $1',
       [version]
     );
 
@@ -71,41 +70,42 @@ export async function runMigrations(): Promise<MigrationStatus> {
       continue;
     }
 
-    // Ejecutar migración y medir tiempo en transacción atómica
     const startTime = Date.now();
-    
-    // Si la migración es la 006 o 009 (que requiere DROP/ALTER de tablas con FK),
-    // desactivar llaves foráneas temporalmente ANTES de la transacción (requerimiento de SQLite).
-    const needsFkDisabled = file.includes('remediation_schema') || file.includes('definitive_business_model');
-    
-    if (needsFkDisabled) {
+    const needsSqliteFkDisabled =
+      !isPg && (file.includes('remediation_schema') || file.includes('definitive_business_model'));
+
+    if (needsSqliteFkDisabled) {
       await db.executeScript('PRAGMA foreign_keys = OFF;');
     }
-    
+
     try {
-      db.transaction((tx) => {
-        tx.executeScript(content);
-        
-        // Verificar que no se hayan roto foreign keys si fueron deshabilitadas
-        if (needsFkDisabled) {
-          const fkCheck = tx.query<{ table: string; rowid: number; parent: string; fkid: number }>('PRAGMA foreign_key_check;');
+      await db.transaction(async (tx) => {
+        await tx.executeScript(content);
+
+        if (needsSqliteFkDisabled) {
+          const fkCheck = await tx.query<{
+            table: string;
+            rowid: number;
+            parent: string;
+            fkid: number;
+          }>('PRAGMA foreign_key_check;');
           if (fkCheck.rowCount > 0) {
             throw new Error(`Violación de llaves foráneas detectada durante la migración ${file}.`);
           }
         }
-        
-        tx.execute(
+
+        await tx.execute(
           `INSERT INTO _schema_migrations (version, name, checksum, execution_time_ms)
-           VALUES (?, ?, ?, ?);`,
+           VALUES ($1, $2, $3, $4);`,
           [version, file, checksum, Date.now() - startTime]
         );
       });
     } finally {
-      if (needsFkDisabled) {
+      if (needsSqliteFkDisabled) {
         await db.executeScript('PRAGMA foreign_keys = ON;');
       }
     }
-    
+
     const executionTimeMs = Date.now() - startTime;
     appliedCount++;
     details.push(`[Aplicado] ${file} (${executionTimeMs} ms)`);

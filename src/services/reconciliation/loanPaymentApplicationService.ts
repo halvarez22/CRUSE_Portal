@@ -4,8 +4,7 @@
  * @implements RN-13 (Prelación Estándar vs Desglose Manual en Pagos Parciales)
  * @implements Condición 2 (Ecuación Contable Invariante: applied_insurance + applied_interest + applied_vat + applied_capital === amount_received)
  * @implements Restricción Forense 1 (Precisión máxima Decimal.js en cálculos intermedios; redondeo tardío ROUND_HALF_UP solo al persistir/validar ecuación)
- * @implements Restricción Forense 2 (Atomicidad transaccional estricta BEGIN IMMEDIATE ... COMMIT envolviendo validación + INSERT WORM + auditEventStore.appendInTx)
- * @implements Restricción Forense 3 (Payload JSON de auditoría forense con el desglose exacto aprobado manualmente)
+ * @implements Guardrail Forense 1 (CRUSE-APO-2026-023: Sintaxis posicional nativa de PostgreSQL $1, $2... y transacciones asíncronas)
  */
 
 import crypto from 'crypto';
@@ -73,19 +72,14 @@ interface LastApplicationStateRow {
   credit_balance_after: number;
 }
 
-/**
- * Registra atómicamente la aplicación de un pago en `loan_payment_applications` (WORM),
- * soportando tanto prelación estándar (`AUTOMATIC`) como desglose manual (`MANUAL_OVERRIDE`).
- *
- * @implements RN-13
- */
-export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPaymentRecord {
-  // Restricción Forense 2: Transacción explícita BEGIN IMMEDIATE ... COMMIT
-  return db.transaction((tx) => {
-    const accountRes = tx.query<LoanAccountContextRow>(
+export async function applyLoanPayment(
+  input: ApplyLoanPaymentInput
+): Promise<AppliedLoanPaymentRecord> {
+  return db.transaction(async (tx) => {
+    const accountRes = await tx.query<LoanAccountContextRow>(
       `SELECT id, expediente_id, principal_original, fortnightly_payment, product_type
        FROM loan_accounts
-       WHERE id = ?`,
+       WHERE id = $1`,
       [input.loanAccountId]
     );
 
@@ -94,10 +88,10 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
     }
 
     const loanAccount = accountRes.rows[0];
-    const lastAppRes = tx.query<LastApplicationStateRow>(
+    const lastAppRes = await tx.query<LastApplicationStateRow>(
       `SELECT balance_after, arrears_insurance_after, arrears_interest_after, arrears_vat_after, credit_balance_after
        FROM loan_payment_applications
-       WHERE loan_account_id = ?
+       WHERE loan_account_id = $1
        ORDER BY created_at DESC, id DESC
        LIMIT 1`,
       [loanAccount.id]
@@ -139,18 +133,23 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
 
     if (input.allocationMode === 'MANUAL_OVERRIDE') {
       if (!input.manualBreakdown) {
-        throw new Error('REGLA DE NEGOCIO RN-13: Se requiere manualBreakdown cuando allocationMode es MANUAL_OVERRIDE.');
+        throw new Error(
+          'REGLA DE NEGOCIO RN-13: Se requiere manualBreakdown cuando allocationMode es MANUAL_OVERRIDE.'
+        );
       }
       const trimmedReason = input.overrideReason?.trim() ?? '';
       if (trimmedReason.length < 5) {
-        throw new Error('REGLA DE NEGOCIO RN-13: Se requiere una justificación explícita (overrideReason) para aplicar MANUAL_OVERRIDE.');
+        throw new Error(
+          'REGLA DE NEGOCIO RN-13: Se requiere una justificación explícita (overrideReason) para aplicar MANUAL_OVERRIDE.'
+        );
       }
       const trimmedAuth = input.authorizedBy?.trim() ?? '';
       if (!trimmedAuth) {
-        throw new Error('REGLA DE NEGOCIO RN-13: Se requiere authorizedBy para aplicar MANUAL_OVERRIDE.');
+        throw new Error(
+          'REGLA DE NEGOCIO RN-13: Se requiere authorizedBy para aplicar MANUAL_OVERRIDE.'
+        );
       }
 
-      // Restricción Forense 1: Cálculos intermedios en precisión máxima Decimal.js sin redondeo intermedio
       appliedInsuranceExact = new Decimal(input.manualBreakdown.appliedInsurance);
       appliedInterestExact = new Decimal(input.manualBreakdown.appliedInterest);
       appliedVatExact = new Decimal(input.manualBreakdown.appliedVat);
@@ -170,7 +169,6 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
         .plus(appliedVatExact)
         .plus(appliedCapitalExact);
 
-      // Validación final de la ecuación contable con redondeo tardío ROUND_HALF_UP
       const sumPersisted = sumManualExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
       const receivedPersisted = receivedExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
@@ -203,7 +201,6 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
       nextState = waterfallResult.next;
     }
 
-    // Restricción Forense 1: Redondeo tardío a 2 decimales exclusivamente al persistir en BD
     const amountReceivedNum = receivedExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
     const dueInsNum = due.insurance.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
     const dueIntNum = due.interest.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
@@ -224,7 +221,7 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
 
     const appId = `lpa_${crypto.randomUUID()}`;
 
-    tx.execute(
+    await tx.execute(
       `INSERT INTO loan_payment_applications (
         id, loan_account_id, expediente_id, batch_id, reconciliation_item_id, fortnight_period, amount_received,
         due_insurance, due_interest, due_vat, due_capital,
@@ -232,7 +229,7 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
         balance_before, balance_after,
         arrears_insurance_after, arrears_interest_after, arrears_vat_after, credit_balance_after,
         allocation_mode, override_reason, authorized_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
       [
         appId,
         loanAccount.id,
@@ -261,7 +258,6 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
       ]
     );
 
-    // Restricción Forense 3: Payload de Auditoría Forense con el desglose exacto aprobado manualmente
     const auditDetails =
       input.allocationMode === 'MANUAL_OVERRIDE'
         ? JSON.stringify({
@@ -279,7 +275,7 @@ export function applyLoanPayment(input: ApplyLoanPaymentInput): AppliedLoanPayme
           })
         : `Aplicación automática de pago por ${amountReceivedNum} para quincena ${input.fortnightPeriod} en cuenta ${loanAccount.id}.`;
 
-    auditEventStore.appendInTx(tx, {
+    await auditEventStore.appendInTx(tx, {
       action: 'PAYMENT_APPLIED',
       actorEmail: input.authorizedBy,
       actorRole: input.actorRole,

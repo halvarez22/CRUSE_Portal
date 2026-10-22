@@ -5,7 +5,7 @@
  * @implements RN-10 (Exención de retención de ISR cuando investors.applies_isr = 0)
  * @implements RN-11 (Cálculo sobre investments.current_capital y registro en investment_capital_movements WORM)
  * @implements Restricción Forense 1 (Precisión máxima Decimal.js en acumuladores; redondeo tardío al retornar)
- * @implements Restricción Forense 2 (Atomicidad transaccional estricta BEGIN IMMEDIATE ... COMMIT: investor_payments + investment_capital_movements + UPDATE current_capital)
+ * @implements Guardrail Forense 1 (CRUSE-APO-2026-023: Sintaxis posicional nativa de PostgreSQL $1, $2... y transacciones asíncronas)
  */
 
 import crypto from 'crypto';
@@ -45,10 +45,6 @@ export interface RecordCapitalMovementInput {
   recordedBy: string;
 }
 
-/**
- * Convierte parámetros compilados de Kysely (`ReadonlyArray<unknown>`) a `DbInputValue[]`
- * con verificación de tipos en tiempo de ejecución y cero uso de `any` (Regla 6 SQA).
- */
 function toDbInputValues(params: ReadonlyArray<unknown>): DbInputValue[] {
   return params.map((param): DbInputValue => {
     if (
@@ -67,13 +63,6 @@ function toDbInputValues(params: ReadonlyArray<unknown>): DbInputValue[] {
   });
 }
 
-/**
- * Ejecuta el corte mensual de fondeo de forma idempotente y atómica.
- *
- * @implements RN-09
- * @implements RN-10
- * @implements RN-11
- */
 export async function runMonthlyFundingSettle(
   targetDate: Date,
   actorEmail: string = 'system_funding_cron@cruse.mx'
@@ -91,9 +80,8 @@ export async function runMonthlyFundingSettle(
   let totalIsrRetainedExact = new Decimal(0);
   let totalCapitalizedExact = new Decimal(0);
 
-  // Restricción Forense 2: Bloque transaccional único BEGIN IMMEDIATE ... COMMIT
-  db.transaction((tx) => {
-    const activeInvestments = tx.query<ActiveInvestmentRow>(`
+  await db.transaction(async (tx) => {
+    const activeInvestmentsRes = await tx.query<ActiveInvestmentRow>(`
       SELECT
         inv.id,
         inv.investor_id,
@@ -107,14 +95,14 @@ export async function runMonthlyFundingSettle(
       FROM investments inv
       JOIN investors i ON inv.investor_id = i.id
       WHERE inv.status = 'ACTIVE'
-    `).rows;
+    `);
+    const activeInvestments = activeInvestmentsRes.rows;
 
     for (const inv of activeInvestments) {
       const referenceNumber = `${referencePrefix}-${inv.id}`;
 
-      // Control de Idempotencia por número de referencia mensual
-      const existing = tx.query<{ id: string }>(
-        `SELECT id FROM investor_payments WHERE reference_number = ?`,
+      const existing = await tx.query<{ id: string }>(
+        `SELECT id FROM investor_payments WHERE reference_number = $1`,
         [referenceNumber]
       );
 
@@ -123,8 +111,7 @@ export async function runMonthlyFundingSettle(
         continue;
       }
 
-      // Base de cálculo: current_capital (RN-11) y exención de ISR según applies_isr (RN-10)
-      const baseCapital = inv.current_capital > 0 ? inv.current_capital : inv.capital;
+      const baseCapital = Number(inv.current_capital) > 0 ? inv.current_capital : inv.capital;
       const yieldResult = calculateMonthlyYieldAndISR(
         baseCapital,
         inv.annual_rate,
@@ -148,9 +135,8 @@ export async function runMonthlyFundingSettle(
         })
         .compile();
 
-      tx.execute(insertPaymentQuery.sql, toDbInputValues(insertPaymentQuery.parameters));
+      await tx.execute(insertPaymentQuery.sql, toDbInputValues(insertPaymentQuery.parameters));
 
-      // RN-09 y Restricción Forense 2: Si es COMPOUND, capitalizar rendimiento neto en la MISMA transacción
       if (inv.interest_type === 'COMPOUND' && yieldResult.netYield > 0) {
         const capTransition = computeCompoundCapitalization(baseCapital, yieldResult.netYield);
         const capMovementId = `icm_${crypto.randomUUID()}`;
@@ -171,12 +157,12 @@ export async function runMonthlyFundingSettle(
           })
           .compile();
 
-        tx.execute(insertCapMovQuery.sql, toDbInputValues(insertCapMovQuery.parameters));
+        await tx.execute(insertCapMovQuery.sql, toDbInputValues(insertCapMovQuery.parameters));
 
-        tx.execute(
-          `UPDATE investments SET current_capital = ? WHERE id = ?`,
-          [capTransition.capitalAfter, inv.id]
-        );
+        await tx.execute(`UPDATE investments SET current_capital = $1 WHERE id = $2`, [
+          capTransition.capitalAfter,
+          inv.id,
+        ]);
 
         compoundCapitalizedCount++;
         totalCapitalizedExact = totalCapitalizedExact.plus(capTransition.capitalizedAmount);
@@ -194,29 +180,27 @@ export async function runMonthlyFundingSettle(
     compoundCapitalizedCount,
     totalGrossYield: totalGrossYieldExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
     totalIsrRetained: totalIsrRetainedExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
-    totalCapitalizedAmount: totalCapitalizedExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+    totalCapitalizedAmount: totalCapitalizedExact
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+      .toNumber(),
   };
 }
 
-/**
- * Registra atómicamente una aportación (`DEPOSIT`) o retiro (`WITHDRAWAL`) de capital al corte
- * y actualiza `investments.current_capital` en la misma transacción.
- *
- * @implements RN-11
- */
-export function recordInvestmentCapitalMovement(input: RecordCapitalMovementInput): {
+export async function recordInvestmentCapitalMovement(
+  input: RecordCapitalMovementInput
+): Promise<{
   movementId: string;
   capitalBefore: number;
   capitalAfter: number;
-} {
+}> {
   const amountExact = new Decimal(input.amount);
   if (!amountExact.isFinite() || amountExact.lte(0)) {
     throw new Error('El monto del movimiento de capital debe ser estrictamente mayor a 0.');
   }
 
-  return db.transaction((tx) => {
-    const invRes = tx.query<{ id: string; capital: number; current_capital: number }>(
-      `SELECT id, capital, current_capital FROM investments WHERE id = ?`,
+  return db.transaction(async (tx) => {
+    const invRes = await tx.query<{ id: string; capital: number; current_capital: number }>(
+      `SELECT id, capital, current_capital FROM investments WHERE id = $1`,
       [input.investmentId]
     );
 
@@ -225,7 +209,9 @@ export function recordInvestmentCapitalMovement(input: RecordCapitalMovementInpu
     }
 
     const inv = invRes.rows[0];
-    const baseCapExact = new Decimal(inv.current_capital > 0 ? inv.current_capital : inv.capital);
+    const baseCapExact = new Decimal(
+      Number(inv.current_capital) > 0 ? inv.current_capital : inv.capital
+    );
     const nextCapExact =
       input.movementType === 'WITHDRAWAL'
         ? baseCapExact.minus(amountExact)
@@ -236,15 +222,17 @@ export function recordInvestmentCapitalMovement(input: RecordCapitalMovementInpu
     const capitalAfter = nextCapExact.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
 
     if (capitalAfter < 0) {
-      throw new Error(`El retiro ($${amountPersisted.toFixed(2)}) excede el capital actual ($${capitalBefore.toFixed(2)}).`);
+      throw new Error(
+        `El retiro ($${amountPersisted.toFixed(2)}) excede el capital actual ($${capitalBefore.toFixed(2)}).`
+      );
     }
 
     const movementId = `icm_${crypto.randomUUID()}`;
-    tx.execute(
+    await tx.execute(
       `INSERT INTO investment_capital_movements (
         id, investment_id, movement_date, movement_type, amount,
         capital_before, capital_after, reference_number, recorded_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         movementId,
         inv.id,
@@ -258,7 +246,10 @@ export function recordInvestmentCapitalMovement(input: RecordCapitalMovementInpu
       ]
     );
 
-    tx.execute(`UPDATE investments SET current_capital = ? WHERE id = ?`, [capitalAfter, inv.id]);
+    await tx.execute(`UPDATE investments SET current_capital = $1 WHERE id = $2`, [
+      capitalAfter,
+      inv.id,
+    ]);
 
     return { movementId, capitalBefore, capitalAfter };
   });

@@ -189,7 +189,7 @@ fundingRouter.post('/capital-movement', requireAuth('funding:manage'), async (re
       });
     }
 
-    const movement = recordInvestmentCapitalMovement({
+    const movement = await recordInvestmentCapitalMovement({
       investmentId: String(investmentId),
       movementDate: String(movementDate),
       movementType,

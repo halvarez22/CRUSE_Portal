@@ -3,9 +3,7 @@
  *
  * @implements RN-01 (Movimientos de Crédito Especial Revolvente sin calendario fijo)
  * @implements RN-02, RN-04 (Block de Notas Operativas Siempre Visible en Créditos, Expedientes e Inversionistas)
- * @implements Regla 3 Anti-God-Object (< 240 líneas)
- * @implements Regla 5 SSD (Actor extraído exclusivamente de getAuth(req).user)
- * @implements Regla 6 SQA (0 any)
+ * @implements Guardrail Forense 1 (CRUSE-APO-2026-023: Sintaxis posicional nativa de PostgreSQL $1, $2... y transacciones asíncronas)
  */
 
 import { Router, Request, Response } from 'express';
@@ -49,19 +47,15 @@ const VALID_MOVEMENT_TYPES: ReadonlySet<SpecialMovementType> = new Set([
   'CARGO_INTERES',
 ]);
 
-/**
- * GET /api/special-credit/:loanAccountId/summary
- * Consulta el saldo vivo determinista y los movimientos de un Crédito Especial (RN-01).
- */
 specialCreditAndNotesRouter.get(
   '/special-credit/:loanAccountId/summary',
   requireAuth('special_credit:manage'),
   async (req: Request, res: Response) => {
     try {
       const loanAccountId = String(req.params.loanAccountId ?? '').trim();
-      const summary = getSpecialCreditBalanceSummary(loanAccountId);
+      const summary = await getSpecialCreditBalanceSummary(loanAccountId);
       const movRes = await db.query<SpecialCreditMovementRow>(
-        `SELECT * FROM special_credit_movements WHERE loan_account_id = ? ORDER BY created_at DESC, id DESC`,
+        `SELECT * FROM special_credit_movements WHERE loan_account_id = $1 ORDER BY created_at DESC, id DESC`,
         [loanAccountId]
       );
       return res.json({ ok: true, summary, movements: movRes.rows });
@@ -72,10 +66,6 @@ specialCreditAndNotesRouter.get(
   }
 );
 
-/**
- * POST /api/special-credit/:loanAccountId/movements
- * Registra atómicamente una disposición, cargo de interés o abono en un Crédito Especial (RN-01).
- */
 specialCreditAndNotesRouter.post(
   '/special-credit/:loanAccountId/movements',
   requireAuth('special_credit:manage'),
@@ -88,11 +78,12 @@ specialCreditAndNotesRouter.post(
 
       if (!movementDate || !VALID_MOVEMENT_TYPES.has(movementType as SpecialMovementType)) {
         return res.status(400).json({
-          error: 'Se requiere movementDate y movementType válido (DISPOSICION | ABONO | CARGO_INTERES).',
+          error:
+            'Se requiere movementDate y movementType válido (DISPOSICION | ABONO | CARGO_INTERES).',
         });
       }
 
-      const movement = recordSpecialCreditMovement({
+      const movement = await recordSpecialCreditMovement({
         loanAccountId,
         movementDate: String(movementDate),
         movementType: movementType as SpecialMovementType,
@@ -104,19 +95,16 @@ specialCreditAndNotesRouter.post(
         sourceIp,
       });
 
-      const summary = getSpecialCreditBalanceSummary(loanAccountId);
+      const summary = await getSpecialCreditBalanceSummary(loanAccountId);
       return res.json({ ok: true, movement, summary });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error registrando movimiento de Crédito Especial';
+      const message =
+        err instanceof Error ? err.message : 'Error registrando movimiento de Crédito Especial';
       return res.status(400).json({ error: message });
     }
   }
 );
 
-/**
- * GET /api/notes/:entityType/:entityId
- * Obtiene el Block de Notas Operativas siempre visible (RN-02 y RN-04).
- */
 specialCreditAndNotesRouter.get(
   '/notes/:entityType/:entityId',
   requireAuth('notes:manage'),
@@ -132,7 +120,7 @@ specialCreditAndNotesRouter.get(
       const notesRes = await db.query<OperationalNoteRow>(
         `SELECT id, entity_type, entity_id, note_content, is_pinned, author_email, created_at
          FROM operational_notes
-         WHERE entity_type = ? AND entity_id = ?
+         WHERE entity_type = $1 AND entity_id = $2
          ORDER BY is_pinned DESC, created_at DESC`,
         [rawType, entityId]
       );
@@ -144,11 +132,6 @@ specialCreditAndNotesRouter.get(
   }
 );
 
-/**
- * POST /api/notes
- * Crea una nueva nota operativa fijable (is_pinned = 1 | 0) con rastro forense WORM.
- * El autor se extrae exclusivamente de getAuth(req).user.email (Regla A.3).
- */
 specialCreditAndNotesRouter.post(
   '/notes',
   requireAuth('notes:manage'),
@@ -163,7 +146,11 @@ specialCreditAndNotesRouter.post(
       const trimmedEntityId = String(entityId ?? '').trim();
       const trimmedContent = String(noteContent ?? '').trim();
 
-      if (!VALID_ENTITY_TYPES.has(normalizedType) || !trimmedEntityId || trimmedContent.length < 3) {
+      if (
+        !VALID_ENTITY_TYPES.has(normalizedType) ||
+        !trimmedEntityId ||
+        trimmedContent.length < 3
+      ) {
         return res.status(400).json({
           error: 'Se requiere entityType válido, entityId y noteContent de al menos 3 caracteres.',
         });
@@ -173,14 +160,22 @@ specialCreditAndNotesRouter.post(
       const createdAt = new Date().toISOString();
       const pinnedFlag: 0 | 1 = isPinned === false || isPinned === 0 ? 0 : 1;
 
-      db.transaction((tx) => {
-        tx.execute(
+      await db.transaction(async (tx) => {
+        await tx.execute(
           `INSERT INTO operational_notes (id, entity_type, entity_id, note_content, is_pinned, author_email, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [noteId, normalizedType, trimmedEntityId, trimmedContent, pinnedFlag, user.email, createdAt]
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            noteId,
+            normalizedType,
+            trimmedEntityId,
+            trimmedContent,
+            pinnedFlag,
+            user.email,
+            createdAt,
+          ]
         );
 
-        auditEventStore.appendInTx(tx, {
+        await auditEventStore.appendInTx(tx, {
           action: 'EXPEDIENTE_VIEW',
           actorEmail: user.email,
           actorRole: user.role,

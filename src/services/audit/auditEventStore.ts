@@ -2,9 +2,9 @@
  * ALMACÉN DE BITÁCORA FORENSE INMUTABLE (WORM NATIVO + HASH CHAINING) — RETENCIÓN 5 AÑOS
  *
  * Cumplimiento regulatorio: Art. 95 Bis LGOAAC (CNBV PLD/FT), LFPDPPP y NOM-151-SCFI-2016.
- * - Persistencia Relacional con Constraints WORM nativos a nivel de motor.
- * - Encadenamiento criptográfico con SHA-256 (Merkle-like Hash Chaining).
- * - Verificación periódica de integridad que certifica la no-alteración física de los datos.
+ * - Guardrail Forense 1 (CRUSE-APO-2026-023): Sintaxis posicional nativa de PostgreSQL ($1, $2...).
+ * - Guardrail Forense 2 (CRUSE-APO-2026-023): Bloqueo exclusivo transaccional `pg_advisory_xact_lock(20260019)`
+ *   previo a la lectura de `chain_seq` y `record_hash` en PostgreSQL para eliminar Race Conditions.
  */
 
 import { AuditEvent, UserRole, AuditAction } from '../../types';
@@ -15,7 +15,7 @@ export const GENESIS_HASH = '000000000000000000000000000000000000000000000000000
 
 interface AuditDbRow {
   id: string;
-  ts: string;
+  ts: string | Date;
   actor_email: string;
   actor_role: string;
   action: string;
@@ -32,10 +32,14 @@ interface AuditDbRow {
   chain_seq: number | null;
 }
 
+function normalizeIsoTimestamp(ts: string | Date): string {
+  return ts instanceof Date ? ts.toISOString() : String(ts);
+}
+
 function mapRowToEvent(row: AuditDbRow): AuditEvent {
   return {
     id: row.id,
-    ts: row.ts,
+    ts: normalizeIsoTimestamp(row.ts),
     actorEmail: row.actor_email,
     actorRole: row.actor_role as UserRole | 'sistema',
     action: row.action as AuditAction,
@@ -53,31 +57,38 @@ function mapRowToEvent(row: AuditDbRow): AuditEvent {
 
 class AuditEventStore {
   /**
-   * Agrega un nuevo evento a la bitácora relacional de forma síncrona dentro de una transacción.
-   * Evita condiciones de carrera al leer el último hash y escribir en la misma transacción bloqueante.
+   * Agrega un nuevo evento a la bitácora relacional dentro de una transacción activa.
+   * Cumple Guardrail Forense 2: adquiere `pg_advisory_xact_lock(20260019)` ANTES de leer `chain_seq`.
    */
-  appendInTx(tx: TxHandle, input: Omit<AuditEvent, 'id' | 'ts' | 'prevHash' | 'recordHash'>): AuditEvent {
+  async appendInTx(
+    tx: TxHandle,
+    input: Omit<AuditEvent, 'id' | 'ts' | 'prevHash' | 'recordHash'>
+  ): Promise<AuditEvent> {
     const id = `aud_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const ts = new Date().toISOString();
 
-    // Obtener el último hash y chain_seq registrado en el motor de base de datos dentro de la tx
     let prevHash = GENESIS_HASH;
     let nextSeq = 1;
-    
+
     try {
-      const lastRow = tx.query<{ record_hash: string, chain_seq: number | null }>(
+      // Guardrail Forense 2: Bloqueo exclusivo por transacción en PostgreSQL ANTES de leer el estado de la cadena
+      if (tx.isPostgres) {
+        await tx.query('SELECT pg_advisory_xact_lock(20260019);');
+      }
+
+      const lastRow = await tx.query<{ record_hash: string; chain_seq: number | null }>(
         'SELECT record_hash, chain_seq FROM audit_events ORDER BY chain_seq DESC NULLS LAST, ts DESC, id DESC LIMIT 1'
       );
       if (lastRow.rowCount > 0 && lastRow.rows[0]?.record_hash) {
         prevHash = lastRow.rows[0].record_hash;
         if (lastRow.rows[0].chain_seq !== null) {
-          nextSeq = lastRow.rows[0].chain_seq + 1;
+          nextSeq = Number(lastRow.rows[0].chain_seq) + 1;
         } else {
-          // Migrando de v1 a v2: contar cuántos hay para sacar el sig seq? 
-          // O simplemente buscar el max chain_seq ignorando los null.
-          const maxSeqRow = tx.query<{ max_seq: number }>('SELECT MAX(chain_seq) as max_seq FROM audit_events');
+          const maxSeqRow = await tx.query<{ max_seq: number | null }>(
+            'SELECT MAX(chain_seq) as max_seq FROM audit_events'
+          );
           if (maxSeqRow.rowCount > 0 && maxSeqRow.rows[0]?.max_seq != null) {
-            nextSeq = maxSeqRow.rows[0].max_seq + 1;
+            nextSeq = Number(maxSeqRow.rows[0].max_seq) + 1;
           }
         }
       }
@@ -99,7 +110,7 @@ class AuditEventStore {
       blind_curp_prefix: input.blindCurpPrefix,
       expediente_id: input.expedienteId,
       details: input.details,
-      prev_hash: prevHash
+      prev_hash: prevHash,
     });
 
     const newEvent: AuditEvent = {
@@ -110,12 +121,12 @@ class AuditEventStore {
       recordHash,
     };
 
-    // Inserción en Base de Datos Relacional con Triggers WORM activos
-    tx.execute(
+    // Guardrail Forense 1: Placeholders posicionales explícitos ($1 a $15)
+    await tx.execute(
       `INSERT INTO audit_events (
         id, ts, actor_email, actor_role, action, outcome, source_ip, source_summary,
         curp_masked, blind_curp_prefix, expediente_id, details, prev_hash, record_hash, hash_version, chain_seq
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 2, ?);`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 2, $15);`,
       [
         id,
         ts,
@@ -131,7 +142,7 @@ class AuditEventStore {
         input.details ?? null,
         prevHash,
         recordHash,
-        nextSeq
+        nextSeq,
       ]
     );
 
@@ -139,21 +150,14 @@ class AuditEventStore {
   }
 
   /**
-   * Envoltorio para cuando se agrega un evento fuera de una transacción mayor.
+   * Envoltorio transaccional autónomo cuando se agrega un evento fuera de una transacción mayor.
    */
   append(input: Omit<AuditEvent, 'id' | 'ts' | 'prevHash' | 'recordHash'>): Promise<AuditEvent> {
-    return Promise.resolve(db.transaction(tx => this.appendInTx(tx, input)));
-  }
-  
-  /**
-   * Envoltorio sincrono para uso fuera de await si se prefiere.
-   */
-  appendSync(input: Omit<AuditEvent, 'id' | 'ts' | 'prevHash' | 'recordHash'>): AuditEvent {
-    return db.transaction(tx => this.appendInTx(tx, input));
+    return db.transaction((tx) => this.appendInTx(tx, input));
   }
 
   /**
-   * Consulta eventos desde la base de datos relacional con filtros dinámicos.
+   * Consulta eventos desde la base de datos relacional con filtros dinámicos y placeholders $1, $2...
    */
   async list(filter?: {
     action?: string;
@@ -166,23 +170,23 @@ class AuditEventStore {
       const params: (string | number)[] = [];
 
       if (filter?.action) {
-        sql += ' AND action = ?';
         params.push(filter.action);
+        sql += ` AND action = $${params.length}`;
       }
       if (filter?.actorEmail) {
-        sql += ' AND actor_email LIKE ?';
         params.push(`%${filter.actorEmail}%`);
+        sql += ` AND actor_email LIKE $${params.length}`;
       }
       if (filter?.blindCurpPrefix) {
-        sql += ' AND blind_curp_prefix = ?';
         params.push(filter.blindCurpPrefix);
+        sql += ` AND blind_curp_prefix = $${params.length}`;
       }
 
       sql += ' ORDER BY ts DESC, id DESC';
 
       if (filter?.limit && filter.limit > 0) {
-        sql += ' LIMIT ?';
         params.push(filter.limit);
+        sql += ` LIMIT $${params.length}`;
       } else {
         sql += ' LIMIT 100';
       }
@@ -197,7 +201,6 @@ class AuditEventStore {
 
   /**
    * Auditoría Forense Completa de Integridad de la Cadena Merkle-Chaining.
-   * Recorre la base de datos relacional recalculando todos los hashes para certificar no-manipulación.
    */
   async verifyChainIntegrity(): Promise<{
     valid: boolean;
@@ -205,9 +208,9 @@ class AuditEventStore {
     compromisedIndex?: number;
     details: string;
   }> {
-    // Las filas v1 antiguas no tienen chain_seq, se ordenan por ts/id; las v2 tienen chain_seq.
-    // Combinamos ordenando los nulls primero.
-    const res = await db.query<AuditDbRow>('SELECT * FROM audit_events ORDER BY chain_seq ASC NULLS FIRST, ts ASC, id ASC');
+    const res = await db.query<AuditDbRow>(
+      'SELECT * FROM audit_events ORDER BY chain_seq ASC NULLS FIRST, ts ASC, id ASC'
+    );
     const events = res.rows;
 
     if (events.length === 0) {
@@ -218,6 +221,7 @@ class AuditEventStore {
 
     for (let i = 0; i < events.length; i++) {
       const event = events[i]!;
+      const isoTs = normalizeIsoTimestamp(event.ts);
 
       if (i > 0 && event.prev_hash !== expectedPrevHash) {
         return {
@@ -230,34 +234,34 @@ class AuditEventStore {
 
       if (i > 0) {
         let recomputedHash = '';
-        if (event.hash_version === 2) {
-           recomputedHash = computeRecordHashV2Sync({
-              chain_seq: event.chain_seq!,
-              id: event.id,
-              ts: event.ts,
-              actor_email: event.actor_email,
-              actor_role: event.actor_role,
-              action: event.action,
-              outcome: event.outcome,
-              source_ip: event.source_ip,
-              source_summary: event.source_summary,
-              curp_masked: event.curp_masked ?? undefined,
-              blind_curp_prefix: event.blind_curp_prefix ?? undefined,
-              expediente_id: event.expediente_id ?? undefined,
-              details: event.details ?? undefined,
-              prev_hash: event.prev_hash
-           });
+        if (Number(event.hash_version) === 2) {
+          recomputedHash = computeRecordHashV2Sync({
+            chain_seq: Number(event.chain_seq!),
+            id: event.id,
+            ts: isoTs,
+            actor_email: event.actor_email,
+            actor_role: event.actor_role,
+            action: event.action,
+            outcome: event.outcome,
+            source_ip: event.source_ip,
+            source_summary: event.source_summary,
+            curp_masked: event.curp_masked ?? undefined,
+            blind_curp_prefix: event.blind_curp_prefix ?? undefined,
+            expediente_id: event.expediente_id ?? undefined,
+            details: event.details ?? undefined,
+            prev_hash: event.prev_hash,
+          });
         } else {
-           recomputedHash = computeRecordHashV1Sync({
-              prevHash: event.prev_hash,
-              id: event.id,
-              ts: event.ts,
-              actorEmail: event.actor_email,
-              action: event.action,
-              outcome: event.outcome,
-              sourceIp: event.source_ip,
-              curpMasked: event.curp_masked ?? undefined,
-           });
+          recomputedHash = computeRecordHashV1Sync({
+            prevHash: event.prev_hash,
+            id: event.id,
+            ts: isoTs,
+            actorEmail: event.actor_email,
+            action: event.action,
+            outcome: event.outcome,
+            sourceIp: event.source_ip,
+            curpMasked: event.curp_masked ?? undefined,
+          });
         }
 
         if (recomputedHash !== event.record_hash) {

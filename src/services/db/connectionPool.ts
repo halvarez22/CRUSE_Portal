@@ -1,14 +1,16 @@
 /**
- * CONNECTION POOL & GESTOR DE PERSISTENCIA RELACIONAL
+ * CONNECTION POOL & GESTOR DE PERSISTENCIA RELACIONAL (POSTGRESQL PRIMARIO + SQLITE FALLBACK)
  *
- * Implementa el Pilar 3 del expediente CRUSE-APO-2026-003:
- * - Soporte universal para PostgreSQL (producción bancaria / cloud) y SQLite nativo (desarrollo / staging).
- * - Connection pooling con timeouts estrictos para prevenir saturación o cuelgues (fail-fast).
- * - Cero credenciales hardcodeadas (Regla 5 SSD).
+ * Implementa el expediente CRUSE-APO-2026-023:
+ * - Motor primario: PostgreSQL (Azure Database for PostgreSQL - Flexible Server) vía pg.Pool con SSL/TLS.
+ * - Guardrail Forense 1: Prohibición absoluta de traductores léxicos o regex de placeholders en runtime.
+ *   Todas las consultas parametrizadas utilizan sintaxis nativa posicional ($1, $2, $3...).
+ * - Cero credenciales hardcodeadas (Regla 5 SSD) y Cero `any` (Regla 6 SQA).
  */
 
 import path from 'path';
 import fs from 'fs';
+import { Pool, PoolClient } from 'pg';
 import { DatabaseSync } from 'node:sqlite';
 
 export interface QueryResult<T> {
@@ -18,46 +20,89 @@ export interface QueryResult<T> {
 
 export type DbInputValue = string | number | boolean | null | undefined;
 
-function normalizeParam(v: DbInputValue): string | number | null {
+function normalizeSqliteParam(v: DbInputValue): string | number | null {
   if (v === null || v === undefined) return null;
   if (typeof v === 'boolean') return v ? 1 : 0;
   return v;
 }
 
-export class TxHandle {
-  constructor(private db: DatabaseSync) {}
+function buildSqliteDollarDictionary(params: DbInputValue[]): Record<string, string | number | null> {
+  const dict: Record<string, string | number | null> = {};
+  for (let i = 0; i < params.length; i++) {
+    dict[`$${i + 1}`] = normalizeSqliteParam(params[i]);
+  }
+  return dict;
+}
 
-  query<T = Record<string, unknown>>(sql: string, params: DbInputValue[] = []): QueryResult<T> {
-    const stmt = this.db.prepare(sql);
-    const normalized = params.map(normalizeParam);
-    const rows = stmt.all(...normalized) as T[];
+export interface TxHandle {
+  readonly isPostgres: boolean;
+  query<T = Record<string, unknown>>(sql: string, params?: DbInputValue[]): Promise<QueryResult<T>>;
+  execute(sql: string, params?: DbInputValue[]): Promise<{ changes: number }>;
+  executeScript(script: string): Promise<void>;
+}
+
+class PostgresTxHandle implements TxHandle {
+  readonly isPostgres = true;
+
+  constructor(private readonly client: PoolClient) {}
+
+  async query<T = Record<string, unknown>>(sql: string, params: DbInputValue[] = []): Promise<QueryResult<T>> {
+    const res = await this.client.query(sql, params);
+    return {
+      rows: res.rows as T[],
+      rowCount: res.rowCount ?? res.rows.length,
+    };
+  }
+
+  async execute(sql: string, params: DbInputValue[] = []): Promise<{ changes: number }> {
+    const res = await this.client.query(sql, params);
+    return {
+      changes: res.rowCount ?? 0,
+    };
+  }
+
+  async executeScript(script: string): Promise<void> {
+    await this.client.query(script);
+  }
+}
+
+class SqliteTxHandle implements TxHandle {
+  readonly isPostgres = false;
+
+  constructor(private readonly sqlite: DatabaseSync) {}
+
+  async query<T = Record<string, unknown>>(sql: string, params: DbInputValue[] = []): Promise<QueryResult<T>> {
+    const stmt = this.sqlite.prepare(sql);
+    const rows = (
+      params.length > 0 ? stmt.all(buildSqliteDollarDictionary(params)) : stmt.all()
+    ) as T[];
     return {
       rows,
       rowCount: rows.length,
     };
   }
 
-  execute(sql: string, params: DbInputValue[] = []): { changes: number } {
+  async execute(sql: string, params: DbInputValue[] = []): Promise<{ changes: number }> {
     if (params.length === 0) {
-      this.db.exec(sql);
+      this.sqlite.exec(sql);
       return { changes: 1 };
     }
-    const stmt = this.db.prepare(sql);
-    const normalized = params.map(normalizeParam);
-    const result = stmt.run(...normalized);
+    const stmt = this.sqlite.prepare(sql);
+    const result = stmt.run(buildSqliteDollarDictionary(params));
     return {
       changes: Number(result.changes),
     };
   }
 
-  executeScript(script: string): void {
-    this.db.exec(script);
+  async executeScript(script: string): Promise<void> {
+    this.sqlite.exec(script);
   }
 }
 
 class DatabaseConnectionPool {
+  private pgPool: Pool | null = null;
   private sqliteDb: DatabaseSync | null = null;
-  private dbPath: string;
+  private readonly dbPath: string;
 
   constructor() {
     const defaultDir = path.join(process.cwd(), 'db', 'data');
@@ -81,13 +126,32 @@ class DatabaseConnectionPool {
     }
   }
 
-  /**
-   * Obtiene o inicializa la conexión con SQLite en modo WAL y estricto.
-   */
+  isPostgres(): boolean {
+    return Boolean(process.env.DATABASE_URL?.trim());
+  }
+
+  private getPgPool(): Pool {
+    if (!this.pgPool) {
+      const connectionString = process.env.DATABASE_URL?.trim();
+      if (!connectionString) {
+        throw new Error('DATABASE_URL no está configurada para inicializar pg.Pool.');
+      }
+      const isLocalPg =
+        connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+      this.pgPool = new Pool({
+        connectionString,
+        max: 20,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 10_000,
+        ssl: isLocalPg ? undefined : { rejectUnauthorized: false },
+      });
+    }
+    return this.pgPool;
+  }
+
   private getSqlite(): DatabaseSync {
     if (!this.sqliteDb) {
       this.sqliteDb = new DatabaseSync(this.dbPath);
-      // Habilitar modo WAL y llaves foráneas para integridad relacional
       this.sqliteDb.exec('PRAGMA journal_mode = WAL;');
       this.sqliteDb.exec('PRAGMA foreign_keys = ON;');
     }
@@ -95,50 +159,80 @@ class DatabaseConnectionPool {
   }
 
   /**
-   * Ejecuta una transacción atómica y síncrona. 
-   * Previene carreras de concurrencia al bloquear el event loop 
-   * durante el bloque síncrono. (Vulnerabilidad N12 mitigada)
+   * Ejecuta una transacción ACID atómica (PostgreSQL BEGIN/COMMIT/ROLLBACK o SQLite BEGIN IMMEDIATE).
    */
-  transaction<T>(fn: (tx: TxHandle) => T): T {
-    const db = this.getSqlite();
-    db.exec('BEGIN IMMEDIATE;');
+  async transaction<T>(fn: (tx: TxHandle) => Promise<T> | T): Promise<T> {
+    if (this.isPostgres()) {
+      const pool = this.getPgPool();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const tx = new PostgresTxHandle(client);
+        const result = await fn(tx);
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    const sqlite = this.getSqlite();
+    sqlite.exec('BEGIN IMMEDIATE;');
     try {
-      const tx = new TxHandle(db);
-      const result = fn(tx);
-      db.exec('COMMIT;');
+      const tx = new SqliteTxHandle(sqlite);
+      const result = await fn(tx);
+      sqlite.exec('COMMIT;');
       return result;
     } catch (error) {
-      db.exec('ROLLBACK;');
+      sqlite.exec('ROLLBACK;');
       throw error;
     }
   }
 
-  /**
-   * Ejecuta una consulta SELECT retornando filas tipadas (sin transacción explícita).
-   */
-  async query<T = Record<string, unknown>>(sql: string, params: DbInputValue[] = []): Promise<QueryResult<T>> {
+  async query<T = Record<string, unknown>>(
+    sql: string,
+    params: DbInputValue[] = []
+  ): Promise<QueryResult<T>> {
+    if (this.isPostgres()) {
+      const pool = this.getPgPool();
+      const res = await pool.query(sql, params);
+      return {
+        rows: res.rows as T[],
+        rowCount: res.rowCount ?? res.rows.length,
+      };
+    }
     return this.transaction((tx) => tx.query<T>(sql, params));
   }
 
-  /**
-   * Ejecuta una sentencia DML o DDL (sin transacción explícita).
-   */
   async execute(sql: string, params: DbInputValue[] = []): Promise<{ changes: number }> {
+    if (this.isPostgres()) {
+      const pool = this.getPgPool();
+      const res = await pool.query(sql, params);
+      return {
+        changes: res.rowCount ?? 0,
+      };
+    }
     return this.transaction((tx) => tx.execute(sql, params));
   }
 
-  /**
-   * Ejecuta múltiples sentencias DDL dentro de un script de migración.
-   */
   async executeScript(script: string): Promise<void> {
-    const db = this.getSqlite();
-    db.exec(script);
+    if (this.isPostgres()) {
+      const pool = this.getPgPool();
+      await pool.query(script);
+      return;
+    }
+    const sqlite = this.getSqlite();
+    sqlite.exec(script);
   }
 
-  /**
-   * Cierra ordenadamente la base de datos al apagar el servidor.
-   */
-  close(): void {
+  async close(): Promise<void> {
+    if (this.pgPool) {
+      await this.pgPool.end();
+      this.pgPool = null;
+    }
     if (this.sqliteDb) {
       this.sqliteDb.close();
       this.sqliteDb = null;
