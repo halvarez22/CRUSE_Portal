@@ -215,8 +215,9 @@ export async function migrateSqliteToPostgres(options?: {
   }
 
   const sqliteDb = new DatabaseSync(sqlitePath, { open: true });
+  const cleanPgUrl = postgresUrl.replace(/([?&])sslmode=[^&]+(&|$)/i, '$1').replace(/[?&]$/, '');
   const pgPool = new Pool({
-    connectionString: postgresUrl,
+    connectionString: cleanPgUrl,
     max: 5,
     ssl:
       process.env.PGSSLMODE === 'require' || postgresUrl.includes('database.azure.com')

@@ -429,10 +429,11 @@ CREATE TABLE IF NOT EXISTS credit_bureau_catalogs (
 
 CREATE TABLE IF NOT EXISTS credit_bureau_reports (
   id VARCHAR(64) PRIMARY KEY,
-  reporting_month VARCHAR(6) NOT NULL,
+  reporting_month VARCHAR(10) NOT NULL,
   manifest_hash CHAR(64) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE credit_bureau_reports ALTER COLUMN reporting_month TYPE VARCHAR(10);
 
 CREATE TABLE IF NOT EXISTS credit_bureau_report_details (
   id VARCHAR(64) PRIMARY KEY,

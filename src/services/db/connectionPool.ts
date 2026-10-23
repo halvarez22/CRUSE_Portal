@@ -132,14 +132,16 @@ class DatabaseConnectionPool {
 
   private getPgPool(): Pool {
     if (!this.pgPool) {
-      const connectionString = process.env.DATABASE_URL?.trim();
-      if (!connectionString) {
+      const rawConnectionString = process.env.DATABASE_URL?.trim();
+      if (!rawConnectionString) {
         throw new Error('DATABASE_URL no está configurada para inicializar pg.Pool.');
       }
       const isLocalPg =
-        connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+        rawConnectionString.includes('localhost') || rawConnectionString.includes('127.0.0.1');
+      // Strip sslmode query parameter so pg.Pool uses our explicit ssl: { rejectUnauthorized: false } object
+      const cleanConnectionString = rawConnectionString.replace(/([?&])sslmode=[^&]+(&|$)/i, '$1').replace(/[?&]$/, '');
       this.pgPool = new Pool({
-        connectionString,
+        connectionString: cleanConnectionString,
         max: 20,
         idleTimeoutMillis: 30_000,
         connectionTimeoutMillis: 10_000,
