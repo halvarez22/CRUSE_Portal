@@ -94,6 +94,14 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return 'Emisión de Layout Sindical de Descuento Quincenal';
     case 'PAYROLL_FILE_PREVIEWED':
       return 'Previsualización Determinista de Corte Quincenal (Dry-Run)';
+    case 'PLD_LIST_INGESTED':
+      return 'Ingesta Criptográfica de Lista Oficial PLD/FT (69-B / UIF / OFAC / PEPs)';
+    case 'PLD_PORTFOLIO_SCREENED':
+      return 'Barrido Integral PLD/FT de Cartera e Inversionistas (CNBV / UIF)';
+    case 'PLD_HIT_DETECTED':
+      return curpMasked ? `Alerta PLD/FT Detectada (${curpMasked})` : 'Alerta de Coincidencia en Lista de Riesgo PLD/FT';
+    case 'PLD_ALERT_RESOLVED':
+      return 'Dictamen Oficial sobre Alerta PLD/FT (Oficial de Cumplimiento)';
     case 'CONFIG_CHANGE':
       return 'Cambio de Configuración Operativa';
     case 'SCREEN_VIEW':

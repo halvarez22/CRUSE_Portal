@@ -33,6 +33,38 @@ export async function activateLoanAccount(
     }
     const exp = res.rows[0];
 
+    // Guardia regulatoria PLD/FT (CRUSE-APO-2026-027): bloquear activación si existe alerta PENDING_REVIEW o CONFIRMED_BLOCKED
+    const pldBlockCheck = await tx.query<{ id: string; projected_status: string }>(
+      `WITH ranked_resolutions AS (
+         SELECT
+           par.hit_alert_id,
+           par.resolution_status,
+           ROW_NUMBER() OVER (
+             PARTITION BY par.hit_alert_id
+             ORDER BY par.created_at DESC, par.id DESC
+           ) AS rn
+         FROM pld_alert_resolutions par
+       ),
+       latest_resolution AS (
+         SELECT hit_alert_id, resolution_status
+         FROM ranked_resolutions
+         WHERE rn = 1
+       )
+       SELECT pha.id, COALESCE(lr.resolution_status, pha.status) AS projected_status
+       FROM pld_hit_alerts pha
+       LEFT JOIN latest_resolution lr ON lr.hit_alert_id = pha.id
+       WHERE pha.entity_id = $1
+         AND COALESCE(lr.resolution_status, pha.status) IN ('PENDING_REVIEW', 'CONFIRMED_BLOCKED')
+       LIMIT 1`,
+      [expedienteId]
+    );
+
+    if (pldBlockCheck.rows.length > 0 || exp.status === 'revision_pld' || exp.status === 'rechazado_pld') {
+      throw new Error(
+        `RN_PLD_BLOCKED_OR_PENDING: El expediente ${expedienteId} tiene un bloqueo o alerta PLD/FT pendiente de dictamen del Oficial de Cumplimiento.`
+      );
+    }
+
     if (exp.status !== 'aprobado' && exp.status !== 'capturado') {
       throw new Error(
         `El expediente debe estar capturado o aprobado para activarse. Estado actual: ${exp.status}`

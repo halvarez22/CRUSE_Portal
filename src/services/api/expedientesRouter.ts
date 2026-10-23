@@ -13,6 +13,7 @@ import { requireAuth, getAuth } from '../auth/authMiddleware';
 import { isRoleAuthorized } from '../../config/rbacPolicy';
 import { handleGetExpedientDetails, decryptExpedientePiiIfAuthorized } from './dashboardRouter';
 import { maskFullName } from '../etl/runETL';
+import { screenSingleSubjectInRealtime } from '../pld/pldScreeningService';
 
 export const expedientesRouter = Router();
 
@@ -155,10 +156,24 @@ expedientesRouter.post('/promotores/secure', requireAuth('expedientes:create'), 
     details: `Expediente registrado en BD relacional con PII cifrada AES-GCM-256 ($${newExpediente.requestedAmount.toLocaleString()} MXN a ${newExpediente.termFortnights}q)`,
   });
 
-  return res.json({
+  // 6. Directriz 1 (CRUSE-APO-2026-027): Guardia preventiva PLD/FT en tiempo real con Zero-Information Leakage.
+  const pldRealtime = await screenSingleSubjectInRealtime({
+    expedienteId: newExpediente.id,
+    blindCurp,
+    curpMasked,
+    maskedName: newExpediente.fullName,
+    requestedAmount: newExpediente.requestedAmount,
+    actorEmail,
+    actorRole,
+    sourceIp: ip,
+  });
+
+  return res.status(201).json({
     ok: true,
+    success: true,
     syncId: `sync_${Date.now()}`,
     expedienteId: newExpediente.id,
+    pldAlertTriggered: pldRealtime.hitDetected,
     thumbSaved: Boolean(encryptedThumbPayload),
   });
 });

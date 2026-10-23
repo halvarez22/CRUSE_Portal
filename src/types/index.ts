@@ -137,7 +137,11 @@ export type RbacPermission =
   | 'credit_bureau:catalogs_manage'
   | 'collections:read'
   | 'collections:manage'
-  | 'restructures:execute';
+  | 'restructures:execute'
+  | 'pld:read'
+  | 'pld:screen'
+  | 'pld:manage_lists'
+  | 'pld:resolve_alert';
 
 /** Datos de enrolamiento TOTP: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
@@ -179,7 +183,11 @@ export type AuditAction =
   | 'LOAN_SUSPENSION_UPDATED'
   | 'LOAN_RESTRUCTURED'
   | 'PAYROLL_EMISSION_GENERATED'
-  | 'PAYROLL_FILE_PREVIEWED';
+  | 'PAYROLL_FILE_PREVIEWED'
+  | 'PLD_LIST_INGESTED'
+  | 'PLD_PORTFOLIO_SCREENED'
+  | 'PLD_HIT_DETECTED'
+  | 'PLD_ALERT_RESOLVED';
 
 export interface AuditEvent {
   id: string;
@@ -225,7 +233,7 @@ export interface ExpedienteItem {
   fortnightlyPayment?: number;
   termFortnights: number;
   productType: ProductId;
-  status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado' | 'activo' | 'liquidado';
+  status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado' | 'activo' | 'liquidado' | 'revision_pld' | 'rechazado_pld';
   promotorEmail: string;
   encryptedThumbPayload?: string;
   encryptedPiiPayload?: string;
@@ -455,31 +463,13 @@ export interface CreditBureauGenerateResult {
 
 
 // ==============================================================================
-// TIPOS DE CRUSE-APO-2026-025: COBRANZA EXTRAJUDICIAL, SUSPENSIONES Y REESTRUCTURAS
+// TIPOS DE CRUSE-APO-2026-025 & 027: COBRANZA, REESTRUCTURAS Y PLD/FT ZERO-PII
 // ==============================================================================
 
-export type ProjectedLoanOperationalStatus =
-  | 'ACTIVE'
-  | 'SUSPENDED_LEAVE'
-  | 'FROZEN_EXTRAJUDICIAL'
-  | 'RESTRUCTURED'
-  | 'PAID_OFF';
+export type ProjectedLoanOperationalStatus = 'ACTIVE' | 'SUSPENDED_LEAVE' | 'FROZEN_EXTRAJUDICIAL' | 'RESTRUCTURED' | 'PAID_OFF';
+export type SuspensionOrFreezeReason = 'LICENCIA_SIN_GOCE' | 'BAJA_LABORAL' | 'COBRANZA_EXTRAJUDICIAL' | 'DEMANDA_JUDICIAL' | 'CONVENIO_EXTRAJUDICIAL';
+export type InsuranceEnrollmentStatus = 'ACTIVE' | 'EXCLUDED_AGE_OVER_65' | 'EXCLUDED_DEMANDA' | 'EXCLUDED_CONVENIO' | 'CLOSED';
 
-export type SuspensionOrFreezeReason =
-  | 'LICENCIA_SIN_GOCE'
-  | 'BAJA_LABORAL'
-  | 'COBRANZA_EXTRAJUDICIAL'
-  | 'DEMANDA_JUDICIAL'
-  | 'CONVENIO_EXTRAJUDICIAL';
-
-export type InsuranceEnrollmentStatus =
-  | 'ACTIVE'
-  | 'EXCLUDED_AGE_OVER_65'
-  | 'EXCLUDED_DEMANDA'
-  | 'EXCLUDED_CONVENIO'
-  | 'CLOSED';
-
-/** Fila Zero-PII del portafolio de cobranza, suspensiones, reestructuras y seguro (Directriz 4) */
 export interface LoanPortfolioRiskRow {
   loanAccountId: string;
   contractNumber: string;
@@ -519,4 +509,74 @@ export interface PortfolioRiskSummary {
   excludedInsuranceCount: number;
   totalLiveBalance: string;
   totalFrozenBalance: string;
+}
+
+export type PldListType = 'SAT_69B_DEFINITIVO' | 'SAT_69B_PRESUNTO' | 'UIF_PERSONAS_BLOQUEADAS' | 'OFAC_SDN' | 'PEP_NACIONAL';
+export type PldIdentifierType = 'CURP' | 'RFC' | 'NOMBRE';
+export type PldRiskLevel = 'CRITICAL_BLOCK' | 'HIGH_EDD_REQUIRED' | 'MEDIUM_MONITORING';
+export type PldAlertStatus = 'PENDING_REVIEW' | 'CONFIRMED_BLOCKED' | 'CLEARED_EDD' | 'FALSE_POSITIVE';
+
+export interface PldRiskEntryItem {
+  id: string;
+  listType: PldListType;
+  identifierType: PldIdentifierType;
+  blindIndexPrefix: string;
+  identifierMasked: string;
+  subjectMaskedName: string;
+  riskLevel: PldRiskLevel;
+  officialReference: string;
+  publicationDate: string;
+  sourceFileHash: string;
+  recordedBy: string;
+  createdAt: string;
+}
+
+export interface PldHitAlertItem {
+  id: string;
+  screeningBatchId: string | null;
+  riskEntryId: string;
+  entityType: 'EXPEDIENTE' | 'INVESTOR';
+  entityId: string;
+  blindIndexPrefix: string;
+  entityMaskedId: string;
+  entityMaskedName: string;
+  listType: PldListType;
+  riskLevel: PldRiskLevel;
+  officialReference: string;
+  exposureAmount: string;
+  detectionChannel: 'BATCH_SCREENING' | 'REALTIME_ORIGINATION';
+  projectedStatus: PldAlertStatus;
+  latestResolutionNotes: string | null;
+  latestResolvedBy: string | null;
+  latestResolvedAt: string | null;
+  createdAt: string;
+}
+
+export interface PldScreeningBatchSummary {
+  id: string;
+  createdAt: string;
+  officerEmail: string;
+  totalExpedientesScreened: number;
+  totalInvestorsScreened: number;
+  totalRiskEntriesEvaluated: number;
+  hitsDetectedCount: number;
+  newAlertsCreatedCount: number;
+  batchManifestHash: string;
+  certificateActa: string;
+}
+
+export interface PldComplianceOverview {
+  kpis: {
+    totalRiskEntries: number;
+    sat69bCount: number;
+    uifOfacCount: number;
+    pepCount: number;
+    pendingAlertsCount: number;
+    confirmedBlockedCount: number;
+    clearedOrFalsePositiveCount: number;
+    totalExposureBlockedOrPending: string;
+  };
+  riskEntries: PldRiskEntryItem[];
+  alerts: PldHitAlertItem[];
+  latestBatch: PldScreeningBatchSummary | null;
 }

@@ -30,6 +30,10 @@ export const RBAC_POLICY: Readonly<Record<RbacPermission, readonly UserRole[]>> 
   'collections:read': ['admin', 'oficial_cumplimiento'],
   'collections:manage': ['admin', 'oficial_cumplimiento'],
   'restructures:execute': ['admin', 'oficial_cumplimiento'],
+  'pld:read': ['admin', 'oficial_cumplimiento'],
+  'pld:screen': ['admin', 'oficial_cumplimiento'],
+  'pld:manage_lists': ['admin', 'oficial_cumplimiento'],
+  'pld:resolve_alert': ['admin', 'oficial_cumplimiento'],
 };
 
 /** Permisos que solo existen fuera de producción (en producción la ruta responde 404). */

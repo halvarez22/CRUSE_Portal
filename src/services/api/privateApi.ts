@@ -22,6 +22,7 @@ import { specialCreditAndNotesRouter } from './specialCreditAndNotesRouter';
 import { fundingRouter } from './fundingRouter';
 import { creditBureauRouter } from './creditBureauRouter';
 import { collectionsRouter } from './collectionsRouter';
+import { pldRouter } from './pldRouter';
 
 export const privateApiRouter = Router();
 
@@ -46,6 +47,7 @@ privateApiRouter.use('/funding', fundingRouter);
 // Sub-enrutador de Círculo de Crédito SIC y Catálogos Oficiales (CRUSE-APO-2026-024: RN-05, RN-06)
 privateApiRouter.use('/credit-bureau', creditBureauRouter);
 privateApiRouter.use('/collections', collectionsRouter);
+privateApiRouter.use('/pld', pldRouter);
 
 // Sub-enrutador de línea abierta Crédito Especial (RN-01) y Block de Notas (RN-02, RN-04)
 privateApiRouter.use('/', specialCreditAndNotesRouter);
