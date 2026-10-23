@@ -1,15 +1,17 @@
 /**
- * ALMACÉN DE SESIONES OPACAS — CRUSE-APO-2026-005 / CRUSE-APO-2026-023
+ * ALMACÉN DE SESIONES OPACAS — CRUSE-APO-2026-005 / CRUSE-APO-2026-023 / CRUSE-APO-2026-028
  *
  * - Tokens de 256 bits (crypto.randomBytes) en base64url; en BD solo se guarda SHA-256(token).
  * - Sesión de 15 min, rotación en refresh y revocación real en logout.
- * - Desafíos 2FA (tempToken) con el mismo esquema en `pending_totp`, TTL de 5 min.
- * - Guardrail Forense 1: Sintaxis posicional nativa ($1, $2...).
+ * - Guardrail Forense 2 (CRUSE-APO-2026-028): `revokeAllUserSessions` opera dentro de la misma
+ *   transacción ACID (`TxHandle`) que la baja o modificación del usuario (Kill-Switch sin race conditions).
+ * - Guardrail Forense 3 (CRUSE-APO-2026-028): `tempToken` de un solo uso (single-use) estrictamente
+ *   vinculado a `userId` para prevenir ataques de replay.
  */
 
 import crypto from 'node:crypto';
 import { AuthenticatedUser } from '../../types';
-import { db } from '../db/connectionPool';
+import { db, TxHandle } from '../db/connectionPool';
 import { UserRow, toAuthenticatedUser } from './userRepository';
 import {
   OPAQUE_TOKEN_BYTES,
@@ -51,12 +53,13 @@ export function parseBearer(header: string | undefined): string | null {
   return isPlausibleToken(token) ? token : null;
 }
 
-export async function createSession(userId: string): Promise<IssuedSession> {
+export async function createSession(userId: string, tx?: TxHandle): Promise<IssuedSession> {
+  const executor = tx ?? db;
   const token = newOpaqueToken();
   const sessionId = `ses_${crypto.randomBytes(12).toString('hex')}`;
   const now = Date.now();
   const expiresAt = new Date(now + SESSION_TTL_MINUTES * MS_PER_MINUTE).toISOString();
-  await db.execute(
+  await executor.execute(
     'INSERT INTO sessions (id, token_hash, user_id, created_at, expires_at) VALUES ($1, $2, $3, $4, $5);',
     [sessionId, hashToken(token), userId, new Date(now).toISOString(), expiresAt]
   );
@@ -87,12 +90,38 @@ export async function resolveSession(token: string): Promise<ResolvedSession | n
   return { sessionId: row.session_id, user: toAuthenticatedUser(row), expiresAt: expIso };
 }
 
-export async function revokeSession(sessionId: string): Promise<boolean> {
-  const result = await db.execute(
+export async function revokeSession(sessionId: string, tx?: TxHandle): Promise<boolean> {
+  const executor = tx ?? db;
+  const result = await executor.execute(
     'UPDATE sessions SET revoked_at = $1 WHERE id = $2 AND revoked_at IS NULL;',
     [new Date().toISOString(), sessionId]
   );
   return result.changes > 0;
+}
+
+/**
+ * Guardrail Forense 2 (CRUSE-APO-2026-028): Kill-Switch atómico de sesiones y desafíos 2FA.
+ * Revoca todas las sesiones activas de un usuario y purga cualquier `tempToken` pendiente en `pending_totp`.
+ * Acepta `tx: TxHandle` para ejecutarse dentro de la misma transacción ACID que el UPDATE sobre `users`.
+ */
+export async function revokeAllUserSessions(
+  userId: string,
+  tx?: TxHandle
+): Promise<{ sessionsRevoked: number; pendingChallengesPurged: number }> {
+  const executor = tx ?? db;
+  const nowIso = new Date().toISOString();
+  const revokedRes = await executor.execute(
+    'UPDATE sessions SET revoked_at = $1 WHERE user_id = $2 AND revoked_at IS NULL;',
+    [nowIso, userId]
+  );
+  const pendingRes = await executor.execute(
+    'DELETE FROM pending_totp WHERE user_id = $1;',
+    [userId]
+  );
+  return {
+    sessionsRevoked: revokedRes.changes,
+    pendingChallengesPurged: pendingRes.changes,
+  };
 }
 
 export async function rotateSession(token: string): Promise<{ issued: IssuedSession; user: AuthenticatedUser } | null> {
@@ -104,11 +133,17 @@ export async function rotateSession(token: string): Promise<{ issued: IssuedSess
   return { issued, user: current.user };
 }
 
-export async function createPendingTotp(userId: string): Promise<string> {
+/**
+ * Guardrail Forense 3 (CRUSE-APO-2026-028): Emite un `tempToken` de un solo uso vinculado
+ * exclusivamente a `userId`, invalidando cualquier desafío previo del mismo usuario.
+ */
+export async function createPendingTotp(userId: string, tx?: TxHandle): Promise<string> {
+  const executor = tx ?? db;
   const token = newOpaqueToken();
+  const nowIso = new Date().toISOString();
   const expiresAt = new Date(Date.now() + PENDING_TOTP_TTL_MINUTES * MS_PER_MINUTE).toISOString();
-  await db.execute('DELETE FROM pending_totp WHERE expires_at <= $1;', [new Date().toISOString()]);
-  await db.execute('INSERT INTO pending_totp (token_hash, user_id, expires_at) VALUES ($1, $2, $3);', [
+  await executor.execute('DELETE FROM pending_totp WHERE user_id = $1 OR expires_at <= $2;', [userId, nowIso]);
+  await executor.execute('INSERT INTO pending_totp (token_hash, user_id, expires_at) VALUES ($1, $2, $3);', [
     hashToken(token),
     userId,
     expiresAt,
@@ -126,12 +161,29 @@ export async function resolvePendingTotp(token: unknown): Promise<string | null>
   if (!row) return null;
   const expIso = row.expires_at instanceof Date ? row.expires_at.toISOString() : String(row.expires_at);
   if (Date.parse(expIso) <= Date.now()) {
-    await consumePendingTotp(token);
+    await consumePendingTotp(token, row.user_id);
     return null;
   }
   return row.user_id;
 }
 
-export async function consumePendingTotp(token: string): Promise<void> {
-  await db.execute('DELETE FROM pending_totp WHERE token_hash = $1;', [hashToken(token)]);
+/**
+ * Consume de forma atómica el `tempToken` verificando que pertenezca a `expectedUserId` (si se indica).
+ * Retorna `true` únicamente si el token existía y fue eliminado en esta invocación (Single-Use Anti-Replay).
+ */
+export async function consumePendingTotp(
+  token: string,
+  expectedUserId?: string,
+  tx?: TxHandle
+): Promise<boolean> {
+  const executor = tx ?? db;
+  if (expectedUserId) {
+    const res = await executor.execute(
+      'DELETE FROM pending_totp WHERE token_hash = $1 AND user_id = $2;',
+      [hashToken(token), expectedUserId]
+    );
+    return res.changes > 0;
+  }
+  const res = await executor.execute('DELETE FROM pending_totp WHERE token_hash = $1;', [hashToken(token)]);
+  return res.changes > 0;
 }

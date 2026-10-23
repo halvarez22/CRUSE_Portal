@@ -104,6 +104,11 @@ async function generateCodeForCounter(secretBase32: string, counter: number): Pr
   return code;
 }
 
+export async function generateCurrentTotpCode(secretBase32: string, timeStepSeconds = 30): Promise<string> {
+  const currentCounter = Math.floor(Date.now() / 1000 / timeStepSeconds);
+  return generateCodeForCounter(secretBase32, currentCounter);
+}
+
 /**
  * Valida un código TOTP proporcionado por el usuario con tolerancia de ventana de ±1 paso (30s).
  */

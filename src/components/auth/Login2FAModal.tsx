@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, KeyRound, Lock, ArrowRight, AlertTriangle, CheckCircle2, UserCheck, Eye, EyeOff } from 'lucide-react';
+import {
+  X,
+  ShieldCheck,
+  KeyRound,
+  Lock,
+  ArrowRight,
+  AlertTriangle,
+  CheckCircle2,
+  UserCheck,
+  Eye,
+  EyeOff,
+  Smartphone,
+} from 'lucide-react';
 import { AuthSession, UserRole, LoginChallengeResponse, TotpEnrollment } from '../../types';
 import { TotpEnrollmentPanel } from './TotpEnrollmentPanel';
 
@@ -18,9 +30,15 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
   const [totpCode, setTotpCode] = useState('');
+  const [useRecoveryMode, setUseRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   const [tempToken, setTempToken] = useState('');
   const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('oficial_cumplimiento');
   const [userName, setUserName] = useState('');
 
@@ -34,8 +52,12 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
     setStep('credentials');
     setTempToken('');
     setEnrollment(null);
+    setMustChangePassword(false);
     setTotpCode('');
+    setUseRecoveryMode(false);
+    setNewPassword('');
     setShowPassword(false);
+    setShowNewPassword(false);
     setRemainingAttempts(null);
     setErrorMsg(null);
   };
@@ -43,7 +65,6 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
   const handleClose = () => {
     resetChallenge();
     setPassword('');
-    setShowPassword(false);
     onClose();
   };
 
@@ -67,6 +88,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
       const challenge = data as LoginChallengeResponse;
       setTempToken(challenge.tempToken);
       setEnrollment(challenge.enrollment ?? null);
+      setMustChangePassword(Boolean(challenge.mustChangePassword));
       setUserRole(challenge.role);
       setUserName(challenge.name);
       setPassword('');
@@ -88,7 +110,11 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
       const res = await fetch('/api/auth/verify-totp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tempToken, code: totpCode }),
+        body: JSON.stringify({
+          tempToken,
+          code: totpCode.trim(),
+          newPassword: mustChangePassword ? newPassword : undefined,
+        }),
       });
 
       const data = await res.json();
@@ -99,7 +125,6 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
         throw new Error(data.error || 'Código 2FA inválido');
       }
 
-      // Éxito: sesion autorizada
       const session: AuthSession = {
         user: data.user,
         token: data.token,
@@ -117,15 +142,17 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
     }
   };
 
+  const isCodeReady = useRecoveryMode ? totpCode.trim().length >= 8 : totpCode.length === 6;
+  const isNewPasswordReady = !mustChangePassword || newPassword.trim().length >= 10;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
       <div
-        className="relative w-full max-w-lg rounded-3xl glass-panel p-6 sm:p-8 border border-white/20 dark:border-white/10 shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl glass-panel p-6 sm:p-8 border border-white/20 dark:border-white/10 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-login-title"
       >
-        {/* Fondo decorativo */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#249E82]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
 
         {/* Encabezado */}
@@ -136,10 +163,10 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
             </div>
             <div>
               <h3 id="modal-login-title" className="text-xl font-bold text-slate-900 dark:text-white">
-                Acceso Institucional Seguro
+                Acceso Institucional Zero-Trust
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Autenticación de 2 Factores (2FA Código SMS Móvil)
+                Autenticación de 2 Factores (2FA TOTP RFC 6238 en tu Teléfono Móvil)
               </p>
             </div>
           </div>
@@ -159,7 +186,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
               <span className="font-semibold">{errorMsg}</span>
               {remainingAttempts !== null && remainingAttempts > 0 && (
                 <p className="mt-1 font-mono text-[11px] text-amber-600 dark:text-amber-400">
-                  OBS-3: Te restan {remainingAttempts} intento(s) antes del bloqueo de 15 min.
+                  Te restan {remainingAttempts} intento(s) antes del bloqueo preventivo de 15 min.
                 </p>
               )}
             </div>
@@ -168,7 +195,6 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
 
         {step === 'credentials' ? (
           <form onSubmit={handleCredentialSubmit} className="mt-6 space-y-4">
-
             <div>
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Correo Electrónico Institucional
@@ -207,11 +233,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                   aria-pressed={showPassword}
                   className="absolute right-3 top-2.5 p-0.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82] transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -225,7 +247,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Continuar a Desafío 2FA</span>
+                  <span>Continuar a Desafío 2FA Móvil</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -240,29 +262,89 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                   {userName} ({userRole.replace('_', ' ').toUpperCase()})
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Introduce el código de 6 dígitos enviado por SMS a tu teléfono móvil.
+                  {enrollment
+                    ? 'Primer acceso: vincula tu teléfono móvil y escribe el código de 6 dígitos que muestre tu app.'
+                    : 'Abre Google/Microsoft Authenticator en tu teléfono móvil e ingresa el código de 6 dígitos.'}
                 </p>
               </div>
             </div>
 
             {enrollment && <TotpEnrollmentPanel enrollment={enrollment} />}
 
+            {mustChangePassword && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
+                  <Lock className="w-4 h-4" />
+                  <span>Cambio Obligatorio de Contraseña Temporal (Guardrail 1)</span>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                  Por seguridad, debes reemplazar la contraseña temporal entregada por el administrador por una contraseña personal (mínimo 10 caracteres).
+                </p>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    minLength={10}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nueva contraseña personal (mín. 10 caracteres)"
+                    className="w-full pl-9 pr-10 py-2 rounded-xl glass-input text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
+                  />
+                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className="absolute right-3 top-2 text-slate-400 hover:text-white"
+                    aria-label="Mostrar u ocultar nueva contraseña"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Código de Seguridad de 6 Dígitos
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {useRecoveryMode
+                    ? 'Código de Recuperación de Emergencia (XXXX-XXXX)'
+                    : 'Código TOTP de 6 Dígitos en tu Celular'}
+                </label>
+                {!enrollment && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseRecoveryMode((prev) => !prev);
+                      setTotpCode('');
+                    }}
+                    className="text-[11px] font-semibold text-[#00D1FF] hover:underline"
+                  >
+                    {useRecoveryMode ? 'Usar app autenticadora (6 dígitos)' : '¿Extraviaste tu celular? Usar código de respaldo'}
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <input
                   type="text"
-                  maxLength={6}
+                  maxLength={useRecoveryMode ? 9 : 6}
                   required
                   autoFocus
                   value={totpCode}
-                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                  className="w-full tracking-[0.5em] text-center font-mono font-bold text-xl py-2.5 rounded-xl glass-input text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
-                  placeholder="000000"
+                  onChange={(e) =>
+                    setTotpCode(
+                      useRecoveryMode
+                        ? e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')
+                        : e.target.value.replace(/\D/g, '')
+                    )
+                  }
+                  className="w-full tracking-[0.35em] text-center font-mono font-bold text-xl py-2.5 rounded-xl glass-input text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
+                  placeholder={useRecoveryMode ? 'XXXX-XXXX' : '000000'}
                 />
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                {useRecoveryMode ? (
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                ) : (
+                  <Smartphone className="w-4 h-4 text-[#00D1FF] absolute left-3 top-3.5" />
+                )}
               </div>
             </div>
 
@@ -276,7 +358,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={loading || totpCode.length !== 6}
+                disabled={loading || !isCodeReady || !isNewPasswordReady}
                 className="w-2/3 py-2.5 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-[#249E82] to-[#396CAE] hover:from-[#1e856e] hover:to-[#2e578c] transition-all shadow-lg shadow-[#249E82]/25 flex items-center justify-center gap-2 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
               >
                 {loading ? (
@@ -284,7 +366,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Validar 2FA</span>
+                    <span>{enrollment ? 'Confirmar Celular y Entrar' : 'Validar 2FA Móvil'}</span>
                   </>
                 )}
               </button>

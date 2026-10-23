@@ -61,7 +61,7 @@ export class SmsDeliveryError extends Error {
 export async function sendSmsOtp(userId: string, toPhone?: string): Promise<void> {
   const env = getServerEnv();
   // Regla 2 y Regla 5: Cero Hardcoding. Prioridad: 1. toPhone (DB), 2. TEST_PHONE_NUMBER (.env)
-  const targetPhone = toPhone || env.testPhoneNumber;
+  const targetPhone = toPhone?.trim() || '';
 
   if (!targetPhone) {
     throw new SmsDeliveryError('No existe número telefónico destino configurado para 2FA.', 503);

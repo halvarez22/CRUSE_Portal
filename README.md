@@ -92,13 +92,13 @@ El portal estará operativo en `http://localhost:3000`.
 
 ---
 
-## 4. CUENTAS DEMO PRE-CONFIGURADAS PARA AUDITORÍA
+## 4. GOBERNANZA DE IDENTIDADES Y PROVISIONAMIENTO ZERO-TRUST (CRUSE-APO-2026-028)
 
-| Rol | Correo Electrónico | Contraseña | Secreto TOTP Base32 (2FA) |
+| Rol | Correo Electrónico | Autenticación | Semilla TOTP Base32 (2FA) |
 | :--- | :--- | :--- | :--- |
-| **Oficial de Cumplimiento (UNE)** | `gerardo.olvera@cruse.com.mx` | `Cruse2026!Oficial` | `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` |
-| **Dirección General (Admin)** | `admin@cruse.com.mx` | `Cruse2026!Admin` | `KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU` |
-| **Promotor de Campo (PWA)** | `promotor@cruse.com.mx` | `Cruse2026!Promotor` | `MFRGGZDFMZTWQ2LKMFRGGZDFMZTWQ2LK` |
+| **Oficial de Cumplimiento (UNE)** | `gerardo.olvera@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Cifrada AES-GCM-256 (Enrolamiento móvil 1er acceso) |
+| **Dirección General (Admin)** | `admin@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Cifrada AES-GCM-256 (Enrolamiento móvil 1er acceso) |
+| **Promotor de Campo (PWA)** | `promotor@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Cifrada AES-GCM-256 (Enrolamiento móvil 1er acceso) |
 
 ---
 

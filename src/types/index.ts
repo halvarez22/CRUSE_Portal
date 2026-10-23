@@ -100,6 +100,7 @@ export interface AuthenticatedUser {
   name: string;
   role: UserRole;
   totpEnrolled: boolean;
+  mustChangePassword?: boolean;
 }
 
 export interface AuthSession {
@@ -155,7 +156,26 @@ export interface LoginChallengeResponse {
   tempToken: string;
   name: string;
   role: UserRole;
+  totpEnrolled?: boolean;
+  mustChangePassword?: boolean;
   enrollment?: TotpEnrollment;
+  recoveryCodes?: string[];
+}
+
+export interface UserUpdateFieldDiff {
+  field: 'name' | 'role' | 'phoneNumber' | 'active' | 'totpEnrolled' | 'passwordHash' | 'mustChangePassword';
+  before: string | boolean | null;
+  after: string | boolean | null;
+}
+
+export interface UserUpdateAuditDiff {
+  targetUserId: string;
+  targetEmail: string;
+  changes: UserUpdateFieldDiff[];
+  totpReset: boolean;
+  passwordChanged: boolean;
+  sessionsRevoked: number;
+  pendingChallengesPurged: number;
 }
 
 export type AuditAction =
@@ -462,53 +482,27 @@ export interface CreditBureauGenerateResult {
 }
 
 
-// ==============================================================================
 // TIPOS DE CRUSE-APO-2026-025 & 027: COBRANZA, REESTRUCTURAS Y PLD/FT ZERO-PII
-// ==============================================================================
-
 export type ProjectedLoanOperationalStatus = 'ACTIVE' | 'SUSPENDED_LEAVE' | 'FROZEN_EXTRAJUDICIAL' | 'RESTRUCTURED' | 'PAID_OFF';
 export type SuspensionOrFreezeReason = 'LICENCIA_SIN_GOCE' | 'BAJA_LABORAL' | 'COBRANZA_EXTRAJUDICIAL' | 'DEMANDA_JUDICIAL' | 'CONVENIO_EXTRAJUDICIAL';
 export type InsuranceEnrollmentStatus = 'ACTIVE' | 'EXCLUDED_AGE_OVER_65' | 'EXCLUDED_DEMANDA' | 'EXCLUDED_CONVENIO' | 'CLOSED';
 
 export interface LoanPortfolioRiskRow {
-  loanAccountId: string;
-  contractNumber: string;
-  expedienteId: string;
-  convenio: string;
-  productType: 'NOMINA_NORMAL' | 'EXPRESS' | 'ESPECIAL';
-  paymentFrequency: string;
-  termPeriods: number;
-  blindCurpPrefix: string;
-  maskedName: string;
-  curpMasked: string;
-  rfcMasked: string;
-  principalOriginal: string;
-  liveBalance: string;
-  fortnightlyPayment: string;
+  loanAccountId: string; contractNumber: string; expedienteId: string; convenio: string;
+  productType: 'NOMINA_NORMAL' | 'EXPRESS' | 'ESPECIAL'; paymentFrequency: string; termPeriods: number;
+  blindCurpPrefix: string; maskedName: string; curpMasked: string; rfcMasked: string;
+  principalOriginal: string; liveBalance: string; fortnightlyPayment: string;
   projectedStatus: ProjectedLoanOperationalStatus;
-  activeSuspensionId: string | null;
-  activeSuspensionReason: SuspensionOrFreezeReason | null;
-  activeSuspensionStartPeriod: string | null;
-  restructuredIntoLoanId: string | null;
-  restructuredIntoContract: string | null;
-  insuranceStatus: InsuranceEnrollmentStatus;
-  insuredAmount: string;
-  periodPremium: string;
-  sicObservationPreview: string | null;
-  latestNoteContent: string | null;
-  activatedAtIso: string;
+  activeSuspensionId: string | null; activeSuspensionReason: SuspensionOrFreezeReason | null; activeSuspensionStartPeriod: string | null;
+  restructuredIntoLoanId: string | null; restructuredIntoContract: string | null;
+  insuranceStatus: InsuranceEnrollmentStatus; insuredAmount: string; periodPremium: string;
+  sicObservationPreview: string | null; latestNoteContent: string | null; activatedAtIso: string;
 }
 
 export interface PortfolioRiskSummary {
-  totalLoans: number;
-  activeCount: number;
-  frozenExtrajudicialCount: number;
-  suspendedLeaveCount: number;
-  restructuredCount: number;
-  paidOffCount: number;
-  excludedInsuranceCount: number;
-  totalLiveBalance: string;
-  totalFrozenBalance: string;
+  totalLoans: number; activeCount: number; frozenExtrajudicialCount: number; suspendedLeaveCount: number;
+  restructuredCount: number; paidOffCount: number; excludedInsuranceCount: number;
+  totalLiveBalance: string; totalFrozenBalance: string;
 }
 
 export type PldListType = 'SAT_69B_DEFINITIVO' | 'SAT_69B_PRESUNTO' | 'UIF_PERSONAS_BLOQUEADAS' | 'OFAC_SDN' | 'PEP_NACIONAL';
@@ -517,66 +511,32 @@ export type PldRiskLevel = 'CRITICAL_BLOCK' | 'HIGH_EDD_REQUIRED' | 'MEDIUM_MONI
 export type PldAlertStatus = 'PENDING_REVIEW' | 'CONFIRMED_BLOCKED' | 'CLEARED_EDD' | 'FALSE_POSITIVE';
 
 export interface PldRiskEntryItem {
-  id: string;
-  listType: PldListType;
-  identifierType: PldIdentifierType;
-  blindIndexPrefix: string;
-  identifierMasked: string;
-  subjectMaskedName: string;
-  riskLevel: PldRiskLevel;
-  officialReference: string;
-  publicationDate: string;
-  sourceFileHash: string;
-  recordedBy: string;
-  createdAt: string;
+  id: string; listType: PldListType; identifierType: PldIdentifierType;
+  blindIndexPrefix: string; identifierMasked: string; subjectMaskedName: string;
+  riskLevel: PldRiskLevel; officialReference: string; publicationDate: string;
+  sourceFileHash: string; recordedBy: string; createdAt: string;
 }
 
 export interface PldHitAlertItem {
-  id: string;
-  screeningBatchId: string | null;
-  riskEntryId: string;
-  entityType: 'EXPEDIENTE' | 'INVESTOR';
-  entityId: string;
-  blindIndexPrefix: string;
-  entityMaskedId: string;
-  entityMaskedName: string;
-  listType: PldListType;
-  riskLevel: PldRiskLevel;
-  officialReference: string;
-  exposureAmount: string;
-  detectionChannel: 'BATCH_SCREENING' | 'REALTIME_ORIGINATION';
-  projectedStatus: PldAlertStatus;
-  latestResolutionNotes: string | null;
-  latestResolvedBy: string | null;
-  latestResolvedAt: string | null;
-  createdAt: string;
+  id: string; screeningBatchId: string | null; riskEntryId: string;
+  entityType: 'EXPEDIENTE' | 'INVESTOR'; entityId: string; blindIndexPrefix: string;
+  entityMaskedId: string; entityMaskedName: string; listType: PldListType;
+  riskLevel: PldRiskLevel; officialReference: string; exposureAmount: string;
+  detectionChannel: 'BATCH_SCREENING' | 'REALTIME_ORIGINATION'; projectedStatus: PldAlertStatus;
+  latestResolutionNotes: string | null; latestResolvedBy: string | null; latestResolvedAt: string | null; createdAt: string;
 }
 
 export interface PldScreeningBatchSummary {
-  id: string;
-  createdAt: string;
-  officerEmail: string;
-  totalExpedientesScreened: number;
-  totalInvestorsScreened: number;
-  totalRiskEntriesEvaluated: number;
-  hitsDetectedCount: number;
-  newAlertsCreatedCount: number;
-  batchManifestHash: string;
-  certificateActa: string;
+  id: string; createdAt: string; officerEmail: string;
+  totalExpedientesScreened: number; totalInvestorsScreened: number; totalRiskEntriesEvaluated: number;
+  hitsDetectedCount: number; newAlertsCreatedCount: number; batchManifestHash: string; certificateActa: string;
 }
 
 export interface PldComplianceOverview {
   kpis: {
-    totalRiskEntries: number;
-    sat69bCount: number;
-    uifOfacCount: number;
-    pepCount: number;
-    pendingAlertsCount: number;
-    confirmedBlockedCount: number;
-    clearedOrFalsePositiveCount: number;
+    totalRiskEntries: number; sat69bCount: number; uifOfacCount: number; pepCount: number;
+    pendingAlertsCount: number; confirmedBlockedCount: number; clearedOrFalsePositiveCount: number;
     totalExposureBlockedOrPending: string;
   };
-  riskEntries: PldRiskEntryItem[];
-  alerts: PldHitAlertItem[];
-  latestBatch: PldScreeningBatchSummary | null;
+  riskEntries: PldRiskEntryItem[]; alerts: PldHitAlertItem[]; latestBatch: PldScreeningBatchSummary | null;
 }
