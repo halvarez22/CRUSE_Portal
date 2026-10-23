@@ -1,6 +1,6 @@
 /**
  * Contratos de tipos centralizados para el Ecosistema Microfinanciera Cruse
- * Conforme a la Regla 6 (SQA): TypeScript Estricto sin any
+ * Conforme a la Regla 6 (SQA): TypeScript Estricto total
  */
 
 export type ThemeMode = 'light' | 'dark';
@@ -177,7 +177,9 @@ export type AuditAction =
   | 'LOAN_FROZEN_EXTRAJUDICIAL'
   | 'LOAN_AGREEMENT_REGISTERED'
   | 'LOAN_SUSPENSION_UPDATED'
-  | 'LOAN_RESTRUCTURED';
+  | 'LOAN_RESTRUCTURED'
+  | 'PAYROLL_EMISSION_GENERATED'
+  | 'PAYROLL_FILE_PREVIEWED';
 
 export interface AuditEvent {
   id: string;
@@ -254,19 +256,24 @@ export type ReconciliationItemStatus =
   | 'MATCH_EXACT'
   | 'DISCREPANCY_UNDERPAYMENT'
   | 'MISSING_IN_PAYROLL'
-  | 'DISCREPANCY_OVERPAYMENT';
+  | 'DISCREPANCY_OVERPAYMENT'
+  | 'SUSPENDED_IN_PAYROLL'
+  | 'NOT_IN_PORTFOLIO';
 
 export interface PayrollRecordInput {
   curp: string;
   employeeName: string;
   actualPayment: number;
   agreementName?: string;
+  contractNumber?: string;
 }
 
 export interface ReconciliationItem {
   id: string;
   batchId: string;
   expedienteId?: string;
+  loanAccountId?: string;
+  contractNumber?: string;
   blindCurp: string;
   curpMasked: string;
   employeeName: string;
@@ -288,6 +295,7 @@ export interface ReconciliationBatch {
   status: 'procesado' | 'cerrado_con_discrepancias' | 'conciliado_total';
   officerEmail: string;
   batchManifestHash: string;
+  sourceFileHash?: string;
   notes?: string;
   items?: ReconciliationItem[];
 }
@@ -301,10 +309,60 @@ export interface ReconciliationProcessResult {
     underpaymentCount: number;
     missingInPayrollCount: number;
     overpaymentCount: number;
+    suspendedInPayrollCount?: number;
+    notInPortfolioCount?: number;
     totalExpected: number;
     totalReceived: number;
     netDifference: number;
   };
+  sourceFileHash?: string;
+  signedActaText?: string;
+  sifCsvText?: string;
+}
+
+export interface ConvenioCatalogItem {
+  code: string;
+  displayName: string;
+  defaultFrequency: string;
+  chargesLifeInsurance: boolean;
+  sendsUnionLetter: boolean;
+  activeLoansCount: number;
+  suspendedLeaveCount: number;
+  expectedFortnightlyTotal: string;
+}
+
+export interface PayrollEmissionRow {
+  loanAccountId: string;
+  expedienteId: string;
+  contractNumber: string;
+  unionOfficialLetterNo: string;
+  blindCurpPrefix: string;
+  curpMasked: string;
+  maskedName: string;
+  productType: string;
+  projectedStatus: 'ACTIVE' | 'SUSPENDED_LEAVE';
+  expectedDeductionOrStatus: string;
+  liveBalance: string;
+}
+
+export interface PayrollIngestionPreviewResult {
+  sourceFileHash: string;
+  agreementName: string;
+  fortnightPeriod: string;
+  summary: {
+    totalRecords: number;
+    matchExactCount: number;
+    underpaymentCount: number;
+    missingInPayrollCount: number;
+    overpaymentCount: number;
+    suspendedInPayrollCount: number;
+    notInPortfolioCount: number;
+    totalExpected: number;
+    totalReceived: number;
+    netDifference: number;
+  };
+  items: ReconciliationItem[];
+  warnings: string[];
 }
 
 // ==============================================================================

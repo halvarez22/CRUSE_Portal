@@ -90,6 +90,10 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return 'Suspensión / Reactivación por Licencia (RN-10)';
     case 'LOAN_RESTRUCTURED':
       return 'Reestructura de Créditos Normales N-a-1 (RN-11)';
+    case 'PAYROLL_EMISSION_GENERATED':
+      return 'Emisión de Layout Sindical de Descuento Quincenal';
+    case 'PAYROLL_FILE_PREVIEWED':
+      return 'Previsualización Determinista de Corte Quincenal (Dry-Run)';
     case 'CONFIG_CHANGE':
       return 'Cambio de Configuración Operativa';
     case 'SCREEN_VIEW':

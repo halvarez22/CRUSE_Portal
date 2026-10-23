@@ -1,23 +1,26 @@
 /**
- * GENERADOR DE ACTAS OFICIALES Y LAYOUTS SIF/CIB (LOGIC SYSTEMS)
+ * GENERADOR DE ACTAS OFICIALES, LAYOUTS SIF/CIB (LOGIC SYSTEMS) Y EMISIÓN SINDICAL DE DESCUENTO
  * Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
  *
- * Cumplimiento:
- * - Regla 2 (HRU): Formatos institucionales y estandarizados.
- * - Regla 3: Archivo modular < 300 líneas.
- * - Expediente: CRUSE-APO-2026-004
+ * @implements CRUSE-APO-2026-026 (Emisión de Layout Sindical RN-07 con marcador "SUSPENSION" y Acta con sourceFileHash SHA-256)
  */
 
-import { ReconciliationBatch, ReconciliationItem, ReconciliationProcessResult } from '../../types';
+import {
+  PayrollEmissionRow,
+  ReconciliationBatch,
+  ReconciliationItem,
+  ReconciliationProcessResult,
+} from '../../types';
 import { COMPANY_INFO } from '../../data/cruseData';
 
 /**
- * Genera el Acta Oficial de Conciliación Quincenal con Sello Criptográfico
- * Lista para impresión, firma y archivo regulatorio (CNBV / CONDUSEF / UNE).
+ * Genera el Acta Oficial de Conciliación Quincenal con Sello Criptográfico Doble
+ * (Archivo Fuente SHA-256 + Manifiesto WORM SHA-256).
  */
 export function generateSignedReconciliationActa(
   batch: ReconciliationBatch,
-  summary: ReconciliationProcessResult['summary']
+  summary: ReconciliationProcessResult['summary'],
+  sourceFileHash?: string
 ): string {
   const dateFormatted = new Date(batch.createdAt).toLocaleString('es-MX', {
     dateStyle: 'full',
@@ -26,6 +29,7 @@ export function generateSignedReconciliationActa(
 
   const divider = '═'.repeat(80);
   const subDivider = '─'.repeat(80);
+  const resolvedSourceHash = sourceFileHash || batch.sourceFileHash || 'LOTE_DETERMINISTA_INTERNO';
 
   return `${divider}
                  ${COMPANY_INFO.name.toUpperCase()}
@@ -43,23 +47,26 @@ OFICIAL RESPONSABLE: ${batch.officerEmail} (${COMPANY_INFO.uneContact.title})
 ${subDivider}
 I. RESUMEN EJECUTIVO Y TOTALES AUDITADOS
 ${subDivider}
-• Total de Registros Auditados:          ${summary.totalRecords} trabajadores
+• Total de Registros Auditados:          ${summary.totalRecords} partidas
 • Importe Total Retenido Recibido:       $${summary.totalReceived.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
 • Importe Total Cuotas Esperadas:        $${summary.totalExpected.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
 • Discrepancia Neta Consolidada:         $${summary.netDifference.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
 • Estatus Regulatorio del Lote:          ${batch.status.toUpperCase()}
 
 ${subDivider}
-II. DESGLOSE DETERMINISTA DE PARTIDAS (MATRIZ 4 ESTADOS)
+II. DESGLOSE DETERMINISTA DE PARTIDAS (MATRIZ REGULATORIA)
 ${subDivider}
-1. Retenciones Exactas (MATCH_EXACT):           ${summary.matchExactCount} casos
+1. Retenciones Exactas (MATCH_EXACT):              ${summary.matchExactCount} casos
    - Conciliación al 100% de cuotas de amortización según tabla financiera.
-2. Retenciones Parciales (UNDERPAYMENT):        ${summary.underpaymentCount} casos
-   - Aplicación en cascada regulatoria: Seguro de Vida ($22.85) -> Intereses -> IVA -> Capital.
-3. Bajas No Reportadas (MISSING_IN_PAYROLL):    ${summary.missingInPayrollCount} casos
+2. Retenciones Parciales (UNDERPAYMENT):           ${summary.underpaymentCount} casos
+   - Aplicación en cascada regulatoria: Seguro ($22.85) -> Intereses -> IVA -> Capital.
+3. Bajas / Omisiones (MISSING_IN_PAYROLL):         ${summary.missingInPayrollCount} casos
    - ALERTA: Créditos activos sin retención gubernamental remitida.
-4. Excedentes / No Identificados (OVERPAYMENT): ${summary.overpaymentCount} casos
-   - Saldo a favor en custodia o aclaración con Recursos Humanos.
+4. Excedentes (OVERPAYMENT):                       ${summary.overpaymentCount} casos
+   - Abono extraordinario a capital o saldo a favor en custodia.
+5. Licencias sin Goce (SUSPENDED_IN_PAYROLL RN-07): ${summary.suspendedInPayrollCount ?? 0} casos
+   - Pausa temporal autorizada sin generación de intereses moratorios.
+6. No Vinculados en Cartera (NOT_IN_PORTFOLIO):    ${summary.notInPortfolioCount ?? 0} casos
 
 ${subDivider}
 III. CONSTANCIA DE BLINDAJE CRIPTOGRÁFICO Y BITÁCORA WORM
@@ -67,7 +74,10 @@ ${subDivider}
 El presente lote ha sido sellado criptográficamente mediante algoritmo SHA-256
 y asentado de forma inmutable en la bitácora relacional de Microfinanciera Cruse:
 
-SELLO MANIFIESTO SHA-256:
+HASH SHA-256 DEL ARCHIVO FUENTE DE RETENCIÓN:
+${resolvedSourceHash}
+
+SELLO MANIFIESTO WORM SHA-256:
 ${batch.batchManifestHash}
 
 ALMACENAMIENTO WORM:
@@ -101,6 +111,7 @@ export function generateSifLogicSystemsCsv(
     'PERIODO',
     'CONVENIO',
     'ID_EXPEDIENTE',
+    'NUMERO_CONTRATO',
     'CURP_ENMASCARADA',
     'NOMBRE_EMPLEADO',
     'CUOTA_ESPERADA',
@@ -121,6 +132,7 @@ export function generateSifLogicSystemsCsv(
       escapeCsv(batch.fortnightPeriod),
       escapeCsv(batch.agreementName),
       escapeCsv(item.expedienteId || 'NO_VINCULADO'),
+      escapeCsv(item.contractNumber || 'S/C'),
       escapeCsv(item.curpMasked),
       escapeCsv(item.employeeName),
       item.expectedPayment.toFixed(2),
@@ -132,4 +144,46 @@ export function generateSifLogicSystemsCsv(
   );
 
   return [headers.join(','), ...rows].join('\r\n');
+}
+
+/**
+ * Genera el Layout Oficial de Emisión de Descuento Sindical / Dependencia
+ * (M. EMISION MENSUAL / Q. CREDITOS ACTIVOS).
+ * Los créditos en SUSPENDED_LEAVE llevan explícitamente la palabra "SUSPENSION" (RN-07).
+ */
+export function generateUnionDiscountEmissionCsv(
+  agreementName: string,
+  fortnightPeriod: string,
+  rows: PayrollEmissionRow[]
+): string {
+  const headers = [
+    'CONVENIO',
+    'PERIODO',
+    'OFICIO_1ER_PAGO',
+    'NUMERO_CONTRATO',
+    'CURP',
+    'NOMBRE',
+    'IMPORTE_RETENIDO',
+    'SALDO_INSOLUTO_REFERENCIA',
+  ];
+
+  const escapeCsv = (val: string | number | undefined | null) => {
+    const s = String(val ?? '').replace(/"/g, '""');
+    return `"${s}"`;
+  };
+
+  const csvLines = rows.map((r) =>
+    [
+      escapeCsv(agreementName),
+      escapeCsv(fortnightPeriod),
+      escapeCsv(r.unionOfficialLetterNo),
+      escapeCsv(r.contractNumber),
+      escapeCsv(r.curpMasked),
+      escapeCsv(r.maskedName),
+      escapeCsv(r.expectedDeductionOrStatus),
+      r.liveBalance,
+    ].join(',')
+  );
+
+  return [headers.join(','), ...csvLines].join('\r\n');
 }

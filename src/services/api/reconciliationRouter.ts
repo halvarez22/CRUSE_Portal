@@ -1,8 +1,9 @@
 /**
- * ENRUTADOR DE CONCILIACIÓN QUINCENAL AUTOMATIZADA Y DESGLOSE MANUAL (RN-13)
+ * ENRUTADOR DE CONCILIACIÓN QUINCENAL AUTOMATIZADA, EMISIÓN SINDICAL, INGESTA DRY-RUN Y DESGLOSE MANUAL
  *
+ * @implements CRUSE-APO-2026-026 (Endpoints /convenios, /emission-layout, /ingest-preview, /process con RBAC + 2FA)
  * @implements RN-13 (Endpoint POST /api/reconciliation/manual-override con RBAC + 2FA)
- * @implements Guardrail Forense 1 (CRUSE-APO-2026-023: Sintaxis posicional nativa de PostgreSQL $1, $2... y 0 any)
+ * @implements Guardrail Forense 1 (CRUSE-APO-2026-023: Sintaxis posicional nativa de PostgreSQL $1, $2... y tipado estricto)
  */
 
 import { Router, Request, Response } from 'express';
@@ -10,13 +11,22 @@ import crypto from 'crypto';
 import { db } from '../db/connectionPool';
 import { extractClientIp } from '../audit/auditMask';
 import { requireAuth, getAuth } from '../auth/authMiddleware';
-import { processReconciliationBatch } from '../reconciliation/reconciliationEngine';
+import { processReconciliationBatch, BatchProcessingResult } from '../reconciliation/reconciliationEngine';
+import {
+  executePayrollFileIngestion,
+  generatePayrollDiscountEmissionLayout,
+  listActiveConveniosWithStats,
+  previewPayrollFileIngestion,
+} from '../reconciliation/payrollIngestionService';
+import { validateAndPrepareRows } from '../reconciliation/reconciliationValidator';
+import { RawPayrollRow } from '../reconciliation/payrollFileParser';
 import { applyLoanPayment } from '../reconciliation/loanPaymentApplicationService';
 import {
   generateSignedReconciliationActa,
   generateSifLogicSystemsCsv,
 } from '../reconciliation/reconciliationReports';
 import {
+  PayrollRecordInput,
   ReconciliationBatch,
   ReconciliationItem,
   ReconciliationItemStatus,
@@ -61,7 +71,7 @@ function mapItemRow(row: ReconciliationItemDbRow): ReconciliationItem {
     id: row.id,
     batchId: row.batch_id,
     expedienteId: row.expediente_id ?? undefined,
-    blindCurp: row.blind_curp,
+    blindCurp: String(row.blind_curp ?? '').slice(0, 12),
     curpMasked: row.curp_masked,
     employeeName: row.employee_name,
     expectedPayment: Number(row.expected_payment),
@@ -83,26 +93,146 @@ reconciliationRouter.get(
   }
 );
 
+reconciliationRouter.get(
+  '/convenios',
+  requireAuth('reconciliation:read'),
+  async (_req: Request, res: Response) => {
+    try {
+      const convenios = await listActiveConveniosWithStats();
+      return res.json({ ok: true, convenios });
+    } catch (err: unknown) {
+      return res.status(500).json({
+        error: 'Error al consultar catálogo de convenios activos',
+        details: err instanceof Error ? err.message : 'Error desconocido',
+      });
+    }
+  }
+);
+
+reconciliationRouter.get(
+  '/emission-layout',
+  requireAuth('reconciliation:read'),
+  async (req: Request, res: Response) => {
+    try {
+      const { user } = getAuth(req);
+      const sourceIp = extractClientIp(req.headers);
+      const agreementName = String(req.query.agreementName ?? 'STSGECH').trim();
+      const fortnightPeriod = String(req.query.fortnightPeriod ?? '2026-10-1Q').trim();
+
+      if (!agreementName || !fortnightPeriod) {
+        return res.status(400).json({ error: 'Se requiere agreementName y fortnightPeriod.' });
+      }
+
+      const emission = await generatePayrollDiscountEmissionLayout({
+        agreementName,
+        fortnightPeriod,
+        actorEmail: user.email,
+        actorRole: user.role,
+        sourceIp,
+      });
+
+      return res.json({ ok: true, ...emission });
+    } catch (err: unknown) {
+      return res.status(400).json({
+        error: err instanceof Error ? err.message : 'Error generando layout de emisión sindical',
+      });
+    }
+  }
+);
+
+reconciliationRouter.post(
+  '/ingest-preview',
+  requireAuth('reconciliation:process'),
+  async (req: Request, res: Response) => {
+    try {
+      const { user } = getAuth(req);
+      const sourceIp = extractClientIp(req.headers);
+      const { agreementName, fortnightPeriod, csvContent } = req.body;
+
+      if (!agreementName || !fortnightPeriod || typeof csvContent !== 'string' || !csvContent.trim()) {
+        return res.status(400).json({
+          error: 'Se requiere agreementName, fortnightPeriod y csvContent no vacío para la previsualización Dry-Run.',
+        });
+      }
+
+      const preview = await previewPayrollFileIngestion({
+        agreementName: String(agreementName).trim(),
+        fortnightPeriod: String(fortnightPeriod).trim(),
+        csvContent,
+        actorEmail: user.email,
+        actorRole: user.role,
+        sourceIp,
+      });
+
+      return res.json({ ok: true, preview });
+    } catch (err: unknown) {
+      return res.status(400).json({
+        error: err instanceof Error ? err.message : 'Error en previsualización de archivo de nómina',
+      });
+    }
+  }
+);
+
 reconciliationRouter.post(
   '/process',
   requireAuth('reconciliation:process'),
   async (req: Request, res: Response) => {
     try {
-      const { agreementName, fortnightPeriod, records } = req.body;
-      if (!agreementName || !fortnightPeriod || !Array.isArray(records) || records.length === 0) {
-        return res
-          .status(400)
-          .json({ error: 'Parámetros incompletos. Se requiere convenio, periodo y registros.' });
+      const { agreementName, fortnightPeriod, csvContent, expectedSourceFileHash, records } = req.body;
+      const { user } = getAuth(req);
+
+      if (!agreementName || !fortnightPeriod) {
+        return res.status(400).json({ error: 'Se requiere convenio (agreementName) y periodo (fortnightPeriod).' });
       }
 
-      const { user } = getAuth(req);
-      const result = await processReconciliationBatch(
-        String(agreementName),
-        String(fortnightPeriod),
-        user.email,
-        user.role,
-        records
-      );
+      let result: BatchProcessingResult;
+
+      if (typeof csvContent === 'string' && csvContent.trim().length > 0) {
+        result = await executePayrollFileIngestion({
+          agreementName: String(agreementName).trim(),
+          fortnightPeriod: String(fortnightPeriod).trim(),
+          csvContent,
+          expectedSourceFileHash:
+            typeof expectedSourceFileHash === 'string' ? expectedSourceFileHash : undefined,
+          actorEmail: user.email,
+          actorRole: user.role,
+        });
+      } else if (typeof expectedSourceFileHash === 'string' && expectedSourceFileHash.trim().length > 0) {
+        result = await executePayrollFileIngestion({
+          agreementName: String(agreementName).trim(),
+          fortnightPeriod: String(fortnightPeriod).trim(),
+          expectedSourceFileHash: expectedSourceFileHash.trim(),
+          actorEmail: user.email,
+          actorRole: user.role,
+        });
+      } else if (Array.isArray(records) && records.length > 0) {
+        const rawRows: RawPayrollRow[] = (records as PayrollRecordInput[]).map((r, idx) => ({
+          curp: String(r.curp ?? ''),
+          name: String(r.employeeName ?? 'TRABAJADOR'),
+          amount: String(r.actualPayment ?? 0),
+          originalLine: idx + 1,
+          contractNumber: r.contractNumber ? String(r.contractNumber) : undefined,
+        }));
+        const prepared = await validateAndPrepareRows(rawRows);
+        const rawPayloadHash = crypto
+          .createHash('sha256')
+          .update(JSON.stringify(records), 'utf8')
+          .digest('hex');
+
+        result = await processReconciliationBatch(
+          String(agreementName).trim(),
+          String(fortnightPeriod).trim(),
+          user.email,
+          user.role,
+          prepared,
+          rawPayloadHash
+        );
+      } else {
+        return res.status(400).json({
+          error: 'Se requiere csvContent, expectedSourceFileHash o arreglo records para procesar el lote.',
+        });
+      }
+
       const batchQuery = await db.query<ReconciliationBatchDbRow>(
         `SELECT * FROM reconciliation_batches WHERE id = $1`,
         [result.batchId]
@@ -124,12 +254,13 @@ reconciliationRouter.post(
         createdAt: batchRow?.created_at ?? new Date().toISOString(),
         agreementName: batchRow?.agreement_name ?? String(agreementName),
         fortnightPeriod: batchRow?.fortnight_period ?? String(fortnightPeriod),
-        totalRecords: Number(batchRow?.total_records ?? 0),
-        totalAmountExpected: Number(batchRow?.total_amount_expected ?? 0),
-        totalAmountReceived: Number(batchRow?.total_amount_received ?? 0),
+        totalRecords: Number(batchRow?.total_records ?? result.totalProcessed),
+        totalAmountExpected: Number(batchRow?.total_amount_expected ?? result.totalExpected),
+        totalAmountReceived: Number(batchRow?.total_amount_received ?? result.totalReceived),
         status: validBatchStatus,
         officerEmail: batchRow?.officer_email ?? user.email,
-        batchManifestHash: batchRow?.batch_manifest_hash ?? '',
+        batchManifestHash: batchRow?.batch_manifest_hash ?? result.batchManifestHash,
+        sourceFileHash: result.sourceFileHash,
         notes: batchRow?.notes ?? undefined,
       };
 
@@ -140,6 +271,8 @@ reconciliationRouter.post(
         underpaymentCount: result.underpayment,
         missingInPayrollCount: result.missingInPayroll,
         overpaymentCount: result.overpayment,
+        suspendedInPayrollCount: result.suspendedInPayroll,
+        notInPortfolioCount: result.notInPortfolio,
         totalExpected: batch.totalAmountExpected,
         totalReceived: batch.totalAmountReceived,
         netDifference: batch.totalAmountReceived - batch.totalAmountExpected,
@@ -150,13 +283,13 @@ reconciliationRouter.post(
         batch,
         items,
         summary,
-        signedActaText: generateSignedReconciliationActa(batch, summary),
+        sourceFileHash: result.sourceFileHash,
+        signedActaText: generateSignedReconciliationActa(batch, summary, result.sourceFileHash),
         sifCsvText: generateSifLogicSystemsCsv(batch, items),
       });
     } catch (err: unknown) {
-      return res.status(500).json({
-        error: 'Error interno en motor de conciliación quincenal',
-        details: err instanceof Error ? err.message : 'Error desconocido',
+      return res.status(400).json({
+        error: err instanceof Error ? err.message : 'Error interno en motor de conciliación quincenal',
       });
     }
   }
