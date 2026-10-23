@@ -82,6 +82,14 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return 'Reporte Oficial Círculo de Crédito (001496)';
     case 'CREDIT_BUREAU_CATALOG_UPDATED':
       return 'Actualización de Catálogo Oficial SIC';
+    case 'LOAN_FROZEN_EXTRAJUDICIAL':
+      return 'Congelamiento Extrajudicial / Demanda (RN-05)';
+    case 'LOAN_AGREEMENT_REGISTERED':
+      return 'Convenio de Pago Extrajudicial Registrado (RN-07)';
+    case 'LOAN_SUSPENSION_UPDATED':
+      return 'Suspensión / Reactivación por Licencia (RN-10)';
+    case 'LOAN_RESTRUCTURED':
+      return 'Reestructura de Créditos Normales N-a-1 (RN-11)';
     case 'CONFIG_CHANGE':
       return 'Cambio de Configuración Operativa';
     case 'SCREEN_VIEW':

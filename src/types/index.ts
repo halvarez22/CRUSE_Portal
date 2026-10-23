@@ -134,7 +134,10 @@ export type RbacPermission =
   | 'users:manage'
   | 'credit_bureau:read'
   | 'credit_bureau:generate'
-  | 'credit_bureau:catalogs_manage';
+  | 'credit_bureau:catalogs_manage'
+  | 'collections:read'
+  | 'collections:manage'
+  | 'restructures:execute';
 
 /** Datos de enrolamiento TOTP: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
@@ -170,7 +173,11 @@ export type AuditAction =
   | 'USER_UPDATE'
   | 'CONFIG_CHANGE'
   | 'CREDIT_BUREAU_REPORT_GENERATED'
-  | 'CREDIT_BUREAU_CATALOG_UPDATED';
+  | 'CREDIT_BUREAU_CATALOG_UPDATED'
+  | 'LOAN_FROZEN_EXTRAJUDICIAL'
+  | 'LOAN_AGREEMENT_REGISTERED'
+  | 'LOAN_SUSPENSION_UPDATED'
+  | 'LOAN_RESTRUCTURED';
 
 export interface AuditEvent {
   id: string;
@@ -386,4 +393,72 @@ export interface CreditBureauGenerateResult {
   pfCsvContent?: string;
   pfPipeContent?: string;
   pmCsvContent?: string;
+}
+
+
+// ==============================================================================
+// TIPOS DE CRUSE-APO-2026-025: COBRANZA EXTRAJUDICIAL, SUSPENSIONES Y REESTRUCTURAS
+// ==============================================================================
+
+export type ProjectedLoanOperationalStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED_LEAVE'
+  | 'FROZEN_EXTRAJUDICIAL'
+  | 'RESTRUCTURED'
+  | 'PAID_OFF';
+
+export type SuspensionOrFreezeReason =
+  | 'LICENCIA_SIN_GOCE'
+  | 'BAJA_LABORAL'
+  | 'COBRANZA_EXTRAJUDICIAL'
+  | 'DEMANDA_JUDICIAL'
+  | 'CONVENIO_EXTRAJUDICIAL';
+
+export type InsuranceEnrollmentStatus =
+  | 'ACTIVE'
+  | 'EXCLUDED_AGE_OVER_65'
+  | 'EXCLUDED_DEMANDA'
+  | 'EXCLUDED_CONVENIO'
+  | 'CLOSED';
+
+/** Fila Zero-PII del portafolio de cobranza, suspensiones, reestructuras y seguro (Directriz 4) */
+export interface LoanPortfolioRiskRow {
+  loanAccountId: string;
+  contractNumber: string;
+  expedienteId: string;
+  convenio: string;
+  productType: 'NOMINA_NORMAL' | 'EXPRESS' | 'ESPECIAL';
+  paymentFrequency: string;
+  termPeriods: number;
+  blindCurpPrefix: string;
+  maskedName: string;
+  curpMasked: string;
+  rfcMasked: string;
+  principalOriginal: string;
+  liveBalance: string;
+  fortnightlyPayment: string;
+  projectedStatus: ProjectedLoanOperationalStatus;
+  activeSuspensionId: string | null;
+  activeSuspensionReason: SuspensionOrFreezeReason | null;
+  activeSuspensionStartPeriod: string | null;
+  restructuredIntoLoanId: string | null;
+  restructuredIntoContract: string | null;
+  insuranceStatus: InsuranceEnrollmentStatus;
+  insuredAmount: string;
+  periodPremium: string;
+  sicObservationPreview: string | null;
+  latestNoteContent: string | null;
+  activatedAtIso: string;
+}
+
+export interface PortfolioRiskSummary {
+  totalLoans: number;
+  activeCount: number;
+  frozenExtrajudicialCount: number;
+  suspendedLeaveCount: number;
+  restructuredCount: number;
+  paidOffCount: number;
+  excludedInsuranceCount: number;
+  totalLiveBalance: string;
+  totalFrozenBalance: string;
 }

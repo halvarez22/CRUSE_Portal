@@ -7,6 +7,7 @@ import { UserManagementView } from './UserManagementView';
 import { ExpedientesTableView } from './ExpedientesTableView';
 import { FundingManagementView } from './FundingManagementView';
 import { CreditBureauView } from './CreditBureauView';
+import { CollectionsAndAgreementsView } from './CollectionsAndAgreementsView';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
 
 interface AdminAuditViewProps {
@@ -20,7 +21,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   onLogout,
   onBackToPortal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'collections' | 'users'>('dashboard');
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -191,6 +192,15 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             <FileSpreadsheet className="w-4 h-4" />
             <span>Círculo de Crédito (SIC)</span>
           </button>
+          <button
+            onClick={() => setActiveTab('collections')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'collections' ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span>Cobranza, Convenios y Reestructuras</span>
+          </button>
           {session.user.role === 'admin' && (
             <button
               onClick={() => setActiveTab('users')}
@@ -352,6 +362,8 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         {activeTab === 'funding' && <FundingManagementView session={session} />}
 
         {activeTab === 'credit_bureau' && <CreditBureauView session={session} />}
+
+        {activeTab === 'collections' && <CollectionsAndAgreementsView session={session} />}
 
         {activeTab === 'users' && session.user.role === 'admin' && <UserManagementView session={session} />}
       </main>

@@ -256,6 +256,7 @@ CREATE TABLE IF NOT EXISTS loan_restructures (
   restructured_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (new_loan_id, previous_loan_id)
 );
+CREATE INDEX IF NOT EXISTS idx_loan_restructures_prev_loan ON loan_restructures(previous_loan_id);
 
 CREATE TABLE IF NOT EXISTS loan_suspension_periods (
   id VARCHAR(64) PRIMARY KEY,
@@ -268,6 +269,7 @@ CREATE TABLE IF NOT EXISTS loan_suspension_periods (
   reactivated_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_loan_suspensions_account_status ON loan_suspension_periods(loan_account_id, status);
 
 CREATE TABLE IF NOT EXISTS reconciliation_batches (
   id VARCHAR(64) PRIMARY KEY,
@@ -465,12 +467,19 @@ AS $$
 DECLARE
   v_active_normal_count INTEGER;
 BEGIN
-  IF NEW.product_type = 'NOMINA_NORMAL' AND NEW.status = 'ACTIVE' THEN
+  IF NEW.product_type = 'NOMINA_NORMAL' AND NEW.status = 'ACTIVE' AND COALESCE(current_setting('cruse.is_restructuring', true), '') <> 'true' THEN
     SELECT COUNT(*) INTO v_active_normal_count
-      FROM loan_accounts
-     WHERE expediente_id = NEW.expediente_id
-       AND product_type = 'NOMINA_NORMAL'
-       AND status = 'ACTIVE';
+      FROM loan_accounts la
+     WHERE la.expediente_id = NEW.expediente_id
+       AND la.product_type = 'NOMINA_NORMAL'
+       AND la.status = 'ACTIVE'
+       AND NOT EXISTS (SELECT 1 FROM loan_restructures lr WHERE lr.previous_loan_id = la.id)
+       AND NOT EXISTS (
+         SELECT 1 FROM loan_suspension_periods lsp
+          WHERE lsp.loan_account_id = la.id
+            AND lsp.status = 'ACTIVE_SUSPENSION'
+            AND lsp.reason IN ('BAJA_LABORAL', 'COBRANZA_EXTRAJUDICIAL', 'DEMANDA_JUDICIAL', 'CONVENIO_EXTRAJUDICIAL')
+       );
 
     IF v_active_normal_count >= 4 THEN
       RAISE EXCEPTION 'RN01_MAX_LOANS_EXCEEDED: El cliente ya posee el máximo permitido de 4 créditos NOMINA_NORMAL activos simultáneos.';

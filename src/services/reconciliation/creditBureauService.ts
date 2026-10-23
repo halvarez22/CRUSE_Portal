@@ -1,11 +1,12 @@
 /**
  * MOTOR AUTOMATIZADO DE REPORTE A CÍRCULO DE CRÉDITO (SIC) Y GESTIÓN DE CATÁLOGOS
- * Expediente: CRUSE-APO-2026-024 (Guardrails Forenses 1, 2, 3 y 4)
+ * Expedientes: CRUSE-APO-2026-024 y CRUSE-APO-2026-025
  *
- * - Directriz 1: Delegación total del formateo al módulo puro `creditBureauLayoutBuilder.ts`.
- * - Directriz 2: Extracción sobre transacción `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;`
- *   en PostgreSQL y sellado WORM con `pg_advisory_xact_lock(20260019)`.
- * - Directriz 3: Enmascaramiento forense estricto (`maskPiiForPreview`) y cero fuga de PII en logs o errores.
+ * - Directriz 1 (024): Delegación total del formateo al módulo puro `creditBureauLayoutBuilder.ts`.
+ * - Directriz 1 (025): Proyección de estado basada en eventos mediante CTEs (`WITH` clauses) en una sola pasada
+ *   bajo aislamiento `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;`, sin N+1 ni subconsultas correlacionadas.
+ * - Directriz 2 (024): Sellado WORM con `pg_advisory_xact_lock(20260019)`.
+ * - Directriz 3 (024): Enmascaramiento forense estricto (`maskPiiForPreview`) y cero fuga de PII.
  * - Directriz 4: Cero `any` y límite Anti-God-Object (< 600 líneas).
  */
 
@@ -23,6 +24,7 @@ import {
   CreditBureauPreviewRow,
   CreditBureauReportRecord,
   CreditBureauValidationIssue,
+  ProjectedLoanOperationalStatus,
   UserRole,
 } from '../../types';
 import {
@@ -50,12 +52,13 @@ interface PortfolioSicJoinRow {
   contract_number: string;
   expediente_id: string;
   principal_original: string | number;
-  current_principal_balance: string | number;
+  projected_live_balance: string | number;
+  projected_status: ProjectedLoanOperationalStatus;
+  active_suspension_reason: string | null;
   fortnightly_payment: string | number;
   payment_frequency: string;
   activated_at: string | Date;
   product_type: string;
-  loan_status: string;
   reports_to_credit_bureau: number;
   convenio: string;
   convenio_display_name: string | null;
@@ -105,14 +108,12 @@ interface DecryptedPiiEnvelope {
 function normalizeIsoDateString(val: string | Date | null | undefined, fallbackIso: string): string {
   if (!val) return fallbackIso;
   if (val instanceof Date) return val.toISOString().slice(0, 10);
-  const s = String(val).trim();
-  const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  const match = String(val).trim().match(/^(\d{4}-\d{2}-\d{2})/);
   return match ? match[1]! : fallbackIso;
 }
 
 /**
- * Directriz 3 (Guardrail 4): Enmascaramiento forense estricto para previsualización y logs.
- * Garantiza que jamás salga un RFC, CURP o Nombre completo en texto plano hacia la UI de previsualización.
+ * Directriz 3 (Guardrail 4): Enmascaramiento forense estricto para previsualización y vistas Zero-PII.
  */
 export function maskPiiForPreview(input: {
   rawName?: string | null;
@@ -137,10 +138,7 @@ export function maskPiiForPreview(input: {
   const cleanRfc = String(input.rfcMaskedFromDb || input.rawRfc || '').trim().toUpperCase();
   let rfcMasked = '—';
   if (cleanRfc && cleanRfc !== 'NO REGISTRADO EN EXPEDIENTE') {
-    rfcMasked =
-      cleanRfc.length >= 8
-        ? `${cleanRfc.slice(0, 3)}******${cleanRfc.slice(-3)}`
-        : '*********';
+    rfcMasked = cleanRfc.length >= 8 ? `${cleanRfc.slice(0, 3)}******${cleanRfc.slice(-3)}` : '*********';
   } else if (curpMasked.length >= 10) {
     rfcMasked = `${curpMasked.slice(0, 4)}******`;
   }
@@ -153,13 +151,7 @@ export function maskPiiForPreview(input: {
       .map((part) => (part.length > 1 ? `${part[0]}${'*'.repeat(part.length - 1)}` : part))
       .join(' ');
   }
-
-  return {
-    maskedName,
-    curpMasked,
-    rfcMasked,
-    blindCurpPrefix,
-  };
+  return { maskedName, curpMasked, rfcMasked, blindCurpPrefix };
 }
 
 async function decryptPiiSafely(
@@ -174,10 +166,7 @@ async function decryptPiiSafely(
     const clearText = await decryptEnvelope(parsed, kms);
     return JSON.parse(clearText) as DecryptedPiiEnvelope;
   } catch {
-    // Guardrail 4: Cero PII en logs de error, solo expediente_id y blind_curp_prefix
-    console.warn(
-      `[SIC ZERO-PII WARN] Fallo al desencriptar sobre en expediente_id=${expedienteId} (blind_prefix=${blindCurpPrefix})`
-    );
+    console.warn(`[SIC ZERO-PII WARN] Fallo al desencriptar sobre en expediente_id=${expedienteId} (blind_prefix=${blindCurpPrefix})`);
     return null;
   }
 }
@@ -185,8 +174,7 @@ async function decryptPiiSafely(
 export async function listCreditBureauCatalogs(): Promise<CreditBureauCatalogItem[]> {
   const res = await db.query<CatalogDbRow>(
     `SELECT id, catalog_group, code, description, active, updated_at, updated_by
-     FROM credit_bureau_catalogs
-     ORDER BY catalog_group ASC, code ASC`
+     FROM credit_bureau_catalogs ORDER BY catalog_group ASC, code ASC`
   );
   return res.rows.map((r) => ({
     id: r.id,
@@ -219,14 +207,11 @@ export async function upsertCreditBureauCatalog(input: {
       `SELECT id FROM credit_bureau_catalogs WHERE catalog_group = $1 AND code = $2`,
       [groupClean, codeClean]
     );
-
-    let recordId = existing.rows[0]?.id ?? `cbc_${Date.now()}_${codeClean.toLowerCase()}`;
+    const recordId = existing.rows[0]?.id ?? `cbc_${Date.now()}_${codeClean.toLowerCase()}`;
 
     if (existing.rowCount > 0) {
       await tx.execute(
-        `UPDATE credit_bureau_catalogs
-         SET description = $1, active = $2, updated_at = CURRENT_TIMESTAMP, updated_by = $3
-         WHERE id = $4`,
+        `UPDATE credit_bureau_catalogs SET description = $1, active = $2, updated_at = CURRENT_TIMESTAMP, updated_by = $3 WHERE id = $4`,
         [descClean, activeInt, input.actorEmail, recordId]
       );
     } else {
@@ -244,7 +229,7 @@ export async function upsertCreditBureauCatalog(input: {
       outcome: 'success',
       sourceIp: input.sourceIp,
       sourceSummary: input.sourceSummary,
-      details: `Catálogo SIC actualizado [${groupClean}:${codeClean}] active=${activeInt}`,
+      details: JSON.stringify({ catalogGroup: groupClean, code: codeClean, active: input.active }),
     });
 
     return {
@@ -261,20 +246,13 @@ export async function upsertCreditBureauCatalog(input: {
 
 export async function listHistoricalCreditBureauReports(): Promise<CreditBureauReportRecord[]> {
   const res = await db.query<ReportHeaderDbRow>(
-    `SELECT
-       r.id,
-       r.reporting_month,
-       r.manifest_hash,
-       r.created_at,
-       COUNT(d.id) AS total_accounts,
-       COALESCE(SUM(d.reported_balance), 0) AS total_reported_balance
+    `SELECT r.id, r.reporting_month, r.manifest_hash, r.created_at,
+       COUNT(d.id) AS total_accounts, COALESCE(SUM(d.reported_balance), 0) AS total_reported_balance
      FROM credit_bureau_reports r
      LEFT JOIN credit_bureau_report_details d ON d.report_id = r.id
      GROUP BY r.id, r.reporting_month, r.manifest_hash, r.created_at
-     ORDER BY r.created_at DESC
-     LIMIT 36`
+     ORDER BY r.created_at DESC LIMIT 36`
   );
-
   return res.rows.map((r) => ({
     id: r.id,
     reportingMonth: r.reporting_month,
@@ -285,10 +263,17 @@ export async function listHistoricalCreditBureauReports(): Promise<CreditBureauR
   }));
 }
 
+function resolveObservationCodeForFrozenReason(reason: string | null, activeObsCodes: ReadonlySet<string>): string {
+  if (reason === 'DEMANDA_JUDICIAL' && activeObsCodes.has('SG')) return 'SG';
+  if (reason === 'CONVENIO_EXTRAJUDICIAL' && activeObsCodes.has('CV')) return 'CV';
+  if (activeObsCodes.has('CL')) return 'CL';
+  if (activeObsCodes.has('SG')) return 'SG';
+  return 'UP';
+}
+
 /**
- * Ejecuta la extracción aislada READ ONLY desde PostgreSQL 16, construye el layout determinista
- * y, si `commitSeal === true`, sella el reporte en `credit_bureau_reports`, `credit_bureau_report_details`
- * y `audit_events` bajo bloqueo transaccional `pg_advisory_xact_lock(20260019)`.
+ * Directriz 1 (CRUSE-APO-2026-025): Extracción READ ONLY con CTEs (`WITH`) para proyectar
+ * el estado operativo y el saldo insoluto vivo en una sola pasada sin N+1 ni subconsultas correlacionadas.
  */
 export async function executeCreditBureauReportWorkflow(options: {
   cutoffDateIso: string;
@@ -302,81 +287,83 @@ export async function executeCreditBureauReportWorkflow(options: {
   const cutoffIso = normalizeIsoDateString(options.cutoffDateIso, '2026-10-31');
   const reportingMonth = cutoffIso.slice(0, 7);
 
-  // Directriz 2 (Guardrail 3): Extracción de cartera en transacción aislada READ ONLY en PostgreSQL
   const extracted = await db.transaction(async (tx) => {
     if (tx.isPostgres) {
       await tx.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;');
     }
 
     const portfolioRes = await tx.query<PortfolioSicJoinRow>(
-      `SELECT
-         la.id AS loan_account_id,
-         la.contract_number,
-         la.expediente_id,
-         la.principal_original,
-         la.current_principal_balance,
-         la.fortnightly_payment,
-         la.payment_frequency,
-         la.activated_at,
-         la.product_type,
-         la.status AS loan_status,
-         la.reports_to_credit_bureau,
-         e.convenio,
-         c.display_name AS convenio_display_name,
-         e.full_name AS full_name_masked,
-         e.curp_masked,
-         e.blind_curp,
-         e.voter_id,
-         e.address AS address_masked,
-         e.phone AS phone_masked,
-         e.term_fortnights,
-         e.encrypted_pii_payload,
-         e.person_type,
-         e.rfc_masked,
-         e.gender,
-         e.birth_date,
-         lpa_last.last_payment_date,
-         lpa_last.last_payment_amount
+      `WITH lpa_totals AS (
+         SELECT loan_account_id, SUM(applied_capital) AS total_applied_capital, MAX(created_at) AS last_payment_date
+         FROM loan_payment_applications GROUP BY loan_account_id
+       ),
+       lpa_latest AS (
+         SELECT l1.loan_account_id, l1.created_at AS last_payment_date, l1.amount_received AS last_payment_amount
+         FROM loan_payment_applications l1
+         INNER JOIN lpa_totals lt ON l1.loan_account_id = lt.loan_account_id AND l1.created_at = lt.last_payment_date
+       ),
+       scm_totals AS (
+         SELECT loan_account_id,
+           SUM(CASE WHEN movement_type IN ('DISPOSICION', 'CARGO_INTERES') THEN amount ELSE 0 END) AS total_charges,
+           SUM(CASE WHEN movement_type = 'ABONO' THEN amount ELSE 0 END) AS total_credits
+         FROM special_credit_movements GROUP BY loan_account_id
+       ),
+       active_suspensions AS (
+         SELECT s1.loan_account_id, s1.reason AS active_suspension_reason
+         FROM loan_suspension_periods s1
+         INNER JOIN (
+           SELECT loan_account_id, MAX(created_at) AS max_ts FROM loan_suspension_periods
+           WHERE status = 'ACTIVE_SUSPENSION' GROUP BY loan_account_id
+         ) s2 ON s1.loan_account_id = s2.loan_account_id AND s1.created_at = s2.max_ts
+         WHERE s1.status = 'ACTIVE_SUSPENSION'
+       ),
+       restructured_loans AS (
+         SELECT previous_loan_id AS loan_account_id, MAX(new_loan_id) AS new_loan_id
+         FROM loan_restructures GROUP BY previous_loan_id
+       )
+       SELECT
+         la.id AS loan_account_id, la.contract_number, la.expediente_id, la.principal_original,
+         CASE
+           WHEN rl.new_loan_id IS NOT NULL THEN 0
+           WHEN la.product_type = 'ESPECIAL' THEN la.principal_original + COALESCE(st.total_charges, 0) - COALESCE(st.total_credits, 0)
+           ELSE CASE WHEN la.principal_original - COALESCE(lt.total_applied_capital, 0) > 0 THEN la.principal_original - COALESCE(lt.total_applied_capital, 0) ELSE 0 END
+         END AS projected_live_balance,
+         CASE
+           WHEN rl.new_loan_id IS NOT NULL THEN 'RESTRUCTURED'
+           WHEN asusp.active_suspension_reason IN ('BAJA_LABORAL', 'COBRANZA_EXTRAJUDICIAL', 'DEMANDA_JUDICIAL', 'CONVENIO_EXTRAJUDICIAL') THEN 'FROZEN_EXTRAJUDICIAL'
+           WHEN asusp.active_suspension_reason = 'LICENCIA_SIN_GOCE' THEN 'SUSPENDED_LEAVE'
+           WHEN (CASE WHEN la.product_type = 'ESPECIAL' THEN la.principal_original + COALESCE(st.total_charges, 0) - COALESCE(st.total_credits, 0) ELSE la.principal_original - COALESCE(lt.total_applied_capital, 0) END) <= 0 THEN 'PAID_OFF'
+           ELSE la.status
+         END AS projected_status,
+         asusp.active_suspension_reason, la.fortnightly_payment, la.payment_frequency, la.activated_at,
+         la.product_type, la.reports_to_credit_bureau, e.convenio, c.display_name AS convenio_display_name,
+         e.full_name AS full_name_masked, e.curp_masked, e.blind_curp, e.voter_id,
+         e.address AS address_masked, e.phone AS phone_masked, e.term_fortnights, e.encrypted_pii_payload,
+         e.person_type, e.rfc_masked, e.gender, e.birth_date, ll.last_payment_date, ll.last_payment_amount
        FROM loan_accounts la
        INNER JOIN expedientes e ON e.id = la.expediente_id
        LEFT JOIN convenios c ON c.code = e.convenio
-       LEFT JOIN (
-         SELECT
-           l1.loan_account_id,
-           l1.created_at AS last_payment_date,
-           l1.amount_received AS last_payment_amount
-         FROM loan_payment_applications l1
-         INNER JOIN (
-           SELECT loan_account_id, MAX(created_at) AS max_ts
-           FROM loan_payment_applications
-           GROUP BY loan_account_id
-         ) l2 ON l1.loan_account_id = l2.loan_account_id AND l1.created_at = l2.max_ts
-       ) lpa_last ON lpa_last.loan_account_id = la.id
+       LEFT JOIN lpa_totals lt ON lt.loan_account_id = la.id
+       LEFT JOIN lpa_latest ll ON ll.loan_account_id = la.id
+       LEFT JOIN scm_totals st ON st.loan_account_id = la.id
+       LEFT JOIN active_suspensions asusp ON asusp.loan_account_id = la.id
+       LEFT JOIN restructured_loans rl ON rl.loan_account_id = la.id
        WHERE la.reports_to_credit_bureau = 1
        ORDER BY la.contract_number ASC`
     );
 
     const membersRes = await tx.query<LegalMemberDbRow>(
-      `SELECT id, expediente_id, member_role, rfc_masked, encrypted_pii_payload, shareholding_percent
-       FROM legal_entity_members`
+      `SELECT id, expediente_id, member_role, rfc_masked, encrypted_pii_payload, shareholding_percent FROM legal_entity_members`
     );
-
     const catalogsRes = await tx.query<CatalogDbRow>(
-      `SELECT id, catalog_group, code, description, active, updated_at, updated_by
-       FROM credit_bureau_catalogs
-       WHERE active = 1`
+      `SELECT id, catalog_group, code, description, active, updated_at, updated_by FROM credit_bureau_catalogs WHERE active = 1`
     );
-
-    return {
-      portfolioRows: portfolioRes.rows,
-      legalMembers: membersRes.rows,
-      activeCatalogs: catalogsRes.rows,
-    };
+    return { portfolioRows: portfolioRes.rows, legalMembers: membersRes.rows, activeCatalogs: catalogsRes.rows };
   });
 
   const activeObsCodes = new Set(
     extracted.activeCatalogs
-      .filter((c) => c.catalog_group === 'OBSERVATION_CODE')
+      .filter((c) => c.catalog_group === 'OBSERVATION_CODE' || c.catalog_group === 'OBSERVATION_KEY')
       .map((c) => c.code)
   );
 
@@ -397,12 +384,7 @@ export async function executeCreditBureauReportWorkflow(options: {
     if (options.scope === 'PM' && pType !== 'MORAL') continue;
 
     const blindPrefix = String(row.blind_curp || '').slice(0, 12) || '000000000000';
-    const decrypted = await decryptPiiSafely(
-      row.encrypted_pii_payload,
-      row.expediente_id,
-      blindPrefix
-    );
-
+    const decrypted = await decryptPiiSafely(row.encrypted_pii_payload, row.expediente_id, blindPrefix);
     const maskedPreview = maskPiiForPreview({
       rawName: decrypted?.fullName,
       maskedNameFromDb: row.full_name_masked,
@@ -415,23 +397,8 @@ export async function executeCreditBureauReportWorkflow(options: {
 
     const curpClear = decrypted?.curp || row.curp_masked;
     const derivedRfc =
-      decrypted?.rfc && decrypted.rfc !== 'NO REGISTRADO EN EXPEDIENTE'
-        ? decrypted.rfc
-        : curpClear.slice(0, 10) + '000';
+      decrypted?.rfc && decrypted.rfc !== 'NO REGISTRADO EN EXPEDIENTE' ? decrypted.rfc : curpClear.slice(0, 10) + '000';
 
-    if (!decrypted?.rfc || decrypted.rfc === 'NO REGISTRADO EN EXPEDIENTE') {
-      validationIssues.push({
-        expedienteId: row.expediente_id,
-        blindCurpPrefix: blindPrefix,
-        loanAccountId: row.loan_account_id,
-        contractNumber: row.contract_number,
-        severity: 'WARNING',
-        code: 'RFC_DERIVED_FROM_CURP_PREFIX',
-        message: `Expediente ${row.expediente_id} (blind_prefix=${blindPrefix}): RFC derivado de los primeros 10 caracteres de clave oficial para layout SIC.`,
-      });
-    }
-
-    // RN-06: Personas Morales requieren socio/representante legal en legal_entity_members
     let shareholderRfc: string | null = null;
     let shareholderName: string | null = null;
     let shareholderPercent: string | number | null = null;
@@ -446,47 +413,35 @@ export async function executeCreditBureauReportWorkflow(options: {
           contractNumber: row.contract_number,
           severity: 'ERROR',
           code: 'RN06_MISSING_LEGAL_MEMBER',
-          message: `RN-06: Persona Moral en expediente ${row.expediente_id} (blind_prefix=${blindPrefix}) carece de Obligado Solidario / Socio en legal_entity_members.`,
+          message: `RN-06: Persona Moral en expediente ${row.expediente_id} carece de Socio/Representante.`,
         });
       } else {
         const primaryMember = members[0]!;
-        const decMember = await decryptPiiSafely(
-          primaryMember.encrypted_pii_payload,
-          row.expediente_id,
-          blindPrefix
-        );
+        const decMember = await decryptPiiSafely(primaryMember.encrypted_pii_payload, row.expediente_id, blindPrefix);
         shareholderRfc = decMember?.rfc || primaryMember.rfc_masked;
         shareholderName = decMember?.fullName || 'ACCIONISTA REGISTRADO';
         shareholderPercent = primaryMember.shareholding_percent ?? 50;
       }
     }
 
-    // RN-05: Determinación de mora y clave de observación en Cobranza Extrajudicial / Liquidación
-    const currentBalDec = new Decimal(row.current_principal_balance || 0);
+    const currentBalDec = Decimal.max(0, new Decimal(row.projected_live_balance || 0));
     let daysPastDue = 0;
     let pastDueBalanceDec = new Decimal(0);
     let observationCode: string | null = null;
 
-    if (row.loan_status === 'FROZEN_EXTRAJUDICIAL') {
+    if (row.projected_status === 'FROZEN_EXTRAJUDICIAL') {
       daysPastDue = 90;
       pastDueBalanceDec = currentBalDec;
-      observationCode = activeObsCodes.has('SG') ? 'SG' : 'UP';
-    } else if (row.loan_status === 'DEFAULTED') {
-      daysPastDue = 60;
-      pastDueBalanceDec = currentBalDec;
-      observationCode = activeObsCodes.has('UP') ? 'UP' : null;
-    } else if (row.loan_status === 'PAID' || currentBalDec.isZero()) {
-      daysPastDue = 0;
-      pastDueBalanceDec = new Decimal(0);
+      observationCode = resolveObservationCodeForFrozenReason(row.active_suspension_reason, activeObsCodes);
+    } else if (row.projected_status === 'RESTRUCTURED') {
+      observationCode = activeObsCodes.has('RV') ? 'RV' : 'CC';
+    } else if (row.projected_status === 'PAID_OFF' || currentBalDec.isZero()) {
       observationCode = activeObsCodes.has('CC') ? 'CC' : null;
     }
 
     const activatedIso = normalizeIsoDateString(row.activated_at, cutoffIso);
     const lastPayIso = normalizeIsoDateString(row.last_payment_date, activatedIso);
-    const birthIso =
-      row.birth_date
-        ? normalizeIsoDateString(row.birth_date, '1980-01-01')
-        : '1980-01-01';
+    const birthIso = row.birth_date ? normalizeIsoDateString(row.birth_date, '1980-01-01') : '1980-01-01';
 
     rawAccounts.push({
       contractNumber: row.contract_number,
@@ -501,11 +456,11 @@ export async function executeCreditBureauReportWorkflow(options: {
       phoneCleartext: decrypted?.phone || '6144155754',
       convenioName: row.convenio_display_name || row.convenio,
       productType: row.product_type,
-      loanStatus: row.loan_status,
+      loanStatus: row.projected_status,
       paymentFrequency: row.payment_frequency,
       termFortnights: Number(row.term_fortnights || 24),
       originalPrincipal: row.principal_original,
-      currentPrincipalBalance: row.current_principal_balance,
+      currentPrincipalBalance: currentBalDec.toFixed(2),
       scheduledPayment: row.fortnightly_payment,
       activatedAtIso: activatedIso,
       lastPaymentDateIso: lastPayIso,
@@ -532,12 +487,12 @@ export async function executeCreditBureauReportWorkflow(options: {
       curpMasked: maskedPreview.curpMasked,
       rfcMasked: maskedPreview.rfcMasked,
       productType: row.product_type,
-      loanStatus: row.loan_status,
+      loanStatus: row.projected_status,
       paymentFrequencySic: sicFreq,
       termPeriods: Number(row.term_fortnights || 24),
       termMonthsSic: calculateSicTermDaysOrMonths(Number(row.term_fortnights || 24), sicFreq),
       originalPrincipal: formatSicIntegerAmount(row.principal_original),
-      currentBalance: formatSicIntegerAmount(row.current_principal_balance),
+      currentBalance: formatSicIntegerAmount(currentBalDec),
       pastDueBalance: formatSicIntegerAmount(pastDueBalanceDec),
       scheduledPayment: formatSicIntegerAmount(row.fortnightly_payment),
       daysPastDue,
@@ -550,14 +505,10 @@ export async function executeCreditBureauReportWorkflow(options: {
 
   const built = buildDeterministicCreditBureauLayouts(rawAccounts, cutoffIso);
   const combinedPayloadForHash = `${built.pfPipeContent}\n---PM---\n${built.pmCsvContent}`;
-  const manifestHash = crypto
-    .createHash('sha256')
-    .update(combinedPayloadForHash, 'utf8')
-    .digest('hex');
+  const manifestHash = crypto.createHash('sha256').update(combinedPayloadForHash, 'utf8').digest('hex');
 
   let reportId: string | undefined;
 
-  // Directriz 2 (Guardrail 2): Trazabilidad WORM y pg_advisory_xact_lock(20260019)
   await db.transaction(async (tx) => {
     if (tx.isPostgres) {
       await tx.query('SELECT pg_advisory_xact_lock(20260019);');
@@ -577,14 +528,7 @@ export async function executeCreditBureauReportWorkflow(options: {
           `INSERT INTO credit_bureau_report_details (
              id, report_id, loan_account_id, reported_balance, days_past_due, observation_code, created_at
            ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
-          [
-            detailId,
-            reportId,
-            row.loanAccountId,
-            Number(row.currentBalance),
-            row.daysPastDue,
-            row.observationCode,
-          ]
+          [detailId, reportId, row.loanAccountId, Number(row.currentBalance), row.daysPastDue, row.observationCode]
         );
       }
     }
