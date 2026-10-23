@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
 import { UserManagementView } from './UserManagementView';
 import { ExpedientesTableView } from './ExpedientesTableView';
 import { FundingManagementView } from './FundingManagementView';
+import { CreditBureauView } from './CreditBureauView';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
 
 interface AdminAuditViewProps {
@@ -19,7 +20,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   onLogout,
   onBackToPortal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'users'>('dashboard');
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -181,6 +182,15 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             <Landmark className="w-4 h-4" />
             <span>Fondeo e Inversionistas (3FN v4)</span>
           </button>
+          <button
+            onClick={() => setActiveTab('credit_bureau')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'credit_bureau' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Círculo de Crédito (SIC)</span>
+          </button>
           {session.user.role === 'admin' && (
             <button
               onClick={() => setActiveTab('users')}
@@ -340,6 +350,8 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         {activeTab === 'reconciliation' && <ReconciliationView session={session} onBatchProcessed={fetchExpedientes} />}
 
         {activeTab === 'funding' && <FundingManagementView session={session} />}
+
+        {activeTab === 'credit_bureau' && <CreditBureauView session={session} />}
 
         {activeTab === 'users' && session.user.role === 'admin' && <UserManagementView session={session} />}
       </main>

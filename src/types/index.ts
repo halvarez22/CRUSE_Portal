@@ -131,7 +131,10 @@ export type RbacPermission =
   | 'dashboard:read_kpis'
   | 'dashboard:read'
   | 'dashboard:read_pii'
-  | 'users:manage';
+  | 'users:manage'
+  | 'credit_bureau:read'
+  | 'credit_bureau:generate'
+  | 'credit_bureau:catalogs_manage';
 
 /** Datos de enrolamiento TOTP: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
@@ -164,7 +167,10 @@ export type AuditAction =
   | 'RECONCILIATION_BATCH_REJECTED'
   | 'PAYMENT_APPLIED'
   | 'USER_CREATE'
-  | 'USER_UPDATE';
+  | 'USER_UPDATE'
+  | 'CONFIG_CHANGE'
+  | 'CREDIT_BUREAU_REPORT_GENERATED'
+  | 'CREDIT_BUREAU_CATALOG_UPDATED';
 
 export interface AuditEvent {
   id: string;
@@ -292,4 +298,92 @@ export interface ReconciliationProcessResult {
     totalReceived: number;
     netDifference: number;
   };
+}
+
+// ==============================================================================
+// TIPOS DE FASE 5 (CRUSE-APO-2026-024): MOTOR DE REPORTE A CÍRCULO DE CRÉDITO (SIC)
+// ==============================================================================
+
+export type CreditBureauPersonScope = 'PF' | 'PM' | 'ALL';
+
+export interface CreditBureauCatalogItem {
+  id: string;
+  catalogGroup: string;
+  code: string;
+  description: string;
+  active: boolean;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface CreditBureauValidationIssue {
+  expedienteId: string;
+  blindCurpPrefix: string;
+  loanAccountId: string;
+  contractNumber: string;
+  severity: 'WARNING' | 'ERROR';
+  code: string;
+  message: string;
+}
+
+export interface CreditBureauPreviewRow {
+  loanAccountId: string;
+  expedienteId: string;
+  blindCurpPrefix: string;
+  contractNumber: string;
+  personType: 'FISICA' | 'MORAL';
+  convenio: string;
+  maskedName: string;
+  curpMasked: string;
+  rfcMasked: string;
+  productType: string;
+  loanStatus: string;
+  paymentFrequencySic: 'Q' | 'M' | 'S' | 'C' | 'U';
+  termPeriods: number;
+  termMonthsSic: number;
+  originalPrincipal: string;
+  currentBalance: string;
+  pastDueBalance: string;
+  scheduledPayment: string;
+  daysPastDue: number;
+  paymentStatusSic: string;
+  observationCode: string | null;
+  openedDateSic: string;
+  cutoffDateSic: string;
+}
+
+export interface CreditBureauControlTotals {
+  totalAccountsReported: number;
+  totalPfAccounts: number;
+  totalPmAccounts: number;
+  totalFrozenExtrajudicialAccounts: number;
+  totalCurrentBalance: string;
+  totalPastDueBalance: string;
+  totalNameElements: number;
+  totalAddressElements: number;
+  totalEmploymentElements: number;
+}
+
+export interface CreditBureauReportRecord {
+  id: string;
+  reportingMonth: string;
+  manifestHash: string;
+  createdAt: string;
+  totalAccounts: number;
+  totalReportedBalance: string;
+}
+
+export interface CreditBureauGenerateResult {
+  reportId?: string;
+  reportingMonth: string;
+  cutoffDateIso: string;
+  cutoffDateYyyyMmDd: string;
+  officialFileNameBase: string;
+  manifestHash: string;
+  controlTotals: CreditBureauControlTotals;
+  previewRows: CreditBureauPreviewRow[];
+  validationIssues: CreditBureauValidationIssue[];
+  pfCsvContent?: string;
+  pfPipeContent?: string;
+  pmCsvContent?: string;
 }

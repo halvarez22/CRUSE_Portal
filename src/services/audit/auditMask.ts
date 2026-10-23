@@ -78,6 +78,12 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return 'Generación de Layout SIF / CIB';
     case 'RECONCILIATION_BATCH_SEALED':
       return 'Sello Criptográfico de Lote Quincenal (Acta)';
+    case 'CREDIT_BUREAU_REPORT_GENERATED':
+      return 'Reporte Oficial Círculo de Crédito (001496)';
+    case 'CREDIT_BUREAU_CATALOG_UPDATED':
+      return 'Actualización de Catálogo Oficial SIC';
+    case 'CONFIG_CHANGE':
+      return 'Cambio de Configuración Operativa';
     case 'SCREEN_VIEW':
       return 'Visualización de Pantalla';
     default:
