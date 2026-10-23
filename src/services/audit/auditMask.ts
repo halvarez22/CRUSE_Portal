@@ -102,6 +102,12 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return curpMasked ? `Alerta PLD/FT Detectada (${curpMasked})` : 'Alerta de Coincidencia en Lista de Riesgo PLD/FT';
     case 'PLD_ALERT_RESOLVED':
       return 'Dictamen Oficial sobre Alerta PLD/FT (Oficial de Cumplimiento)';
+    case 'SCORING_EVALUATED':
+      return 'Evaluación Paramétrica de Scoring y Capacidad de Pago (B.3)';
+    case 'COMPETITOR_BENCHMARK_UPDATED':
+      return 'Actualización de Pizarra de Estrategia Comercial (B.5)';
+    case 'INTERNAL_AI_QUERY':
+      return 'Consulta Operativa al Asistente IA Interno Zero-PII (B.4)';
     case 'CONFIG_CHANGE':
       return 'Cambio de Configuración Operativa';
     case 'SCREEN_VIEW':

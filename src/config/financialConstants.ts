@@ -37,6 +37,28 @@ export const FINANCIAL_CONSTANTS = {
 
   // Capacidad de Endeudamiento
   MAX_PAYMENT_CAPACITY_RATIO: 0.35,           // 35% del sueldo neto quincenal máximo
+
+  // Proyección ROI 36 Meses (Módulo B.2 — HRU)
+  PROJECTION_MONTHS: 36,
+  BASE_MONTHLY_GROWTH_FACTOR: 1.018,
+  HUB_GROWTH_INCREMENT: 0.0045,
+  REINVESTMENT_MONTHLY_MULTIPLIER: 0.012,
+  DIGITAL_EFFICIENCY_FACTOR: 0.65,
+  MAX_DEFAULT_RATE_PERCENT: 1.8,
+  CAC_DIGITAL_MXN: 380,
+  CLIENT_RETENTION_RATE: 0.88,
+
+  // Umbrales Paramétricos Deterministas de Scoring (Módulo B.3 — Guardrail Forense 3)
+  SCORING_BASE_POINTS: 750,
+  SCORING_MIN_POINTS: 300,
+  SCORING_MAX_POINTS: 950,
+  SCORING_LOW_RISK_MIN_SCORE: 740,
+  SCORING_MEDIUM_RISK_MIN_SCORE: 620,
+  SCORING_DTI_SAFE_RATIO: 0.28,               // <= 28% del ingreso libre = Riesgo Bajo
+  SCORING_DTI_MODERATE_RATIO: 0.35,           // 28% - 35% = tope institucional
+  SCORING_DTI_HIGH_RATIO: 0.40,               // > 40% = Riesgo Alto
+  SCORING_MIN_SENIORITY_MONTHS_SAFE: 12,      // >= 12 meses = estabilidad plena
+  SCORING_MIN_SENIORITY_MONTHS_CRITICAL: 6,   // < 6 meses = alerta de antigüedad
 } as const;
 
 /**

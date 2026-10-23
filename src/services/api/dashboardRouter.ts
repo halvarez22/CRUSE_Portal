@@ -4,6 +4,8 @@ import { isRoleAuthorized } from '../../config/rbacPolicy';
 import { db } from '../db/connectionPool';
 import { getServerKms } from '../crypto/serverKeyring';
 import { decryptEnvelope } from '../crypto/cryptoService';
+import { DelinquencySemaphore, HubRegion } from '../../types/executive';
+import { HubMetricsSummary } from '../../types/dashboard';
 
 export const dashboardRouter = Router();
 
@@ -34,22 +36,68 @@ export async function decryptExpedientePiiIfAuthorized(
   }
 }
 
-// ==============================================================================
-// GET /api/dashboard/kpis
-// ==============================================================================
-dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (_req, res) => {
-  try {
-    const placedCapitalResult = await db.query<{ total_colocado: number | null }>(`
-      SELECT COALESCE(SUM(principal_original), 0) AS total_colocado 
-      FROM loan_accounts
-    `);
+function normalizeHubFilter(raw: unknown): HubRegion | null {
+  if (typeof raw !== 'string') return null;
+  const upper = raw.trim().toUpperCase();
+  if (upper === 'CHIHUAHUA' || upper === 'LEON' || upper === 'CANCUN') {
+    return upper;
+  }
+  return null;
+}
 
-    const activeCapitalResult = await db.query<{ capital_vigente: number | null }>(`
-      SELECT COALESCE(SUM(
-        COALESCE(latest_lpa.balance_after, la.principal_original)
-      ), 0) AS capital_vigente
-      FROM loan_accounts la
-      INNER JOIN expedientes e ON e.id = la.expediente_id
+function computeLoanSemaphore(
+  expedienteStatus: string,
+  loanStatus: string | null,
+  suspensionReason: string | null
+): DelinquencySemaphore {
+  if (
+    expedienteStatus === 'rechazado' ||
+    expedienteStatus === 'rechazado_pld' ||
+    loanStatus === 'FROZEN_EXTRAJUDICIAL' ||
+    (suspensionReason && suspensionReason !== 'LICENCIA_SIN_GOCE')
+  ) {
+    return 'ROJO';
+  }
+  if (
+    expedienteStatus === 'capturado' ||
+    expedienteStatus === 'revision_pld' ||
+    suspensionReason === 'LICENCIA_SIN_GOCE'
+  ) {
+    return 'AMARILLO';
+  }
+  return 'VERDE';
+}
+
+// ==============================================================================
+// GET /api/dashboard/kpis (Soporta ?hub=CHIHUAHUA|LEON|CANCUN + Semáforo de Morosidad)
+// ==============================================================================
+dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (req, res) => {
+  try {
+    const hubFilter = normalizeHubFilter(req.query.hub);
+
+    const rowsRes = await db.query<{
+      exp_id: string;
+      exp_status: string;
+      hub_region: string | null;
+      requested_amount: number | null;
+      loan_id: string | null;
+      loan_status: string | null;
+      principal_original: number | null;
+      current_balance: number | null;
+      suspension_reason: string | null;
+    }>(`
+      SELECT
+        e.id AS exp_id,
+        e.status AS exp_status,
+        COALESCE(e.hub_region, 'CHIHUAHUA') AS hub_region,
+        e.requested_amount,
+        la.id AS loan_id,
+        la.status AS loan_status,
+        la.principal_original,
+        COALESCE(latest_lpa.balance_after, la.current_principal_balance, la.principal_original) AS current_balance,
+        lsp.reason AS suspension_reason
+      FROM expedientes e
+      LEFT JOIN loan_accounts la ON la.expediente_id = e.id
       LEFT JOIN (
         SELECT l1.expediente_id, l1.balance_after
         FROM loan_payment_applications l1
@@ -58,53 +106,96 @@ dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (_req, re
           FROM loan_payment_applications
           GROUP BY expediente_id
         ) l2 ON l1.expediente_id = l2.expediente_id AND l1.created_at = l2.max_created_at
-      ) latest_lpa ON latest_lpa.expediente_id = la.expediente_id
-      WHERE e.status IN ('activo', 'capturado')
+      ) latest_lpa ON latest_lpa.expediente_id = e.id
+      LEFT JOIN (
+        SELECT loan_account_id, MAX(reason) AS reason
+        FROM loan_suspension_periods
+        WHERE status = 'ACTIVE_SUSPENSION'
+        GROUP BY loan_account_id
+      ) lsp ON lsp.loan_account_id = la.id
     `);
 
-    const activeLoansResult = await db.query<{ creditos_activos: number }>(`
-      SELECT COUNT(*) AS creditos_activos 
-      FROM expedientes 
-      WHERE status = 'activo' OR status = 'capturado'
-    `);
+    const hubBreakdown: Record<HubRegion, HubMetricsSummary> = {
+      CHIHUAHUA: {
+        hubRegion: 'CHIHUAHUA',
+        loansCount: 0,
+        capitalColocado: 0,
+        capitalVigente: 0,
+        carteraVencida: 0,
+        semaphoreCounts: { VERDE: 0, AMARILLO: 0, ROJO: 0 },
+      },
+      LEON: {
+        hubRegion: 'LEON',
+        loansCount: 0,
+        capitalColocado: 0,
+        capitalVigente: 0,
+        carteraVencida: 0,
+        semaphoreCounts: { VERDE: 0, AMARILLO: 0, ROJO: 0 },
+      },
+      CANCUN: {
+        hubRegion: 'CANCUN',
+        loansCount: 0,
+        capitalColocado: 0,
+        capitalVigente: 0,
+        carteraVencida: 0,
+        semaphoreCounts: { VERDE: 0, AMARILLO: 0, ROJO: 0 },
+      },
+    };
 
-    const overdueResult = await db.query<{ cartera_vencida: number | null }>(`
-      SELECT COALESCE(SUM(vencido_por_credito), 0) AS cartera_vencida
-      FROM (
-        SELECT
-          CASE
-            WHEN MAX(CASE
-              WHEN am.due_date < CURRENT_DATE AND COALESCE(lpa_sum.total_received, 0) < am.expected_payment
-              THEN 1 ELSE 0
-            END) = 1
-            THEN la.principal_original - COALESCE(lpa_tot.total_applied_capital, 0)
-            ELSE 0
-          END AS vencido_por_credito
-        FROM loan_accounts la
-        INNER JOIN expedientes e ON e.id = la.expediente_id
-        LEFT JOIN amortization_schedules am ON la.expediente_id = am.loan_account_id
-        LEFT JOIN (
-          SELECT expediente_id, fortnight_period, SUM(amount_received) AS total_received
-          FROM loan_payment_applications
-          GROUP BY expediente_id, fortnight_period
-        ) lpa_sum ON la.expediente_id = lpa_sum.expediente_id AND lpa_sum.fortnight_period = CAST(am.period_number AS TEXT)
-        LEFT JOIN (
-          SELECT expediente_id, SUM(applied_capital) AS total_applied_capital
-          FROM loan_payment_applications
-          GROUP BY expediente_id
-        ) lpa_tot ON la.expediente_id = lpa_tot.expediente_id
-        WHERE e.status = 'activo'
-        GROUP BY la.expediente_id, la.principal_original, lpa_tot.total_applied_capital
-      ) AS sub
-    `);
+    let totalColocado = 0;
+    let capitalVigente = 0;
+    let creditosActivos = 0;
+    let carteraVencida = 0;
+    const semaphoreCounts = { VERDE: 0, AMARILLO: 0, ROJO: 0 };
 
-    const totalColocado = Number(placedCapitalResult.rows[0]?.total_colocado ?? 0);
+    const seenExpedientesForActiveCount = new Set<string>();
+
+    for (const r of rowsRes.rows) {
+      const hub = (['CHIHUAHUA', 'LEON', 'CANCUN'].includes(r.hub_region || '')
+        ? r.hub_region
+        : 'CHIHUAHUA') as HubRegion;
+      const sem = computeLoanSemaphore(r.exp_status, r.loan_status, r.suspension_reason);
+      const placed = Number(r.principal_original ?? 0);
+      const currentBal =
+        r.exp_status === 'activo' || r.exp_status === 'capturado'
+          ? Number(r.current_balance ?? 0)
+          : 0;
+      const overdueBal = sem === 'ROJO' ? Number(r.current_balance ?? 0) : 0;
+
+      // Acumular siempre en hubBreakdown global
+      const hb = hubBreakdown[hub];
+      hb.loansCount += 1;
+      hb.capitalColocado += placed;
+      hb.capitalVigente += currentBal;
+      hb.carteraVencida += overdueBal;
+      hb.semaphoreCounts[sem] += 1;
+
+      if (hubFilter && hub !== hubFilter) {
+        continue;
+      }
+
+      totalColocado += placed;
+      capitalVigente += currentBal;
+      carteraVencida += overdueBal;
+      semaphoreCounts[sem] += 1;
+
+      if (
+        (r.exp_status === 'activo' || r.exp_status === 'capturado') &&
+        !seenExpedientesForActiveCount.has(r.exp_id)
+      ) {
+        seenExpedientesForActiveCount.add(r.exp_id);
+        creditosActivos += 1;
+      }
+    }
+
     return res.json({
       capitalColocado: totalColocado,
       totalColocado,
-      capitalVigente: Number(activeCapitalResult.rows[0]?.capital_vigente ?? 0),
-      creditosActivos: Number(activeLoansResult.rows[0]?.creditos_activos ?? 0),
-      carteraVencida: Number(overdueResult.rows[0]?.cartera_vencida ?? 0)
+      capitalVigente,
+      creditosActivos,
+      carteraVencida,
+      semaphoreCounts,
+      hubBreakdown,
     });
   } catch (err: unknown) {
     console.error('Error fetching KPIs:', err);
@@ -113,17 +204,19 @@ dashboardRouter.get('/kpis', requireAuth('dashboard:read_kpis'), async (_req, re
 });
 
 // ==============================================================================
-// GET /api/dashboard/latest_loans
+// GET /api/dashboard/latest_loans (Soporta ?hub=CHIHUAHUA|LEON|CANCUN + Semáforo)
 // ==============================================================================
 dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, res) => {
   try {
     const auth = getAuth(req);
     const canReadPii = isRoleAuthorized('dashboard:read_pii', auth.user.role);
+    const hubFilter = normalizeHubFilter(req.query.hub);
 
     const result = await db.query<{
       id: string;
       created_at: string;
       convenio: string | null;
+      hub_region: string | null;
       raw_full_name: string | null;
       curp_masked: string;
       requested_amount: number;
@@ -131,13 +224,16 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, 
       product_type: string | null;
       status: string;
       encrypted_pii_payload: string | null;
+      loan_status: string | null;
       principal_original: number | null;
       fortnightly_payment: number | null;
+      suspension_reason: string | null;
     }>(`
       SELECT 
         e.id, 
         e.created_at,
         e.convenio,
+        COALESCE(e.hub_region, 'CHIHUAHUA') AS hub_region,
         e.full_name as raw_full_name,
         e.curp_masked,
         e.requested_amount,
@@ -145,27 +241,44 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, 
         e.product_type,
         e.status,
         e.encrypted_pii_payload,
+        l.status as loan_status,
         l.principal_original,
-        l.fortnightly_payment
+        l.fortnightly_payment,
+        lsp.reason as suspension_reason
       FROM expedientes e
       LEFT JOIN loan_accounts l ON e.id = l.expediente_id
+      LEFT JOIN (
+        SELECT loan_account_id, MAX(reason) AS reason
+        FROM loan_suspension_periods
+        WHERE status = 'ACTIVE_SUSPENSION'
+        GROUP BY loan_account_id
+      ) lsp ON lsp.loan_account_id = l.id
       ORDER BY e.created_at DESC, e.id DESC
     `);
 
+    const filteredSource = hubFilter
+      ? result.rows.filter((r) => (r.hub_region || 'CHIHUAHUA') === hubFilter)
+      : result.rows;
+
     const rows = await Promise.all(
-      result.rows.map(async (row) => {
+      filteredSource.map(async (row) => {
         const nameParts = (row.raw_full_name || '').split(' ');
         const fallbackMaskedName = nameParts
           .map((p: string) => (p.length > 1 ? p[0] + '*'.repeat(p.length - 1) : p))
           .join(' ');
 
         const amount = Number(row.principal_original || row.requested_amount || 0);
+        const hubRegion = (['CHIHUAHUA', 'LEON', 'CANCUN'].includes(row.hub_region || '')
+          ? row.hub_region
+          : 'CHIHUAHUA') as HubRegion;
+        const semaphore = computeLoanSemaphore(row.status, row.loan_status, row.suspension_reason);
 
-        // Condición 3 (CRUSE-APO-2026-015): Validación explícita del permiso dashboard:read_pii
         if (!canReadPii) {
           return {
             id: row.id,
             convenio: row.convenio || 'STSGECH',
+            hubRegion,
+            semaphore,
             createdAt: row.created_at,
             date: row.created_at,
             maskedName: fallbackMaskedName,
@@ -175,7 +288,7 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, 
             payment: Number(row.fortnightly_payment ?? 0),
             termFortnights: Number(row.term_fortnights ?? 0),
             productType: row.product_type || 'normal',
-            status: row.status
+            status: row.status,
           };
         } else {
           const decryptedPii = await decryptExpedientePiiIfAuthorized(row.encrypted_pii_payload, true);
@@ -185,6 +298,8 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, 
           return {
             id: row.id,
             convenio: row.convenio || 'STSGECH',
+            hubRegion,
+            semaphore,
             createdAt: row.created_at,
             date: row.created_at,
             maskedName: fallbackMaskedName,
@@ -195,7 +310,7 @@ dashboardRouter.get('/latest_loans', requireAuth('dashboard:read'), async (req, 
             payment: Number(row.fortnightly_payment ?? 0),
             termFortnights: Number(row.term_fortnights ?? 0),
             productType: row.product_type || 'normal',
-            status: row.status
+            status: row.status,
           };
         }
       })
@@ -265,7 +380,7 @@ export async function handleGetExpedientDetails(req: Request, res: Response) {
       termFortnights: Number(record.term_fortnights ?? 0),
       status: record.status || 'capturado',
       createdAt: record.created_at,
-      thumbData: decryptedThumb
+      thumbData: decryptedThumb,
     });
   } catch (err: unknown) {
     console.error('Error fetching expedient details:', err);
@@ -274,5 +389,3 @@ export async function handleGetExpedientDetails(req: Request, res: Response) {
 }
 
 dashboardRouter.get('/expedientes/:id/details', requireAuth('dashboard:read_pii'), handleGetExpedientDetails);
-
-

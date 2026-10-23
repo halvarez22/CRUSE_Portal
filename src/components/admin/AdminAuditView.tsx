@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet, Presentation, Bot } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
@@ -10,6 +10,8 @@ import { CreditBureauView } from './CreditBureauView';
 import { CollectionsAndAgreementsView } from './CollectionsAndAgreementsView';
 import { PldComplianceView } from './PldComplianceView';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
+import { ExecutiveSuiteView } from '../executive/ExecutiveSuiteView';
+import { InternalAiAssistantDrawer } from '../executive/InternalAiAssistantDrawer';
 
 interface AdminAuditViewProps {
   session: AuthSession;
@@ -22,7 +24,8 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   onLogout,
   onBackToPortal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'collections' | 'pld' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'executive' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'collections' | 'pld' | 'users'>('dashboard');
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,9 +127,16 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsAiDrawerOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 border border-[#D4AF37]/40 hover:bg-amber-500/25 text-[#D4AF37] text-xs font-extrabold flex items-center gap-1.5 transition-all"
+          >
+            <Bot className="w-4 h-4" />
+            <span>Asistente IA Interno 24/7</span>
+          </button>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>2FA SMS Autenticado</span>
+            <span>2FA TOTP Autenticado</span>
           </div>
           <button
             onClick={onLogout}
@@ -147,6 +157,15 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           >
             <LayoutDashboard className="w-4 h-4" />
             <span>Dashboard Cartera ({expedientes.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('executive')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'executive' ? 'bg-gradient-to-r from-[#249E82] to-[#396CAE] text-white shadow-lg' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Presentation className="w-4 h-4" />
+            <span>Suite Ejecutiva & Negocio (5 Módulos)</span>
           </button>
           <button
             onClick={() => setActiveTab('audit')}
@@ -268,6 +287,13 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
       <main className="max-w-7xl w-full mx-auto p-6 flex-1 flex flex-col">
         {activeTab === 'dashboard' && <DashboardLayout />}
 
+        {activeTab === 'executive' && (
+          <ExecutiveSuiteView
+            session={session}
+            onOpenInternalAi={() => setIsAiDrawerOpen(true)}
+          />
+        )}
+
         {activeTab === 'audit' && (
           <div className="space-y-4">
             <div className="p-4 rounded-2xl glass-card border border-white/10 flex flex-wrap items-center justify-between gap-4">
@@ -379,6 +405,12 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
 
         {activeTab === 'users' && session.user.role === 'admin' && <UserManagementView session={session} />}
       </main>
+
+      <InternalAiAssistantDrawer
+        isOpen={isAiDrawerOpen}
+        onClose={() => setIsAiDrawerOpen(false)}
+        token={session.token}
+      />
     </div>
   );
 };

@@ -142,7 +142,11 @@ export type RbacPermission =
   | 'pld:read'
   | 'pld:screen'
   | 'pld:manage_lists'
-  | 'pld:resolve_alert';
+  | 'pld:resolve_alert'
+  | 'executive:read'
+  | 'executive:scoring'
+  | 'executive:competitors_manage'
+  | 'executive:internal_ai';
 
 /** Datos de enrolamiento TOTP: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
@@ -207,7 +211,10 @@ export type AuditAction =
   | 'PLD_LIST_INGESTED'
   | 'PLD_PORTFOLIO_SCREENED'
   | 'PLD_HIT_DETECTED'
-  | 'PLD_ALERT_RESOLVED';
+  | 'PLD_ALERT_RESOLVED'
+  | 'SCORING_EVALUATED'
+  | 'COMPETITOR_BENCHMARK_UPDATED'
+  | 'INTERNAL_AI_QUERY';
 
 export interface AuditEvent {
   id: string;
@@ -540,3 +547,5 @@ export interface PldComplianceOverview {
   };
   riskEntries: PldRiskEntryItem[]; alerts: PldHitAlertItem[]; latestBatch: PldScreeningBatchSummary | null;
 }
+
+export * from './executive';

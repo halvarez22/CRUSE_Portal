@@ -34,6 +34,10 @@ export const RBAC_POLICY: Readonly<Record<RbacPermission, readonly UserRole[]>> 
   'pld:screen': ['admin', 'oficial_cumplimiento'],
   'pld:manage_lists': ['admin', 'oficial_cumplimiento'],
   'pld:resolve_alert': ['admin', 'oficial_cumplimiento'],
+  'executive:read': ['admin', 'oficial_cumplimiento', 'promotor'],
+  'executive:scoring': ['admin', 'oficial_cumplimiento'],
+  'executive:competitors_manage': ['admin', 'oficial_cumplimiento'],
+  'executive:internal_ai': ['admin', 'oficial_cumplimiento'],
 };
 
 /** Permisos que solo existen fuera de producción (en producción la ruta responde 404). */

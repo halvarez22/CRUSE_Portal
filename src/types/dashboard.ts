@@ -1,13 +1,35 @@
+import { DelinquencySemaphore, HubRegion } from './executive';
+
+export interface HubMetricsSummary {
+  hubRegion: HubRegion;
+  loansCount: number;
+  capitalColocado: number;
+  capitalVigente: number;
+  carteraVencida: number;
+  semaphoreCounts: {
+    VERDE: number;
+    AMARILLO: number;
+    ROJO: number;
+  };
+}
+
 export interface DashboardKPIs {
   capitalColocado: number;
   capitalVigente: number;
   creditosActivos: number;
   carteraVencida: number;
+  semaphoreCounts?: {
+    VERDE: number;
+    AMARILLO: number;
+    ROJO: number;
+  };
+  hubBreakdown?: Record<HubRegion, HubMetricsSummary>;
 }
 
 export interface LatestLoan {
   id: string;
   convenio?: string;
+  hubRegion?: HubRegion;
   fullName: string;
   curpMasked: string;
   curp?: string;
@@ -15,6 +37,8 @@ export interface LatestLoan {
   payment?: number;
   termFortnights?: number;
   status: 'capturado' | 'conciliado' | 'aprobado' | 'rechazado' | 'activo' | 'liquidado';
+  semaphore?: DelinquencySemaphore;
+  daysPastDue?: number;
   date: string;
   productType: 'normal' | 'express' | 'especial';
 }
