@@ -109,14 +109,14 @@ export const OperationalPhases: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-[#396CAE]/15 text-[#396CAE] dark:text-[#00D1FF] border border-[#396CAE]/30 mb-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-[#396CAE]/15 text-[#1E3A8A] dark:text-[#00D1FF] border border-[#396CAE]/30 mb-3">
             <Clock className="w-3.5 h-3.5" />
             <span>Flujo Operativo de Atención</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-[#041734] dark:text-white mb-3">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-3">
             Un Modelo Diseñado para Evitar la Fricción
           </h2>
-          <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
+          <p className="text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
             Asumimos la carga operativa y tecnológica para que el trabajador y la institución mantengan su ritmo laboral normal.
           </p>
         </div>
@@ -128,14 +128,14 @@ export const OperationalPhases: React.FC = () => {
             return (
               <div
                 key={phase.step}
-                className="glass-panel rounded-3xl p-6 sm:p-8 h-full flex flex-col justify-between relative group hover:border-[#249E82]/50 transition-all shadow-lg"
+                className="bg-white dark:bg-slate-900/60 glass-panel rounded-3xl p-6 sm:p-8 h-full flex flex-col justify-between relative group border border-slate-200 dark:border-white/10 hover:border-[#249E82]/50 transition-all shadow-lg"
               >
                 <div>
                   <div className="flex justify-between items-center mb-6">
-                    <span className="text-3xl font-black font-mono text-slate-300 dark:text-slate-700">
+                    <span className="text-3xl font-black font-mono text-slate-400 dark:text-slate-700">
                       {phase.step}
                     </span>
-                    <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#249E82]/15 text-[#059669] dark:text-[#4CD360] border border-[#249E82]/30">
+                    <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#249E82]/15 text-[#0F766E] dark:text-[#4CD360] border border-[#249E82]/30">
                       {phase.badge}
                     </span>
                   </div>
@@ -144,13 +144,13 @@ export const OperationalPhases: React.FC = () => {
                     <IconComponent className="w-6 h-6" />
                   </div>
 
-                  <h3 className="text-xl font-black text-[#041734] dark:text-white mb-1">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">
                     {phase.title}
                   </h3>
-                  <span className="text-xs font-semibold text-[#059669] dark:text-[#00D1FF] block mb-3">
+                  <span className="text-xs font-semibold text-[#0F766E] dark:text-[#00D1FF] block mb-3">
                     {phase.subtitle}
                   </span>
-                  <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
+                  <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
                     {phase.description}
                   </p>
                 </div>
@@ -158,7 +158,7 @@ export const OperationalPhases: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedPhase(phase)}
-                  className="w-full pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs font-bold text-[#059669] dark:text-[#4CD360] hover:text-[#041734] dark:hover:text-white transition-colors text-left focus:outline-none"
+                  className="w-full pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs font-bold text-[#0F766E] dark:text-[#4CD360] hover:text-slate-950 dark:hover:text-white transition-colors text-left focus:outline-none"
                 >
                   <span>Trámite asistido y transparente (Ver detalle)</span>
                   <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform shrink-0" />
@@ -180,39 +180,39 @@ export const OperationalPhases: React.FC = () => {
               aria-modal="true"
               aria-labelledby="phase-modal-title"
               onClick={(e) => e.stopPropagation()}
-              className="glass-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#249E82]/40 relative"
+              className="bg-white dark:bg-slate-900/80 glass-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-[#249E82]/40 relative"
             >
               <button
                 ref={closeButtonRef}
                 type="button"
                 onClick={() => setSelectedPhase(null)}
                 aria-label="Cerrar detalle de fase operativa"
-                className="absolute top-4 right-4 p-2 rounded-xl glass-card text-slate-500 hover:text-[#041734] dark:text-slate-400 dark:hover:text-white transition-colors"
+                className="absolute top-4 right-4 p-2 rounded-xl glass-card text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#249E82]/15 text-[#059669] dark:text-[#4CD360] border border-[#249E82]/30 mb-3">
+              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#249E82]/15 text-[#0F766E] dark:text-[#4CD360] border border-[#249E82]/30 mb-3">
                 {selectedPhase.badge} — Etapa {selectedPhase.step}
               </span>
-              <h3 id="phase-modal-title" className="text-xl font-black text-[#041734] dark:text-white mb-1">
+              <h3 id="phase-modal-title" className="text-xl font-black text-slate-900 dark:text-white mb-1">
                 {selectedPhase.title}
               </h3>
-              <p className="text-xs font-semibold text-[#396CAE] dark:text-[#00D1FF] mb-4">
+              <p className="text-xs font-semibold text-[#1E3A8A] dark:text-[#00D1FF] mb-4">
                 {selectedPhase.slaText}
               </p>
 
               <div className="space-y-2.5 mb-5">
                 {selectedPhase.checklist.map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-200 glass-card p-3 rounded-xl">
-                    <CheckCircle2 className="w-4 h-4 text-[#249E82] shrink-0 mt-0.5" />
+                  <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-800 dark:text-slate-200 glass-card p-3 rounded-xl border border-slate-200 dark:border-white/10">
+                    <CheckCircle2 className="w-4 h-4 text-[#0F766E] dark:text-[#249E82] shrink-0 mt-0.5" />
                     <span>{item}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mb-6">
-                <ShieldCheck className="w-4 h-4 text-[#249E82] shrink-0" />
+              <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400 mb-6">
+                <ShieldCheck className="w-4 h-4 text-[#0F766E] dark:text-[#249E82] shrink-0" />
                 <span>Protección de datos garantizada conforme a la LFPDPPP y lineamientos SOFOM E.N.R.</span>
               </div>
 
@@ -220,7 +220,7 @@ export const OperationalPhases: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedPhase(null)}
-                  className="flex-1 py-2.5 px-4 rounded-xl glass-card text-xs font-bold text-slate-700 dark:text-slate-200"
+                  className="flex-1 py-2.5 px-4 rounded-xl glass-card text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10"
                 >
                   Cerrar
                 </button>

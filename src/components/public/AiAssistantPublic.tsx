@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, User, AlertCircle, RefreshCw } from 'lucide-react';
+import { Bot, Send, User, AlertCircle, RefreshCw } from 'lucide-react';
 import { FAQ_CHAT_PROMPTS } from '../../data/cruseData';
 import { ChatMessage } from '../../types';
 import { ChatFormattedMessage } from './ChatFormattedMessage';
@@ -140,20 +140,20 @@ export const AiAssistantPublic: React.FC = () => {
         
         {/* Section Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-[#249E82]/15 text-[#249E82] dark:text-[#4CD360] border border-[#249E82]/30 mb-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-[#249E82]/15 text-[#0F766E] dark:text-[#2EBD9B] border border-[#249E82]/30 mb-3">
             <Bot className="w-3.5 h-3.5" />
             <span>Asistente Inteligente 24/7 — Cero Fuga de Datos (Zero-PII)</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-[#041734] dark:text-white mb-2">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-2">
             Orientación Financiera Inmediata
           </h2>
-          <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm">
+          <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
             Pregunta en lenguaje natural sobre montos, descuentos de nómina y requisitos sin compartir datos sensibles.
           </p>
         </div>
 
         {/* Chat Window Container (Glassmorphism - Viewport optimizado CRUSE-APO-2026-016) */}
-        <div className="glass-panel rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col h-[680px] lg:h-[740px] max-h-[82vh] min-h-[540px] justify-between border border-slate-300/80 dark:border-white/10">
+        <div className="bg-white dark:bg-slate-900/60 glass-panel rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col h-[680px] lg:h-[740px] max-h-[82vh] min-h-[540px] justify-between border border-slate-200 dark:border-white/10">
           
           {/* Chat Header */}
           <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10 mb-4">
@@ -162,17 +162,17 @@ export const AiAssistantPublic: React.FC = () => {
                 <Bot className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-sm font-black text-[#041734] dark:text-white block">
+                <span className="text-sm font-black text-slate-950 dark:text-white block">
                   Cruse Virtual Advisor
                 </span>
-                <span className="text-[11px] text-[#059669] dark:text-[#4CD360] flex items-center gap-1 font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-[#059669] dark:bg-[#4CD360] animate-pulse" />
+                <span className="text-[11px] text-[#0F766E] dark:text-[#2EBD9B] flex items-center gap-1 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-[#0F766E] dark:bg-[#4CD360] animate-pulse" />
                   Alimentado por IA LLaMA 3.3 70B
                 </span>
               </div>
             </div>
 
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono hidden sm:inline">
+            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono hidden sm:inline">
               Filtro LFPDPPP Activo
             </span>
           </div>
@@ -188,7 +188,7 @@ export const AiAssistantPublic: React.FC = () => {
                 className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.sender === 'assistant' && (
-                  <div className="w-7 h-7 rounded-lg bg-[#249E82]/20 border border-[#249E82]/40 text-[#249E82] dark:text-[#4CD360] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#249E82]/20 border border-[#249E82]/40 text-[#0F766E] dark:text-[#4CD360] flex items-center justify-center shrink-0 mt-0.5">
                     <Bot className="w-4 h-4" />
                   </div>
                 )}
@@ -197,13 +197,13 @@ export const AiAssistantPublic: React.FC = () => {
                   className={`max-w-[85%] p-4 rounded-2xl shadow-sm leading-relaxed ${
                     msg.sender === 'user'
                       ? 'bg-gradient-to-r from-[#249E82] to-[#1E9F81] text-white rounded-tr-xs'
-                      : 'glass-card text-slate-800 dark:text-slate-200 rounded-tl-xs'
+                      : 'glass-card text-slate-950 dark:text-slate-200 rounded-tl-xs border border-slate-200 dark:border-white/10'
                   }`}
                 >
                   <ChatFormattedMessage text={msg.text} isUser={msg.sender === 'user'} />
                   <span
                     className={`text-[10px] block mt-1.5 ${
-                      msg.sender === 'user' ? 'text-white/70 text-right' : 'text-slate-400'
+                      msg.sender === 'user' ? 'text-white/70 text-right' : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
                     {msg.timestamp}
@@ -211,7 +211,7 @@ export const AiAssistantPublic: React.FC = () => {
                 </div>
 
                 {msg.sender === 'user' && (
-                  <div className="w-7 h-7 rounded-lg bg-[#396CAE]/20 border border-[#396CAE]/40 text-[#396CAE] dark:text-[#00D1FF] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#396CAE]/20 border border-[#396CAE]/40 text-[#1E3A8A] dark:text-[#00D1FF] flex items-center justify-center shrink-0 mt-0.5">
                     <User className="w-4 h-4" />
                   </div>
                 )}
@@ -219,8 +219,8 @@ export const AiAssistantPublic: React.FC = () => {
             ))}
 
             {isTyping && (
-              <div className="flex items-center gap-2 text-xs text-slate-400 italic">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#249E82]" />
+              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 italic">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0F766E] dark:text-[#249E82]" />
                 <span>Cruse Virtual Advisor está escribiendo...</span>
               </div>
             )}
@@ -228,7 +228,7 @@ export const AiAssistantPublic: React.FC = () => {
 
           {/* Quick FAQ Suggestion Pills */}
           <div className="pb-3 border-t border-slate-200 dark:border-white/10 pt-2">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1.5">
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-400 block mb-1.5">
               Preguntas sugeridas:
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -237,7 +237,7 @@ export const AiAssistantPublic: React.FC = () => {
                   key={idx}
                   type="button"
                   onClick={() => handleSendMessage(item.prompt)}
-                  className="px-2.5 py-1 rounded-lg text-xs glass-card text-slate-700 hover:text-[#041734] dark:text-slate-300 dark:hover:text-white hover:border-[#249E82] transition-colors"
+                  className="px-2.5 py-1 rounded-lg text-xs glass-card text-slate-800 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-[#249E82] transition-colors font-medium"
                 >
                   {item.title}
                 </button>
@@ -266,7 +266,7 @@ export const AiAssistantPublic: React.FC = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Escribe tu consulta sobre el crédito..."
-              className="flex-1 glass-input rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#249E82]"
+              className="flex-1 glass-input rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-950 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#249E82]"
               maxLength={2000}
             />
             <button
