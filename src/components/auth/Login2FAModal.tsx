@@ -193,12 +193,12 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
       <div
-        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl glass-panel p-6 sm:p-8 border border-white/20 dark:border-white/10 shadow-2xl"
+        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl glass-panel p-6 sm:p-8 border border-slate-200 dark:border-white/10 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-login-title"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#249E82]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#249E82]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20 opacity-0 dark:opacity-100" />
 
         {/* Encabezado */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10">
@@ -239,7 +239,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
         )}
 
         {resendFeedback && !errorMsg && (
-          <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+          <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{resendFeedback}</span>
           </div>
@@ -311,12 +311,12 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-200">
                     {userName} ({userRole.replace('_', ' ').toUpperCase()})
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-300">
+                  <p className="text-[11px] text-slate-700 dark:text-slate-300">
                     Se envió un código SMS de 6 dígitos a tu celular registrado:{' '}
-                    <span className="font-mono font-bold text-[#00D1FF]">{maskedPhone}</span>
+                    <span className="font-mono font-bold text-cyan-700 dark:text-[#00D1FF]">{maskedPhone}</span>
                   </p>
                 </div>
               </div>
@@ -324,7 +324,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 type="button"
                 disabled={resendingSms || resendCooldown > 0}
                 onClick={handleResendSms}
-                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-semibold text-[#00D1FF] border border-[#00D1FF]/30 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
+                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 text-[11px] font-semibold text-cyan-700 dark:text-[#00D1FF] border border-cyan-600/40 dark:border-[#00D1FF]/30 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
               >
                 <RefreshCw className={`w-3 h-3 ${resendingSms ? 'animate-spin' : ''}`} />
                 <span>{resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar SMS'}</span>
@@ -376,7 +376,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                     setUseRecoveryMode((prev) => !prev);
                     setTotpCode('');
                   }}
-                  className="text-[11px] font-semibold text-[#00D1FF] hover:underline"
+                  className="text-[11px] font-semibold text-cyan-700 dark:text-[#00D1FF] hover:underline"
                 >
                   {useRecoveryMode ? 'Usar código SMS (6 dígitos)' : '¿No recibiste el SMS? Usa tu código de respaldo'}
                 </button>
@@ -401,7 +401,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 {useRecoveryMode ? (
                   <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
                 ) : (
-                  <Smartphone className="w-4 h-4 text-[#00D1FF] absolute left-3 top-3.5" />
+                  <Smartphone className="w-4 h-4 text-cyan-700 dark:text-[#00D1FF] absolute left-3 top-3.5" />
                 )}
               </div>
             </div>

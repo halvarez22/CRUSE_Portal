@@ -137,10 +137,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#030914] text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-[#249E82] selection:text-white transition-colors duration-300 relative overflow-x-hidden">
-      {/* Background Ambient Glowing Orbs (GPU accelerated) */}
-      <div className="fixed top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-[#041734] opacity-20 dark:opacity-60 blur-[130px] pointer-events-none -z-10 gpu-accelerated" />
-      <div className="fixed top-[25%] right-[-10%] w-[550px] h-[550px] rounded-full bg-[#1E9F81] opacity-15 dark:opacity-20 blur-[150px] pointer-events-none -z-10 gpu-accelerated" />
-      <div className="fixed bottom-[-10%] left-[20%] w-[600px] h-[600px] rounded-full bg-[#396CAE] opacity-15 dark:opacity-25 blur-[160px] pointer-events-none -z-10 gpu-accelerated" />
+      {/* Background Ambient Glowing Orbs (Neutralizados en Modo Claro conforme a Guardrail 3; intactos en Modo Oscuro) */}
+      <div className="fixed top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-[#041734] opacity-0 dark:opacity-60 blur-[130px] pointer-events-none -z-10 gpu-accelerated" />
+      <div className="fixed top-[25%] right-[-10%] w-[550px] h-[550px] rounded-full bg-[#1E9F81] opacity-0 dark:opacity-20 blur-[150px] pointer-events-none -z-10 gpu-accelerated" />
+      <div className="fixed bottom-[-10%] left-[20%] w-[600px] h-[600px] rounded-full bg-[#396CAE] opacity-0 dark:opacity-25 blur-[160px] pointer-events-none -z-10 gpu-accelerated" />
 
       {/* Barra de estado si hay sesión activa pero el usuario está viendo el portal público */}
       {session && (
