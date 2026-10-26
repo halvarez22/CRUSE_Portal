@@ -1,22 +1,31 @@
 /**
  * ENRUTADOR DE AUTENTICACIÓN 2FA VÍA CÓDIGO SMS AL MÓVIL REGISTRADO (CERO APPS EXTERNAS)
- * Expediente: CRUSE-APO-2026-009 / 028 / 030
+ * Expediente: CRUSE-APO-2026-009 / 028 / 030 / 030-R2
  *
- * POST /auth/login        Paso 1: contraseña (scrypt) → envío de código SMS de 6 dígitos al teléfono
- *                         móvil registrado del usuario (`sendSmsOtp`) + desafío `tempToken` opaco single-use
- *                         + teléfono enmascarado (`+52 •••• •••• 1234`).
- * POST /auth/resend-otp   Reenvío controlado del código SMS de 6 dígitos con Rate Limiter anti-abuso.
- * POST /auth/verify-totp  Paso 2: código SMS de 6 dígitos (o código de recuperación de emergencia XXXX-XXXX)
+ * POST /auth/login        Paso 1: contraseña (scrypt) → evaluación de MultiTierSmsRateLimiter
+ *                         (1 SMS/min, 3 SMS/hora, 10 SMS/día por `user_id`) → envío de código SMS
+ *                         de 6 dígitos al teléfono móvil registrado (`sendSmsOtp`) + desafío `tempToken`
+ *                         opaco single-use + teléfono enmascarado (`+52 •••• •••• 1234`).
+ * POST /auth/resend-otp   Reenvío controlado del código SMS de 6 dígitos con MultiTierSmsRateLimiter
+ *                         y registro WORM `SMS_RATE_LIMIT_EXCEEDED` en HTTP 429.
+ * POST /auth/verify-totp  Paso 2: código SMS de 6 dígitos (o código de respaldo XXXX-XXXX)
  *                         + cambio obligatorio de contraseña temporal en primer acceso (Guardrail 1)
- *                         → consumo atómico de `tempToken` (Guardrail 3) → sesión opaca de 15 min.
- * POST /auth/refresh      Rotación estricta del token (Bearer).
+ *                         → consumo atómico de `tempToken` (Guardrail 3) → emisión de Access Token (15 min)
+ *                         + Refresh Token criptográfico (`crypto.randomBytes(64).toString('hex')`, 8 horas).
+ * POST /auth/refresh      Rotación estricta del par Access Token (15 min) + Refresh Token sin extender
+ *                         jamás el `refresh_expires_at` original de 8 horas desde el login inicial.
  * POST /auth/logout       Revocación real en servidor + evento LOGOUT.
  */
 
 import { Router, Request, Response } from 'express';
 import { LoginChallengeResponse } from '../../types';
 import { db } from '../db/connectionPool';
-import { totpRateLimiter, smsSendRateLimiter, refreshRateLimiter } from '../auth/rateLimiter';
+import {
+  totpRateLimiter,
+  smsSendRateLimiter,
+  smsIpRateLimiter,
+  refreshRateLimiter,
+} from '../auth/rateLimiter';
 import { verifyPassword, verifyPasswordAgainstDummy, hashPassword } from '../auth/passwordHasher';
 import { sendSmsOtp, verifySmsOtp, SmsDeliveryError } from '../auth/smsService';
 import {
@@ -78,34 +87,39 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    const rateKeyUser = `sms_send_user_${user.id}`;
     const rateKeyIp = `sms_send_ip_${ip}`;
-    const userRateCheck = smsSendRateLimiter.check(rateKeyUser);
-    const ipRateCheck = smsSendRateLimiter.check(rateKeyIp);
+    const userRateCheck = smsSendRateLimiter.check(user.id);
+    const ipRateCheck = smsIpRateLimiter.check(rateKeyIp);
 
     if (!userRateCheck.allowed || !ipRateCheck.allowed) {
       const retryAfterSeconds = Math.max(
         userRateCheck.retryAfterSeconds ?? 0,
         ipRateCheck.retryAfterSeconds ?? 0
       );
+      const violatedLimit = !userRateCheck.allowed
+        ? (userRateCheck.violatedLimit ?? '1 SMS/min')
+        : '15 SMS/hora por IP';
+
       await auditEventStore.append({
         actorEmail: user.email,
         actorRole: 'sistema',
-        action: 'LOGIN_FAILURE',
+        action: 'SMS_RATE_LIMIT_EXCEEDED',
         outcome: 'denied',
         sourceIp: ip,
         sourceSummary,
-        details: `Bloqueo anti-abuso por exceso de envíos SMS 2FA (reintentar en ${retryAfterSeconds} s)`,
+        details: `Bloqueo Anti-SMS-Pumping para user_id=${user.id}: límite violado [${violatedLimit}] (reintentar en ${retryAfterSeconds} s)`,
       });
+
       return res.status(429).json({
-        error: `Has excedido el límite de envíos de código SMS 2FA. Intenta nuevamente en ${Math.ceil((retryAfterSeconds || 3600) / 60)} minutos.`,
+        error: `Has excedido el límite de envíos de código SMS 2FA (${violatedLimit}). Intenta nuevamente en ${retryAfterSeconds} segundos.`,
         retryAfterSeconds,
+        violatedLimit,
       });
     }
 
     const { maskedPhone } = await sendSmsOtp(user.id, user.phone_number);
-    smsSendRateLimiter.recordFailure(rateKeyUser);
-    smsSendRateLimiter.recordFailure(rateKeyIp);
+    smsSendRateLimiter.recordSend(user.id);
+    smsIpRateLimiter.recordFailure(rateKeyIp);
 
     const authUser = toAuthenticatedUser(user);
     const tempToken = await createPendingTotp(user.id);
@@ -142,34 +156,39 @@ authRouter.post('/resend-otp', async (req: Request, res: Response) => {
       });
     }
 
-    const rateKeyUser = `sms_send_user_${user.id}`;
     const rateKeyIp = `sms_send_ip_${ip}`;
-    const userRateCheck = smsSendRateLimiter.check(rateKeyUser);
-    const ipRateCheck = smsSendRateLimiter.check(rateKeyIp);
+    const userRateCheck = smsSendRateLimiter.check(user.id);
+    const ipRateCheck = smsIpRateLimiter.check(rateKeyIp);
 
     if (!userRateCheck.allowed || !ipRateCheck.allowed) {
       const retryAfterSeconds = Math.max(
         userRateCheck.retryAfterSeconds ?? 0,
         ipRateCheck.retryAfterSeconds ?? 0
       );
+      const violatedLimit = !userRateCheck.allowed
+        ? (userRateCheck.violatedLimit ?? '1 SMS/min')
+        : '15 SMS/hora por IP';
+
       await auditEventStore.append({
         actorEmail: user.email,
         actorRole: 'sistema',
-        action: 'LOGIN_FAILURE',
+        action: 'SMS_RATE_LIMIT_EXCEEDED',
         outcome: 'denied',
         sourceIp: ip,
         sourceSummary,
-        details: `Bloqueo anti-abuso en reenvío de código SMS 2FA (${retryAfterSeconds} s)`,
+        details: `Bloqueo Anti-SMS-Pumping en reenvío para user_id=${user.id}: límite violado [${violatedLimit}] (reintentar en ${retryAfterSeconds} s)`,
       });
+
       return res.status(429).json({
-        error: `Límite de reenvíos SMS alcanzado por seguridad. Intenta en ${Math.ceil((retryAfterSeconds || 3600) / 60)} minutos.`,
+        error: `Límite de reenvíos SMS alcanzado por seguridad (${violatedLimit}). Intenta en ${retryAfterSeconds} segundos.`,
         retryAfterSeconds,
+        violatedLimit,
       });
     }
 
     const { maskedPhone } = await sendSmsOtp(user.id, user.phone_number);
-    smsSendRateLimiter.recordFailure(rateKeyUser);
-    smsSendRateLimiter.recordFailure(rateKeyIp);
+    smsSendRateLimiter.recordSend(user.id);
+    smsIpRateLimiter.recordFailure(rateKeyIp);
 
     return res.json({
       ok: true,
@@ -197,7 +216,7 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
 
     if (!isSixDigitSms && !isRecoveryCode) {
       return res.status(400).json({
-        error: `Introduce el código SMS de ${CREDENTIAL_LIMITS.totpCodeLength} dígitos enviado a tu móvil registrado o un código de recuperación válido (XXXX-XXXX).`,
+        error: `Introduce el código SMS de ${CREDENTIAL_LIMITS.totpCodeLength} dígitos enviado a tu móvil registrado o un código de respaldo válido (XXXX-XXXX).`,
       });
     }
 
@@ -290,7 +309,7 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
       });
     }
 
-    // Guardrail 3: Consumo atómico single-use del tempToken vinculado a userId + actualización de estado + emisión de sesión
+    // Guardrail 3 + Directriz 1: Consumo atómico single-use del tempToken + emisión de Access Token (15m) y Refresh Token (8h)
     const session = await db.transaction(async (tx) => {
       const consumed = await consumePendingTotp(tempToken, authUser.id, tx);
       if (!consumed) {
@@ -303,7 +322,6 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     });
 
     totpRateLimiter.reset(rateLimitKey);
-    smsSendRateLimiter.reset(`sms_send_user_${user.id}`);
 
     await auditEventStore.append({
       actorEmail: authUser.email,
@@ -313,15 +331,17 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
       sourceIp: ip,
       sourceSummary,
       details: firstEnrollment
-        ? `Verificación inicial 2FA vía SMS en teléfono móvil completada${mustChangePassword ? ' con cambio de contraseña temporal' : ''}`
+        ? `Verificación inicial 2FA vía SMS en teléfono móvil completada${mustChangePassword ? ' con cambio de contraseña temporal' : ''} (Sesión persistente 8h emitida)`
         : usedRecoveryCode
-          ? 'Acceso autorizado mediante código de recuperación de emergencia de un solo uso'
-          : `Acceso seguro mediante código SMS 2FA al móvil registrado autorizado correctamente${mustChangePassword ? ' (contraseña temporal actualizada)' : ''}`,
+          ? 'Acceso autorizado mediante código de respaldo de emergencia de un solo uso (Sesión persistente 8h emitida)'
+          : `Acceso seguro mediante código SMS 2FA al móvil registrado autorizado correctamente${mustChangePassword ? ' (contraseña temporal actualizada)' : ''} (Sesión persistente 8h emitida)`,
     });
 
     return res.json({
       token: session.token,
       expiresAt: session.expiresAt,
+      refreshToken: session.refreshToken,
+      refreshExpiresAt: session.refreshExpiresAt,
       user: {
         ...authUser,
         totpEnrolled: true,
@@ -346,13 +366,25 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
     if (!refreshRateLimiter.check(rateLimitKey).allowed) {
       return res.status(429).json({ error: 'Frecuencia de refresco excesiva.' });
     }
-    const token = parseBearer(req.headers.authorization);
-    const rotated = token ? await rotateSession(token) : null;
+    const bodyRefreshToken =
+      typeof req.body?.refreshToken === 'string' && req.body.refreshToken.trim()
+        ? req.body.refreshToken.trim()
+        : null;
+    const candidateToken = bodyRefreshToken ?? parseBearer(req.headers.authorization);
+    const rotated = candidateToken ? await rotateSession(candidateToken) : null;
     if (!rotated) {
       refreshRateLimiter.recordFailure(rateLimitKey);
-      return res.status(401).json({ error: 'Sesión expirada' });
+      return res.status(401).json({
+        error: 'La sesión persistente de 8 horas ha expirado o fue revocada. Ingresa nuevamente con tu contraseña y código SMS.',
+      });
     }
-    return res.json({ token: rotated.issued.token, expiresAt: rotated.issued.expiresAt, user: rotated.user });
+    return res.json({
+      token: rotated.issued.token,
+      expiresAt: rotated.issued.expiresAt,
+      refreshToken: rotated.issued.refreshToken,
+      refreshExpiresAt: rotated.issued.refreshExpiresAt,
+      user: rotated.user,
+    });
   } catch (err: unknown) {
     console.error('Error en /auth/refresh:', err);
     return res.status(500).json({ error: 'Error interno de autenticación' });
@@ -375,7 +407,7 @@ authRouter.post('/logout', async (req: Request, res: Response) => {
       outcome: 'success',
       sourceIp: ip,
       sourceSummary,
-      details: 'Sesión revocada en servidor por cierre voluntario',
+      details: 'Sesión y Refresh Token revocados en servidor por cierre voluntario',
     });
     return res.json({ ok: true });
   } catch (err: unknown) {

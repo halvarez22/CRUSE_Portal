@@ -183,7 +183,7 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
       'Invitar a explorar en vivo el Simulador ROI de Cartera, el Evaluador de Scoring y el Dashboard por Hubs Nacionales.',
     highlights: [
       '100% de los módulos operativos, ejecutivos y regulatorios unificados en una sola plataforma.',
-      'Acceso blindado con Doble Factor (2FA TOTP en teléfono propio) y revocación instantánea (Kill-Switch).',
+      'Acceso blindado con Doble Factor (2FA SMS en teléfono propio) y revocación instantánea (Kill-Switch).',
       'Transparencia absoluta en tiempo real para Dirección General, Mesa de Control e Inversionistas.',
     ],
     metrics: [

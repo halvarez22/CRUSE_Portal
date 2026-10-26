@@ -136,7 +136,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           </button>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>2FA TOTP Autenticado</span>
+            <span>2FA SMS Autenticado</span>
           </div>
           <button
             onClick={onLogout}

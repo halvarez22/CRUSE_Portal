@@ -1,0 +1,19 @@
+---
+description: Regla inamovible 1 APO. Prohíbe hotfixes y exige impacto global, efectos secundarios y plan aprobado antes de editar.
+alwaysApply: true
+---
+
+# Regla inamovible 1 — APO y planning estricto
+
+Quedan prohibidos los hotfixes ciegos o rápidos. Ningún cambio es trivial. Queda prohibida la excepción de «cambios rápidos de UI» o «ajustes menores».
+
+Antes de cualquier modificación a lógica existente:
+
+1. **Grafo de impacto global.** Prohibido analizar solo el archivo del issue. Buscar en todo el workspace variables, funciones, contratos de API, tipos y componentes de UI del flujo. Construir la cadena Frontend → API → Backend → Cripto/Seguridad → Base de datos antes de proponer la solución.
+2. **Efectos secundarios (cero regresiones).** Listar qué otros módulos, archivos o componentes se alteran o necesitan adaptación. Prohibido descubrir dependencias durante la escritura.
+3. **Plan multi-archivo.** Presentar un plan de implementación con el diagnóstico técnico global y todos los archivos a modificar. Pedir aprobación expresa del usuario antes de escribir o modificar una sola línea.
+
+```text
+❌ Editar el componente donde se vio el bug y ajustar los callers al descubrirlos.
+✅ Buscar el flujo completo, listar archivos afectados y esperar «¿Autorizas ejecutar este plan?».
+```

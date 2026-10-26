@@ -1,0 +1,31 @@
+---
+description: Estándares de arquitectura Fase 2 (CRUSE-APO-2026-002). OCR diferido, KEK/DEK versionada y rate limit de 2FA.
+alwaysApply: true
+---
+
+# Estándares de arquitectura Fase 2 (CRUSE-APO-2026-002)
+
+Fuente: `cruse-fintech-portal/AGENTS.md`. Estas obligaciones se suman a las reglas inamovibles.
+
+## OBS-1 — Carga diferida del motor OCR
+
+- El motor OCR solo se importa bajo demanda (`import(...)`) cuando el usuario activa la cámara en campo.
+- El análisis de calidad previo (varianza del Laplaciano, brillo y bordes en Canvas) opera con un micro-servicio estático menor a 3 KB, para proteger el LCP inicial de la PWA.
+
+```typescript
+// ❌ BAD — OCR en el bundle inicial
+import Tesseract from 'tesseract.js';
+
+// ✅ GOOD — solo al abrir la cámara
+const { createWorker } = await import('tesseract.js');
+```
+
+## OBS-2 — KEK/DEK en envelope encryption
+
+- Toda miniatura de documento sensible o PII se cifra con una DEK efímera por expediente (`crypto.randomBytes(32)`).
+- La DEK se envuelve con la KEK maestra leída de variables de entorno de servidor o de un KMS, con versionado explícito (`kek_version: 1`).
+
+## OBS-3 — Rate limiting de 2FA y refresco
+
+- `/api/auth/verify-totp` y `/api/auth/refresh` permiten como máximo 5 intentos fallidos en 15 minutos por IP/usuario.
+- Al quinto fallo hay bloqueo temporal y registro inmediato en la bitácora forense (`LOGIN_FAILURE`, `outcome: 'denied'`).

@@ -107,6 +107,8 @@ export interface AuthSession {
   user: AuthenticatedUser;
   token: string;
   expiresAt: string;
+  refreshToken?: string;
+  refreshExpiresAt?: string;
 }
 
 /** Contexto de identidad del servidor: ÚNICA fuente del actor en endpoints privados (A.3). */
@@ -148,7 +150,7 @@ export type RbacPermission =
   | 'executive:competitors_manage'
   | 'executive:internal_ai';
 
-/** Datos de enrolamiento TOTP: solo se entregan mientras el usuario NO está enrolado. */
+/** Datos de enrolamiento 2FA: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
   otpauthUri: string;
   manualKey: string;
@@ -186,6 +188,7 @@ export interface UserUpdateAuditDiff {
 export type AuditAction =
   | 'LOGIN_2FA_SUCCESS'
   | 'LOGIN_FAILURE'
+  | 'SMS_RATE_LIMIT_EXCEEDED'
   | 'LOGOUT'
   | 'ACCESS_DENIED'
   | 'EXPEDIENTE_CREATE'

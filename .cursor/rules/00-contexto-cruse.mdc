@@ -1,0 +1,23 @@
+---
+description: Identidad, stack, repos de referencia y mapa funcional del Portal Cruse. Siempre activa.
+alwaysApply: true
+---
+
+# Contexto del proyecto — Microfinanciera Cruse
+
+Portal Web Seguro y ecosistema fintech de Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
+
+**Raíz de la aplicación:** `cruse-fintech-portal/`. Las rutas `src/`, `server/`, `api/` y `db/` de estas reglas se resuelven desde esa raíz.
+
+**Stack:** React 19 + TypeScript + Vite + Tailwind CSS v4 + Express (Node.js) + Groq SDK (LLaMA 3.3 70B) + Web Crypto API / Node Crypto (AES-GCM 256, HMAC-SHA256) + base de datos relacional.
+
+**Repositorios de referencia:**
+- Negocio y módulos de valor: `https://github.com/halvarez22/CRUSE_FINTECH`
+- Seguridad industrial, bitácora, escaneo y cifrado: `https://github.com/halvarez22/MC`
+
+## Mapa funcional
+
+- Portal administrativo y módulos de valor: pitch a inversionistas, simulador ROI de cartera a 36 meses, simulador y scoring (Normal 1.97% vs Express 3.33%), asistente IA 24/7, matriz de competencia, hubs (Chihuahua, León, Cancún) y manual operativo.
+- PWA de promotores: escáner con calidad en tiempo real (blur, brillo, encuadre), captura guiada de INE (anverso/reverso), recibos de nómina y comprobantes, consentimiento LFPDPPP y purga local post-sincronización.
+- Ciberseguridad: 2FA y RBAC, cifrado AES-GCM 256 con KEK/DEK, blind indexing HMAC-SHA256 de CURP/RFC, bitácora forense inmutable (retención 5 años) y visor seguro de expedientes.
+- Core operativo: base relacional (sustituto de Excel), conciliación quincenal y layouts SIF/CIB (Logic Systems) y CNBV.

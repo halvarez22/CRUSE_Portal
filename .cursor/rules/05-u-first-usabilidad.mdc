@@ -1,0 +1,30 @@
+---
+description: Regla inamovible 4 U-First. Usabilidad, salida de cada pantalla e identidad visual Cruse.
+alwaysApply: true
+---
+
+# Regla inamovible 4 — U-First
+
+La prioridad de todo desarrollo o refactor es la experiencia de Dirección, Oficial de Cumplimiento, operativos y promotores en campo.
+
+- **Empatía técnica.** Prohibido exigir que el usuario teclee comandos, UUIDs internos o entienda la arquitectura. Las interfaces son intuitivas, asistidas y accesibles.
+- **Cero callejones sin salida.** Cada pantalla y modal tiene una salida clara: «Volver», «Cancelar», «Nueva Simulación» o «Descargar Reporte». Prohibido dejar al usuario sin retorno.
+- **Efecto WOW.** Solvencia, vanguardia e institucionalidad:
+  - Módulos ejecutivos (Pitch, ROI, Scoring): acabado de alta gama, animaciones suaves y tipografía limpia.
+  - Módulo de campo: ultra-rápido, con sonido de obturador, guías de encuadre y mensajes de calidad en tiempo real.
+- **Identidad visual.**
+  - El logo (`CRUSE_LOGO.png`) va siempre sobre fondo blanco o un contenedor de contraste que lo haga legible.
+  - Paleta: azul marino `#0D1B3E`, cyan/teal `#00D1FF`, dorado `#D4AF37`, fondo oscuro `#0A0A0A` / Slate 950, con modo claro y oscuro donde aplique.
+
+```tsx
+// ❌ BAD — modal de error sin acción de salida
+{error && <p>{error}</p>}
+
+// ✅ GOOD
+{error && (
+  <div>
+    <p>{error}</p>
+    <button type="button" onClick={onClose}>Volver</button>
+  </div>
+)}
+```

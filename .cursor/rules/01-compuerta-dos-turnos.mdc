@@ -1,0 +1,27 @@
+---
+description: Compuerta obligatoria de dos turnos. Prohíbe editar código en el mismo turno en que se reporta un cambio, salvo aprobación explícita de un plan APO.
+alwaysApply: true
+---
+
+# Compuerta de bloqueo de herramientas (pre-flight)
+
+Ante cualquier bug, error (`500`, `400`, compilación, UI) o requerimiento de cambio reportado por el usuario, aplica el protocolo de 2 turnos.
+
+## Turno 1 — prohibido escribir código
+
+Queda prohibido modificar archivos de código en el mismo turno en que el usuario reporta el problema o solicita el cambio. En Cursor eso incluye `Write`, `StrReplace`, edición de notebooks, borrado y cualquier comando que escriba código. La prohibición original cubre `replace_file_content` y `write_to_file`.
+
+Excepción única: el usuario ya está respondiendo «Aprobado» o «Procede» a un plan APO previo.
+
+En el turno 1 solo se usan herramientas de lectura (archivos, búsqueda, logs) y la respuesta entrega, en este orden:
+
+1. Diagnóstico de causa raíz.
+2. Mapeo del grafo de impacto global y efectos secundarios.
+3. Plan de implementación APO consolidado.
+4. La pregunta literal: «¿Autorizas ejecutar este plan?»
+
+El turno termina ahí, sin modificar código.
+
+## Turno 2 — ejecución
+
+Solo después de la aprobación explícita del usuario se modifican los archivos autorizados en el plan.

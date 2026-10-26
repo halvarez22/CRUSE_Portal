@@ -1,0 +1,32 @@
+---
+description: Regla inamovible 3. Límite de 600 líneas, responsabilidad única y estructura modular del Portal Cruse.
+alwaysApply: true
+---
+
+# Regla inamovible 3 — Arquitectura anti-god-object
+
+Prohibido generar archivos masivos o acumular lógica de negocio en un solo componente.
+
+- **Límite:** ningún archivo supera 600 líneas. Si un componente o servicio se acerca, alertar y proponer extracción a subcomponentes, hooks o utilidades antes de continuar.
+- **Delegación:** todo flujo, estado u orquestador nuevo vive en un archivo propio y se importa donde se necesite.
+- **Responsabilidad única:**
+  - `server.ts` y los routers solo orquestan HTTP y middlewares.
+  - La lógica de IA (prompts, modelos, validaciones) vive en `services/ai/` o `services/groq/`.
+  - Cripto y auditoría viven en `services/crypto/` y `services/audit/`.
+  - Los componentes React solo renderizan y delegan cálculos y efectos a hooks o utilidades puras.
+
+Estructura, desde `cruse-fintech-portal/`:
+
+- `src/components/` — UI pura por dominio (deck, simuladores, captura, bitácora, etc.)
+- `src/hooks/` — lógica reactiva (cámara, auditoría, sesión, offline)
+- `src/services/` — servicios de cliente y lógica compartida (auditoría forense, crypto cliente, OCR)
+- `src/config/` — constantes de negocio y financieras
+- `src/data/` — única fuente de datos estáticos institucionales
+- `src/types/` — contratos TypeScript centralizados
+- `server/` o `api/` — endpoints, middlewares de seguridad, 2FA y conexión a BD
+- `db/` — esquemas, migraciones y repositorios
+
+```text
+❌ Añadir el cálculo de amortización y la llamada a Groq dentro del componente de la vista.
+✅ Vista delgada + hook o servicio en su archivo, importado por la vista.
+```

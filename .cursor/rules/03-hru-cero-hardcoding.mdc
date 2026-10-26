@@ -1,0 +1,32 @@
+---
+description: Regla inamovible 2 HRU. Cero hardcoding, cero regresiones y universalidad de módulos del Portal Cruse.
+alwaysApply: true
+---
+
+# Regla inamovible 2 — HRU
+
+Todo desarrollo, ajuste o refactorización cumple HRU.
+
+## Cero hardcoding
+
+Prohibido codificar valores fijos, fórmulas sueltas, rutas estáticas o textos quemados. La lógica sale de fuentes centralizadas:
+
+- Constantes y fórmulas financieras (tasa 1.97% quincenal Normal, 3.33% Express, amortización, IVA, seguro de vida 22.85) viven solo en `cruse-fintech-portal/src/config/financialConstants.ts`.
+- Datos de negocio (hubs, competidores, productos, textos institucionales, perfiles) viven en `cruse-fintech-portal/src/data/cruseData.ts`, nunca inline en componentes.
+
+```typescript
+// ❌ BAD — tasa quemada en el componente
+const interes = capital * 0.0197;
+
+// ✅ GOOD — fuente única
+import { FINANCIAL } from '../config/financialConstants';
+const interes = capital * FINANCIAL.tasaQuincenalNormal;
+```
+
+## Cero regresiones
+
+El sistema avanza sin destruir funcionalidad previa. Todo ajuste se somete a pruebas de no-regresión. Prohibido sacrificar una función operativa para habilitar otra.
+
+## Universalidad
+
+Las funciones son agnósticas al tipo de recurso y consistentes en diseño y arquitectura. Todos los módulos del Portal usan las mismas reglas de navegación, estado, diseño responsive y feedback visual.

@@ -1,5 +1,5 @@
 /**
- * CONSTANTES DE AUTENTICACIÓN Y SESIÓN — CRUSE-APO-2026-005 (Bloques A.2 / A.3)
+ * CONSTANTES DE AUTENTICACIÓN Y SESIÓN — CRUSE-APO-2026-005 / CRUSE-APO-2026-030
  *
  * Única fuente de verdad para parámetros criptográficos y de sesión (Regla 2 HRU).
  * No contiene secretos: solo parámetros públicos de configuración.
@@ -19,20 +19,30 @@ export const SCRYPT_PARAMS = {
 /** Prefijo del formato serializado: scrypt$N$r$p$saltB64$hashB64 */
 export const PASSWORD_HASH_PREFIX = 'scrypt';
 
-/** Sesión institucional Zero-Trust. */
+/** Sesión institucional Zero-Trust (Access Token). */
 export const SESSION_TTL_MINUTES = 15;
 
-/** Vigencia del desafío 2FA tras validar la contraseña. */
-export const PENDING_TOTP_TTL_MINUTES = 5;
+/** Sesión Persistente Segura de 8 Horas (Refresh Token rotativo con tope inamovible de 8h desde el login inicial). */
+export const REFRESH_TOKEN_TTL_HOURS = 8;
+
+/** Entropía del Refresh Token (64 bytes = 512 bits → 128 caracteres hexadecimales). */
+export const REFRESH_TOKEN_BYTES = 64;
+
+/** Vigencia del desafío 2FA SMS tras validar la contraseña. */
+export const PENDING_CHALLENGE_TTL_MINUTES = 5;
 
 /** Entropía de tokens opacos (sesión y desafío 2FA): 256 bits. */
 export const OPAQUE_TOKEN_BYTES = 32;
 
-/** Tolerancia de desfase del reloj del móvil (pasos de 30 s). */
-export const TOTP_WINDOW_STEPS = 1;
+/** Umbrales Anti-SMS-Pumping por user_id (1 SMS/min, 3 SMS/hora, 10 SMS/día). */
+export const SMS_RATE_LIMIT_TIERS = [
+  { id: '1_PER_MINUTE', maxRequests: 1, windowMs: 60 * 1000, label: '1 SMS/min' },
+  { id: '3_PER_HOUR', maxRequests: 3, windowMs: 60 * 60 * 1000, label: '3 SMS/hora' },
+  { id: '10_PER_DAY', maxRequests: 10, windowMs: 24 * 60 * 60 * 1000, label: '10 SMS/día' },
+] as const;
 
-/** Emisor mostrado en la app autenticadora. */
-export const TOTP_ISSUER = 'Microfinanciera Cruse';
+/** Emisor institucional para notificaciones SMS 2FA. */
+export const AUTH_ISSUER_NAME = 'Microfinanciera Cruse';
 
 /** Contraseña temporal generada por los scripts de alta (bytes aleatorios → base64url). */
 export const TEMP_PASSWORD_BYTES = 18;
@@ -44,5 +54,5 @@ export const CREDENTIAL_LIMITS = {
   passwordMinLength: 12,
   passwordMaxLength: 256,
   totpCodeLength: 6,
-  opaqueTokenMaxLength: 128,
+  opaqueTokenMaxLength: 160,
 } as const;

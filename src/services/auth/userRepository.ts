@@ -2,7 +2,7 @@
  * REPOSITORIO DE USUARIOS INSTITUCIONALES — CRUSE-APO-2026-005 / 023 / 028
  *
  * - Contraseñas: solo hash scrypt (passwordHasher).
- * - Secreto TOTP: cifrado con Envelope Encryption (AES-GCM-256, KEK vigente) ANTES de persistir.
+ * - Semilla 2FA: cifrada con Envelope Encryption (AES-GCM-256, KEK vigente) ANTES de persistir.
  * - Códigos de recuperación: solo hashes SHA-256 en `backup_codes_hash` (nunca en texto plano).
  * - Guardrail Forense 1 (CRUSE-APO-2026-028): Usuarios nacen con `totp_enrolled = 0` y
  *   `must_change_password = 1` con contraseña temporal criptográfica Out-of-Band.
@@ -27,7 +27,7 @@ import { getServerKms } from '../crypto/serverKeyring';
 import { hashPassword } from './passwordHasher';
 import { generateTotpSecret, generateTotpUri, generateRecoveryCodes } from './totpService';
 import { revokeAllUserSessions } from './sessionStore';
-import { CREDENTIAL_LIMITS, TEMP_PASSWORD_BYTES, TOTP_ISSUER } from '../../config/authConfig';
+import { CREDENTIAL_LIMITS, TEMP_PASSWORD_BYTES, AUTH_ISSUER_NAME } from '../../config/authConfig';
 
 export interface UserRow {
   id: string;
@@ -161,7 +161,7 @@ export async function findUserById(id: string, tx?: TxHandle): Promise<UserRow |
 export async function decryptTotpSecret(row: UserRow): Promise<string> {
   const parsed: unknown = JSON.parse(row.totp_secret_enc);
   if (!isEnvelopePayload(parsed)) {
-    throw new Error(`Secreto TOTP con formato inválido para el usuario ${row.id}`);
+    throw new Error(`Secreto 2FA con formato inválido para el usuario ${row.id}`);
   }
   return decryptEnvelope(parsed, getServerKms());
 }
@@ -519,7 +519,7 @@ export async function updateManagedUser(
       newTotpEnrollment:
         newTotpSecret !== undefined
           ? {
-              otpauthUri: generateTotpUri(existing.email, newTotpSecret, TOTP_ISSUER),
+              otpauthUri: generateTotpUri(existing.email, newTotpSecret, AUTH_ISSUER_NAME),
               manualKey: newTotpSecret,
             }
           : undefined,

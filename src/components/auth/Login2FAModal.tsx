@@ -172,6 +172,8 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
         user: data.user,
         token: data.token,
         expiresAt: data.expiresAt,
+        refreshToken: data.refreshToken,
+        refreshExpiresAt: data.refreshExpiresAt,
       };
 
       onLoginSuccess(session);
@@ -376,7 +378,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                   }}
                   className="text-[11px] font-semibold text-[#00D1FF] hover:underline"
                 >
-                  {useRecoveryMode ? 'Usar código SMS (6 dígitos)' : '¿Sin señal o extraviaste tu celular? Usar código de emergencia'}
+                  {useRecoveryMode ? 'Usar código SMS (6 dígitos)' : '¿No recibiste el SMS? Usa tu código de respaldo'}
                 </button>
               </div>
               <div className="relative">

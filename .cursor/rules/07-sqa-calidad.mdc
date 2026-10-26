@@ -1,0 +1,25 @@
+---
+description: Regla inamovible 6 SQA. Dependencias, refactor atómico, TypeScript estricto sin any y tsc antes de cerrar.
+alwaysApply: true
+---
+
+# Regla inamovible 6 — SQA y refactorización segura
+
+- **Dependencias.** Antes de alterar una función, contrato de API, servicio o tipo, buscar en todo el workspace y actualizar todas las referencias.
+- **Refactor atómico.** Los cambios van módulo por módulo. Prohibido refactorizar a la vez varios subsistemas sin validación unitaria.
+- **TypeScript estricto.** Los tipos viven de forma explícita en `cruse-fintech-portal/src/types/`. Prohibido `any`, salvo un `catch` con comentario técnico que justifique la excepción.
+- **Verificación de tipos.** Tras modificar código, ejecutar `tsc --noEmit` o `npm run lint` y cerrar la tarea solo con cero errores de compilación.
+
+```typescript
+// ❌ BAD
+function parse(input: any) { return input.id; }
+
+// ✅ GOOD
+import type { ExpedienteItem } from '../types';
+function parse(input: ExpedienteItem) { return input.id; }
+
+// catch permitido solo con justificación
+} catch (err: unknown) { // unknown: el runtime no tipa el rechazo
+  throw new Error('Fallo al leer el expediente', { cause: err });
+}
+```

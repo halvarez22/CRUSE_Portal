@@ -1,0 +1,16 @@
+---
+description: Regla inamovible 7. Inspección de contratos, plan consolidado, alto ante efectos no previstos y máximo dos intentos iguales.
+alwaysApply: true
+---
+
+# Regla inamovible 7 — Descubrimiento y cero parches iterativos
+
+- **Inspección de contratos.** Prohibido suponer cómo funcionan componentes, APIs o bases de datos. Examinar el código y los contratos antes de escribir la solución.
+- **Plan consolidado.** Cada propuesta resuelve la causa raíz y anticipa los ajustes de todos los archivos relacionados.
+- **Alto y alerta.** Si durante la ejecución aparece un efecto secundario o una inconsistencia no prevista, detener la escritura de inmediato, reevaluar el impacto, actualizar el plan y pedir confirmación antes de improvisar un parche local.
+- **Dos intentos.** Si un enfoque falla dos veces, prohibido un tercer intento idéntico. Diagnosticar la causa raíz, proponer una alternativa fundamentada y consultarla con el usuario.
+
+```text
+❌ El build falla, se cambia un tipo, vuelve a fallar, se cambia otra vez el mismo tipo.
+✅ Segundo fallo: parar, explicar la causa y pedir confirmación del enfoque alternativo.
+```

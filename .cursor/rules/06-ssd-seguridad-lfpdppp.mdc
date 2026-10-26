@@ -1,0 +1,24 @@
+---
+description: Regla inamovible 5 SSD. Secretos, cifrado, purga PII, bitácora, validación y zero trust CNBV/LFPDPPP.
+alwaysApply: true
+---
+
+# Regla inamovible 5 — SSD y LFPDPPP
+
+Toda funcionalidad cumple CNBV y la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).
+
+- **Secretos.** API keys (Groq, JWT, KEK, credenciales de BD) no se hardcodean. Se leen solo de `process.env.*` en servidor. Prohibido exponer llaves maestras en variables `VITE_*`. `.env` está en `.gitignore` y jamás se commitea.
+- **Cifrado (heredado de MC).** INE, recibos de nómina, CURP y RFC se cifran con envelope encryption AES-GCM de 256 bits: DEK envuelta por KEK. Las búsquedas de CURP/RFC usan blind indexing HMAC-SHA256, sin descifrar la base.
+- **Zero-PII post-ack.** Tras la confirmación del backend, las fotos temporales en IndexedDB/Blob del promotor se purgan de inmediato.
+- **Bitácora forense.** Todo acceso a datos personales o movimiento crítico (`SCREEN_VIEW`, consulta de expediente, login, generación de layouts) se registra en `services/audit/` con actor, rol, timestamp, IP, pantalla y hash de integridad. Retención mínima de 5 años (CNBV/INAI).
+- **Validación.** Cada endpoint valida tipos, longitudes y rangos numéricos. Los prompts al LLM se sanitizan contra prompt injection.
+- **Zero trust.** El frontend no habla con servicios externos sensibles ni maneja credenciales maestras. Todo pasa por la API del Portal con 2FA y RBAC.
+
+```typescript
+// ❌ BAD
+const apiKey = 'gsk_...';
+const client = createClient(import.meta.env.VITE_GROQ_API_KEY);
+
+// ✅ GOOD — solo en servidor
+const apiKey = process.env.GROQ_API_KEY;
+```

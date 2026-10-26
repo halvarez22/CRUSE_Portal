@@ -1,0 +1,16 @@
+---
+description: Directrices de Git y despliegue del Portal Cruse. Rama main, trabajo en rama y archivos que jamás se commitean.
+alwaysApply: true
+---
+
+# Git y despliegue
+
+- Repositorio: `https://github.com/halvarez22/CRUSE_FINTECH`
+- Rama principal: `main`
+- Todo desarrollo o refactorización mayor va en una rama de trabajo, o espera confirmación explícita del usuario.
+- `.env`, credenciales y llaves privadas jamás entran en un commit.
+
+```text
+❌ git add .env
+✅ Confirmar la rama de trabajo y dejar secretos fuera del stage.
+```
