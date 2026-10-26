@@ -1,9 +1,12 @@
 /**
- * ENRUTADOR DE AUTENTICACIÓN 2FA TOTP (RFC 6238) — CRUSE-APO-2026-005 / 028
+ * ENRUTADOR DE AUTENTICACIÓN 2FA VÍA CÓDIGO SMS AL MÓVIL REGISTRADO (CERO APPS EXTERNAS)
+ * Expediente: CRUSE-APO-2026-009 / 028 / 030
  *
- * POST /auth/login        Paso 1: contraseña (scrypt) → desafío 2FA (`tempToken` opaco single-use).
- *                         El URI de enrolamiento TOTP (`enrollment`) solo se entrega si `totp_enrolled = 0`.
- * POST /auth/verify-totp  Paso 2: código TOTP de 6 dígitos (o código de recuperación de emergencia)
+ * POST /auth/login        Paso 1: contraseña (scrypt) → envío de código SMS de 6 dígitos al teléfono
+ *                         móvil registrado del usuario (`sendSmsOtp`) + desafío `tempToken` opaco single-use
+ *                         + teléfono enmascarado (`+52 •••• •••• 1234`).
+ * POST /auth/resend-otp   Reenvío controlado del código SMS de 6 dígitos con Rate Limiter anti-abuso.
+ * POST /auth/verify-totp  Paso 2: código SMS de 6 dígitos (o código de recuperación de emergencia XXXX-XXXX)
  *                         + cambio obligatorio de contraseña temporal en primer acceso (Guardrail 1)
  *                         → consumo atómico de `tempToken` (Guardrail 3) → sesión opaca de 15 min.
  * POST /auth/refresh      Rotación estricta del token (Bearer).
@@ -15,12 +18,11 @@ import { LoginChallengeResponse } from '../../types';
 import { db } from '../db/connectionPool';
 import { totpRateLimiter, smsSendRateLimiter, refreshRateLimiter } from '../auth/rateLimiter';
 import { verifyPassword, verifyPasswordAgainstDummy, hashPassword } from '../auth/passwordHasher';
-import { verifyTotpToken, generateTotpUri } from '../auth/totpService';
+import { sendSmsOtp, verifySmsOtp, SmsDeliveryError } from '../auth/smsService';
 import {
   normalizeEmail,
   findUserByEmail,
   findUserById,
-  decryptTotpSecret,
   markTotpEnrolled,
   verifyAndConsumeBackupCode,
   toAuthenticatedUser,
@@ -37,11 +39,11 @@ import {
 } from '../auth/sessionStore';
 import { auditEventStore } from '../audit/auditEventStore';
 import { extractClientIp, buildSourceSummary } from '../audit/auditMask';
-import { CREDENTIAL_LIMITS, TOTP_ISSUER } from '../../config/authConfig';
+import { CREDENTIAL_LIMITS } from '../../config/authConfig';
 
 export const authRouter = Router();
 
-const TOTP_CODE_PATTERN = new RegExp(`^\\d{${CREDENTIAL_LIMITS.totpCodeLength}}$`);
+const SMS_CODE_PATTERN = new RegExp(`^\\d{${CREDENTIAL_LIMITS.totpCodeLength}}$`);
 const RECOVERY_CODE_PATTERN = /^[A-Za-z2-9]{4}-?[A-Za-z2-9]{4}$/;
 
 function requestOrigin(req: Request): { ip: string; sourceSummary: string } {
@@ -76,8 +78,8 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    const rateKeyUser = `login_challenge_user_${user.id}`;
-    const rateKeyIp = `login_challenge_ip_${ip}`;
+    const rateKeyUser = `sms_send_user_${user.id}`;
+    const rateKeyIp = `sms_send_ip_${ip}`;
     const userRateCheck = smsSendRateLimiter.check(rateKeyUser);
     const ipRateCheck = smsSendRateLimiter.check(rateKeyIp);
 
@@ -93,13 +95,17 @@ authRouter.post('/login', async (req: Request, res: Response) => {
         outcome: 'denied',
         sourceIp: ip,
         sourceSummary,
-        details: `Bloqueo por exceso de desafíos 2FA solicitados (reintentar en ${retryAfterSeconds} s)`,
+        details: `Bloqueo anti-abuso por exceso de envíos SMS 2FA (reintentar en ${retryAfterSeconds} s)`,
       });
       return res.status(429).json({
-        error: `Has excedido el límite de solicitudes de desafío 2FA. Intenta nuevamente en ${Math.ceil((retryAfterSeconds || 3600) / 60)} minutos.`,
+        error: `Has excedido el límite de envíos de código SMS 2FA. Intenta nuevamente en ${Math.ceil((retryAfterSeconds || 3600) / 60)} minutos.`,
         retryAfterSeconds,
       });
     }
+
+    const { maskedPhone } = await sendSmsOtp(user.id, user.phone_number);
+    smsSendRateLimiter.recordFailure(rateKeyUser);
+    smsSendRateLimiter.recordFailure(rateKeyIp);
 
     const authUser = toAuthenticatedUser(user);
     const tempToken = await createPendingTotp(user.id);
@@ -109,24 +115,73 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       tempToken,
       name: authUser.name,
       role: authUser.role,
+      maskedPhone,
       totpEnrolled: authUser.totpEnrolled,
       mustChangePassword: authUser.mustChangePassword,
     };
 
-    // Guardrail 3 y Punto 2: Si el usuario aún no ha enrolado su teléfono móvil (totp_enrolled === 0),
-    // desencriptamos en memoria su semilla AES-GCM-256 y entregamos el URI otpauth:// para su app autenticadora.
-    if (!authUser.totpEnrolled) {
-      const totpSecret = await decryptTotpSecret(user);
-      body.enrollment = {
-        otpauthUri: generateTotpUri(authUser.email, totpSecret, TOTP_ISSUER),
-        manualKey: totpSecret,
-      };
-    }
-
     return res.json(body);
   } catch (err: unknown) {
+    if (err instanceof SmsDeliveryError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     console.error('Error en /auth/login:', err);
     return res.status(500).json({ error: 'Error interno de autenticación' });
+  }
+});
+
+authRouter.post('/resend-otp', async (req: Request, res: Response) => {
+  const { ip, sourceSummary } = requestOrigin(req);
+  try {
+    const tempToken: unknown = req.body?.tempToken;
+    const userId = await resolvePendingTotp(tempToken);
+    const user = userId ? await findUserById(userId) : null;
+    if (!user || Number(user.active) !== 1) {
+      return res.status(401).json({
+        error: 'La sesión de verificación 2FA ha expirado. Inicia sesión nuevamente.',
+      });
+    }
+
+    const rateKeyUser = `sms_send_user_${user.id}`;
+    const rateKeyIp = `sms_send_ip_${ip}`;
+    const userRateCheck = smsSendRateLimiter.check(rateKeyUser);
+    const ipRateCheck = smsSendRateLimiter.check(rateKeyIp);
+
+    if (!userRateCheck.allowed || !ipRateCheck.allowed) {
+      const retryAfterSeconds = Math.max(
+        userRateCheck.retryAfterSeconds ?? 0,
+        ipRateCheck.retryAfterSeconds ?? 0
+      );
+      await auditEventStore.append({
+        actorEmail: user.email,
+        actorRole: 'sistema',
+        action: 'LOGIN_FAILURE',
+        outcome: 'denied',
+        sourceIp: ip,
+        sourceSummary,
+        details: `Bloqueo anti-abuso en reenvío de código SMS 2FA (${retryAfterSeconds} s)`,
+      });
+      return res.status(429).json({
+        error: `Límite de reenvíos SMS alcanzado por seguridad. Intenta en ${Math.ceil((retryAfterSeconds || 3600) / 60)} minutos.`,
+        retryAfterSeconds,
+      });
+    }
+
+    const { maskedPhone } = await sendSmsOtp(user.id, user.phone_number);
+    smsSendRateLimiter.recordFailure(rateKeyUser);
+    smsSendRateLimiter.recordFailure(rateKeyIp);
+
+    return res.json({
+      ok: true,
+      maskedPhone,
+      message: `Nuevo código SMS de 6 dígitos enviado a ${maskedPhone}`,
+    });
+  } catch (err: unknown) {
+    if (err instanceof SmsDeliveryError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    console.error('Error en /auth/resend-otp:', err);
+    return res.status(500).json({ error: 'Error al reenviar código SMS' });
   }
 });
 
@@ -137,12 +192,12 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     const rawCode = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
     const newPassword: unknown = req.body?.newPassword;
 
-    const isSixDigitTotp = TOTP_CODE_PATTERN.test(rawCode);
+    const isSixDigitSms = SMS_CODE_PATTERN.test(rawCode);
     const isRecoveryCode = RECOVERY_CODE_PATTERN.test(rawCode);
 
-    if (!isSixDigitTotp && !isRecoveryCode) {
+    if (!isSixDigitSms && !isRecoveryCode) {
       return res.status(400).json({
-        error: `Introduce un código TOTP de ${CREDENTIAL_LIMITS.totpCodeLength} dígitos de tu app autenticadora o un código de recuperación válido (XXXX-XXXX).`,
+        error: `Introduce el código SMS de ${CREDENTIAL_LIMITS.totpCodeLength} dígitos enviado a tu móvil registrado o un código de recuperación válido (XXXX-XXXX).`,
       });
     }
 
@@ -164,10 +219,10 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
         outcome: 'denied',
         sourceIp: ip,
         sourceSummary,
-        details: `Bloqueo por exceso de intentos 2FA (reintentar en ${rateCheck.retryAfterSeconds} s)`,
+        details: `Bloqueo por exceso de intentos 2FA SMS (reintentar en ${rateCheck.retryAfterSeconds} s)`,
       });
       return res.status(429).json({
-        error: `Demasiados intentos fallidos de 2FA. Acceso bloqueado por seguridad durante ${Math.ceil((rateCheck.retryAfterSeconds ?? 900) / 60)} minutos.`,
+        error: `Demasiados intentos fallidos de código SMS 2FA. Acceso bloqueado por seguridad durante ${Math.ceil((rateCheck.retryAfterSeconds ?? 900) / 60)} minutos.`,
         retryAfterSeconds: rateCheck.retryAfterSeconds,
       });
     }
@@ -175,14 +230,6 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     const authUser = toAuthenticatedUser(user);
     const firstEnrollment = !authUser.totpEnrolled;
     const mustChangePassword = Boolean(authUser.mustChangePassword);
-
-    // En el primer enrolamiento (totp_enrolled === 0), obligamos a verificar con código TOTP de 6 dígitos
-    // generado en el teléfono móvil del usuario para certificar que vinculó su app autenticadora.
-    if (firstEnrollment && !isSixDigitTotp) {
-      return res.status(400).json({
-        error: 'Para completar el enrolamiento inicial debes ingresar el código de 6 dígitos generado por la aplicación autenticadora en tu teléfono móvil.',
-      });
-    }
 
     // Guardrail Forense 1: Cambio obligatorio de contraseña temporal en el primer inicio de sesión
     let updatedPasswordHash: string | undefined;
@@ -216,18 +263,13 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     let valid2FA = false;
     let usedRecoveryCode = false;
 
-    if (isSixDigitTotp) {
-      const secretBase32 = await decryptTotpSecret(user);
-      const verification = await verifyTotpToken(rawCode, secretBase32);
-      valid2FA = verification.valid;
+    if (isSixDigitSms) {
+      valid2FA = await verifySmsOtp(user.id, rawCode);
     }
 
-    if (!valid2FA) {
-      // Si ya estaba enrolado y proporcionó un código de recuperación de emergencia (XXXX-XXXX)
-      if (!firstEnrollment && isRecoveryCode) {
-        valid2FA = await verifyAndConsumeBackupCode(user.id, rawCode);
-        usedRecoveryCode = valid2FA;
-      }
+    if (!valid2FA && isRecoveryCode) {
+      valid2FA = await verifyAndConsumeBackupCode(user.id, rawCode);
+      usedRecoveryCode = valid2FA;
     }
 
     if (!valid2FA) {
@@ -239,10 +281,10 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
         outcome: 'failure',
         sourceIp: ip,
         sourceSummary,
-        details: `Código 2FA TOTP inválido. Intentos restantes antes de bloqueo: ${failure.remaining}`,
+        details: `Código SMS 2FA inválido. Intentos restantes antes de bloqueo: ${failure.remaining}`,
       });
       return res.status(401).json({
-        error: 'Código 2FA inválido o expirado. Verifica la hora de tu teléfono móvil.',
+        error: 'Código SMS 2FA inválido o expirado. Verifica el mensaje en tu teléfono móvil registrado.',
         remainingAttempts: failure.remaining,
         locked: failure.locked,
       });
@@ -261,6 +303,7 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     });
 
     totpRateLimiter.reset(rateLimitKey);
+    smsSendRateLimiter.reset(`sms_send_user_${user.id}`);
 
     await auditEventStore.append({
       actorEmail: authUser.email,
@@ -270,10 +313,10 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
       sourceIp: ip,
       sourceSummary,
       details: firstEnrollment
-        ? `Enrolamiento 2FA TOTP en teléfono móvil completado${mustChangePassword ? ' con cambio de contraseña temporal' : ''}`
+        ? `Verificación inicial 2FA vía SMS en teléfono móvil completada${mustChangePassword ? ' con cambio de contraseña temporal' : ''}`
         : usedRecoveryCode
           ? 'Acceso autorizado mediante código de recuperación de emergencia de un solo uso'
-          : `Acceso seguro mediante 2FA TOTP autorizado correctamente${mustChangePassword ? ' (contraseña temporal actualizada)' : ''}`,
+          : `Acceso seguro mediante código SMS 2FA al móvil registrado autorizado correctamente${mustChangePassword ? ' (contraseña temporal actualizada)' : ''}`,
     });
 
     return res.json({

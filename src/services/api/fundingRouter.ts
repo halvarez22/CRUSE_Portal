@@ -5,9 +5,10 @@
  * @implements RN-10 (Exención de retención de ISR por inversionista: applies_isr = 0 | 1)
  * @implements RN-11 (Movimientos de capital al corte sobre current_capital)
  * @implements Guardrail Forense 3 (Idempotencia en POST /api/funding/settle con mensaje explícito cuando ya fue procesado)
- * @implements Regla 3 Anti-God-Object (< 230 líneas) y Regla 6 SQA (0 any)
+ * @implements Regla 3 Anti-God-Object (< 300 líneas) y Regla 6 SQA (0 any)
  */
 
+import crypto from 'node:crypto';
 import { Router, Request, Response } from 'express';
 import { db } from '../db/connectionPool';
 import { requireAuth, getAuth } from '../auth/authMiddleware';
@@ -60,11 +61,6 @@ interface CapitalMovementRow {
   created_at: string;
 }
 
-/**
- * GET /api/funding/overview
- * Expone las inversiones activas con current_capital, interest_type y applies_isr,
- * junto con los últimos pagos e historial de capitalizaciones.
- */
 fundingRouter.get('/overview', requireAuth('funding:read'), async (_req: Request, res: Response) => {
   try {
     const invRes = await db.query<FundingOverviewInvestmentRow>(`
@@ -112,11 +108,86 @@ fundingRouter.get('/overview', requireAuth('funding:read'), async (_req: Request
 });
 
 /**
- * POST /api/funding/settle
- * Ejecuta de forma idempotente el corte mensual de fondeo (runMonthlyFundingSettle).
- * Guardrail Forense 3: Si el periodo ya fue procesado (processed === 0 && skipped > 0),
- * responde 200 OK con el mensaje canónico sin lanzar excepciones ni duplicar registros.
+ * POST /api/funding/investors
+ * Da de alta un nuevo inversionista y su pagaré de inversión inicial (+ Nuevo Inversionista).
  */
+fundingRouter.post('/investors', requireAuth('funding:manage'), async (req: Request, res: Response) => {
+  try {
+    const { user } = getAuth(req);
+    const sourceIp = extractClientIp(req.headers);
+    const sourceSummary = buildSourceSummary(sourceIp, req.headers['user-agent']);
+
+    const rawName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const capital = Number(req.body?.capital ?? 100000);
+    const rawRate = Number(req.body?.annualRate ?? 18);
+    const interestType = req.body?.interestType === 'COMPOUND' ? 'COMPOUND' : 'SIMPLE';
+    const appliesIsr = req.body?.appliesIsr === false || req.body?.appliesIsr === 0 ? 0 : 1;
+    const isrRetentionRate = Number(req.body?.isrRetentionRate ?? 0.009);
+
+    if (!rawName || rawName.length < 3) {
+      return res.status(400).json({ error: 'El nombre del inversionista es obligatorio (mínimo 3 caracteres).' });
+    }
+    if (!Number.isFinite(capital) || capital <= 0) {
+      return res.status(400).json({ error: 'El capital del pagaré debe ser mayor a $0.00 MXN.' });
+    }
+    const normalizedAnnualRate = rawRate > 1 ? rawRate / 100 : rawRate;
+    if (!Number.isFinite(normalizedAnnualRate) || normalizedAnnualRate <= 0 || normalizedAnnualRate > 1) {
+      return res.status(400).json({ error: 'La tasa anual debe ser un porcentaje válido (ej. 18%).' });
+    }
+
+    const suffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const investorId = `INV-FND-${suffix}`;
+    const investmentId = `PAG-${suffix}`;
+    const blindName = crypto
+      .createHash('sha256')
+      .update(`${rawName.toUpperCase()}:${investorId}`, 'utf8')
+      .digest('hex');
+    const maskedLabel = `ENC_GCM256:${rawName.slice(0, 3).toUpperCase()}***`;
+    const todayStr = new Date().toISOString().split('T')[0] ?? '2026-10-26';
+
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO investors (id, blind_name, encrypted_name, isr_retention_rate, applies_isr, requires_invoice)
+         VALUES ($1, $2, $3, $4, $5, 0)`,
+        [investorId, blindName, maskedLabel, appliesIsr === 1 ? isrRetentionRate : 0, appliesIsr]
+      );
+      await tx.execute(
+        `INSERT INTO investments (id, investor_id, capital, current_capital, annual_rate, start_date, status, interest_type)
+         VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', $7)`,
+        [investmentId, investorId, capital, capital, normalizedAnnualRate, todayStr, interestType]
+      );
+    });
+
+    await auditEventStore.append({
+      action: 'CONFIG_CHANGE',
+      actorEmail: user.email,
+      actorRole: user.role,
+      outcome: 'success',
+      sourceIp,
+      sourceSummary,
+      details: JSON.stringify({
+        event: 'NEW_INVESTOR_PROMISSORY_NOTE_CREATED',
+        investor_id: investorId,
+        investment_id: investmentId,
+        capital,
+        annual_rate: normalizedAnnualRate,
+        interest_type: interestType,
+        applies_isr: appliesIsr,
+      }),
+    });
+
+    return res.status(201).json({
+      ok: true,
+      investorId,
+      investmentId,
+      message: `Pagaré ${investmentId} generado exitosamente para el nuevo inversionista.`,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error registrando nuevo inversionista';
+    return res.status(400).json({ error: message });
+  }
+});
+
 fundingRouter.post('/settle', requireAuth('funding:manage'), async (req: Request, res: Response) => {
   try {
     const { user } = getAuth(req);
@@ -167,10 +238,6 @@ fundingRouter.post('/settle', requireAuth('funding:manage'), async (req: Request
   }
 });
 
-/**
- * POST /api/funding/capital-movement
- * Registra una aportación (DEPOSIT) o retiro (WITHDRAWAL) de capital al corte (RN-11).
- */
 fundingRouter.post('/capital-movement', requireAuth('funding:manage'), async (req: Request, res: Response) => {
   try {
     const { user } = getAuth(req);

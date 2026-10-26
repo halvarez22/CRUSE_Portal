@@ -162,6 +162,7 @@ export interface LoginChallengeResponse {
   role: UserRole;
   totpEnrolled?: boolean;
   mustChangePassword?: boolean;
+  maskedPhone?: string;
   enrollment?: TotpEnrollment;
   recoveryCodes?: string[];
 }

@@ -1,14 +1,14 @@
 /**
- * ENRUTADOR DE ADMINISTRACIÓN DE USUARIOS Y RBAC 2FA — SERVIDOR (CRUSE-APO-2026-028)
+ * ENRUTADOR DE ADMINISTRACIÓN DE USUARIOS Y RBAC 2FA SMS — SERVIDOR (CRUSE-APO-2026-028 / 030)
  * Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
  *
  * Cumplimiento:
  * - Guardrail Forense 1: Generación criptográfica de credenciales iniciales en backend y entrega
  *   de un solo uso Out-of-Band (prohibido envío por SMS/email/WhatsApp).
  * - Guardrail Forense 2: Revocación atómica ACID (`revokeAllUserSessions`) al dar de baja,
- *   cambiar rol, cambiar contraseña o reiniciar TOTP, bloqueando auto-baja (`actor.id === userId`).
- * - Guardrail Forense 3: Higiene criptográfica en `resetTotp` (sobrescritura de `totp_secret_enc`
- *   y purga/reemplazo de `backup_codes_hash`).
+ *   cambiar rol, cambiar teléfono móvil, cambiar contraseña o reiniciar 2FA, bloqueando auto-baja (`actor.id === userId`).
+ * - Guardrail Forense 3: Higiene criptográfica en `resetTotp` (regeneración de códigos de emergencia
+ *   `backup_codes_hash` y revocación de sesiones).
  * - Guardrail Forense 4: Registro del diferencial `before`/`after` en `audit_events` (`USER_UPDATE`).
  */
 
@@ -21,10 +21,8 @@ import {
   isUserRole,
   maskPhoneForAudit,
 } from '../auth/userRepository';
-import { generateTotpUri } from '../auth/totpService';
 import { auditEventStore } from '../audit/auditEventStore';
 import { extractClientIp, buildSourceSummary } from '../audit/auditMask';
-import { TOTP_ISSUER } from '../../config/authConfig';
 import { UserRole } from '../../types';
 
 export const usersRouter = Router();
@@ -51,6 +49,11 @@ usersRouter.post('/', requireAuth('users:manage'), async (req: Request, res: Res
     if (typeof email !== 'string' || typeof name !== 'string' || typeof role !== 'string') {
       return res.status(400).json({ error: 'Faltan campos obligatorios (nombre, correo, rol).' });
     }
+    if (typeof phoneNumber !== 'string' || !phoneNumber.trim()) {
+      return res.status(400).json({
+        error: 'El teléfono móvil del usuario es obligatorio para el envío de códigos SMS de doble factor (2FA).',
+      });
+    }
     if (!isUserRole(role)) {
       return res.status(400).json({ error: 'Rol institucional no válido.' });
     }
@@ -60,7 +63,7 @@ usersRouter.post('/', requireAuth('users:manage'), async (req: Request, res: Res
       name,
       role: role as UserRole,
       password: typeof password === 'string' && password.trim() ? password.trim() : undefined,
-      phoneNumber: typeof phoneNumber === 'string' && phoneNumber.trim() ? phoneNumber.trim() : undefined,
+      phoneNumber: phoneNumber.trim(),
       mustChangePassword: true,
     });
 
@@ -86,10 +89,7 @@ usersRouter.post('/', requireAuth('users:manage'), async (req: Request, res: Res
       user: created.user,
       oneTimeCredentials: {
         initialPassword: created.initialPassword,
-        totpEnrollment: {
-          otpauthUri: generateTotpUri(created.user.email, created.totpSecret, TOTP_ISSUER),
-          manualKey: created.totpSecret,
-        },
+        registeredPhone: created.user.phoneNumber,
         recoveryCodes: created.recoveryCodes,
         outOfBandNotice:
           'PROHIBIDO enviar por SMS, WhatsApp o correo electrónico. Entregar personalmente o por canal seguro fuera de banda (Out-of-Band).',
@@ -150,10 +150,9 @@ usersRouter.patch('/:id', requireAuth('users:manage'), async (req: Request, res:
       ok: true,
       auditDiff: result.auditDiff,
       oneTimeCredentials:
-        result.newTotpEnrollment || result.generatedTemporaryPassword
+        result.newRecoveryCodes || result.generatedTemporaryPassword
           ? {
               initialPassword: result.generatedTemporaryPassword,
-              totpEnrollment: result.newTotpEnrollment,
               recoveryCodes: result.newRecoveryCodes,
               outOfBandNotice:
                 'PROHIBIDO enviar por SMS, WhatsApp o correo electrónico. Entregar personalmente o por canal seguro fuera de banda (Out-of-Band).',

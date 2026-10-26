@@ -483,6 +483,7 @@ export async function updateManagedUser(
     const requiresSessionKillSwitch =
       !nextActive ||
       role !== existing.role ||
+      (phoneNumber ?? null) !== (existing.phone_number ?? null) ||
       Boolean(updates.resetTotp) ||
       newPasswordHash !== undefined;
 

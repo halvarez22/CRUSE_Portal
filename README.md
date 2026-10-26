@@ -19,7 +19,7 @@ La plataforma sustituye definitivamente el uso no auditable de hojas de cálculo
 ├──────────────────────────────────────────┬─────────────────────────────────────────────┤
 │      ZONA PÚBLICA (INSTITUCIONAL & B2C)  │     ZONA PRIVADA (CUMPLIMIENTO & OPERACIÓN) │
 ├──────────────────────────────────────────┼─────────────────────────────────────────────┤
-│ • Oferta de Crédito Nómina (0% apertura) │ • Autenticación 2FA TOTP (RFC 6238)         │
+│ • Oferta de Crédito Nómina (0% apertura) │ • Autenticación 2FA vía SMS al Celular      │
 │ • Simulador Amortizaciones (decimal.js)  │ • Escáner Móvil PWA con Canvas Analyzer     │
 │ • Asistente IA 24/7 (Groq Zero-PII)      │ • Purga Zero-PII en Celular (Post-Ack)      │
 │ • Transparencia CONDUSEF / SIPRES / UNE  │ • Base de Datos Relacional + WORM Nativo    │
@@ -37,8 +37,8 @@ La plataforma sustituye definitivamente el uso no auditable de hojas de cálculo
 - **Asistente Virtual Zero-PII:** Integración con Groq SDK (LLaMA 3.3 70B Versatile) blindada con filtro preemptivo de expresiones regulares que bloquea CURP, RFC, correos y teléfonos bajo la LFPDPPP.
 - **Identidad Visual Corporativa:** Glassmorphism en paleta Cruse (Azul Marino `#0D1B3E`, Cyan `#00D1FF`, Esmeralda `#249E82`, Dorado `#D4AF37`) con soporte total para modo Claro y Oscuro.
 
-### ✅ Fase 2: Ciberseguridad, Criptografía & PWA de Promotores (Certificado CRUSE-APO-2026-002)
-- **Autenticación Fuerte de Dos Factores (2FA TOTP):** Conforme al estándar RFC 6238 con Rate Limiting preventivo contra ataques de fuerza bruta.
+### ✅ Fase 2: Ciberseguridad, Criptografía & PWA de Promotores (Certificado CRUSE-APO-2026-002 / 030)
+- **Autenticación Fuerte de Dos Factores (2FA vía SMS al Móvil Registrado):** Envío de código OTP de 6 dígitos por mensaje SMS directo al teléfono celular registrado de cada usuario (Twilio Verify v2) sin instalar aplicaciones externas, con Rate Limiting anti-abuso y 8 códigos de emergencia de un solo uso.
 - **Envelope Encryption (AES-GCM 256 bits):** Cifrado en reposo para identificaciones y expedientes con separación de llaves KEK/DEK.
 - **Blind Indexing (HMAC-SHA256):** Búsqueda exacta de CURP y RFC sin necesidad de desencriptar la base de datos.
 - **Captura en Campo con Canvas Quality Analyzer:** PWA móvil con análisis en tiempo real de desenfoque (Laplaciano), luminosidad e inclinación.
@@ -92,13 +92,13 @@ El portal estará operativo en `http://localhost:3000`.
 
 ---
 
-## 4. GOBERNANZA DE IDENTIDADES Y PROVISIONAMIENTO ZERO-TRUST (CRUSE-APO-2026-028)
+## 4. GOBERNANZA DE IDENTIDADES Y PROVISIONAMIENTO ZERO-TRUST (CRUSE-APO-2026-028 / 030)
 
-| Rol | Correo Electrónico | Autenticación | Semilla TOTP Base32 (2FA) |
+| Rol | Correo Electrónico | Autenticación | Doble Factor (2FA SMS — Cero Apps) |
 | :--- | :--- | :--- | :--- |
-| **Oficial de Cumplimiento (UNE)** | `gerardo.olvera@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Cifrada AES-GCM-256 (Enrolamiento móvil 1er acceso) |
-| **Dirección General (Admin)** | `admin@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Cifrada AES-GCM-256 (Enrolamiento móvil 1er acceso) |
-| **Promotor de Campo (PWA)** | `promotor@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Cifrada AES-GCM-256 (Enrolamiento móvil 1er acceso) |
+| **Oficial de Cumplimiento (UNE)** | `gerardo.olvera@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Código SMS de 6 dígitos enviado al móvil registrado (`phone_number`) |
+| **Dirección General (Admin)** | `admin@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Código SMS de 6 dígitos enviado al móvil registrado (`phone_number`) |
+| **Promotor de Campo (PWA)** | `promotor@cruse.com.mx` | Generada vía `seed:dev` / Out-of-Band | Código SMS de 6 dígitos enviado al móvil registrado (`phone_number`) |
 
 ---
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   ShieldCheck,
@@ -11,9 +11,9 @@ import {
   Eye,
   EyeOff,
   Smartphone,
+  RefreshCw,
 } from 'lucide-react';
-import { AuthSession, UserRole, LoginChallengeResponse, TotpEnrollment } from '../../types';
-import { TotpEnrollmentPanel } from './TotpEnrollmentPanel';
+import { AuthSession, UserRole, LoginChallengeResponse } from '../../types';
 
 interface Login2FAModalProps {
   isOpen: boolean;
@@ -37,27 +37,40 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [tempToken, setTempToken] = useState('');
-  const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
+  const [maskedPhone, setMaskedPhone] = useState('+52 •••• •••• ••••');
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('oficial_cumplimiento');
   const [userName, setUserName] = useState('');
 
   const [loading, setLoading] = useState(false);
+  const [resendingSms, setResendingSms] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendFeedback, setResendFeedback] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
   if (!isOpen) return null;
 
   const resetChallenge = () => {
     setStep('credentials');
     setTempToken('');
-    setEnrollment(null);
+    setMaskedPhone('+52 •••• •••• ••••');
     setMustChangePassword(false);
     setTotpCode('');
     setUseRecoveryMode(false);
     setNewPassword('');
     setShowPassword(false);
     setShowNewPassword(false);
+    setResendCooldown(0);
+    setResendFeedback(null);
     setRemainingAttempts(null);
     setErrorMsg(null);
   };
@@ -72,6 +85,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setResendFeedback(null);
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -87,17 +101,46 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
 
       const challenge = data as LoginChallengeResponse;
       setTempToken(challenge.tempToken);
-      setEnrollment(challenge.enrollment ?? null);
+      setMaskedPhone(challenge.maskedPhone || '+52 •••• •••• ••••');
       setMustChangePassword(Boolean(challenge.mustChangePassword));
       setUserRole(challenge.role);
       setUserName(challenge.name);
       setPassword('');
       setShowPassword(false);
+      setResendCooldown(45);
       setStep('totp');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Error al procesar credenciales');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendSms = async () => {
+    if (resendingSms || resendCooldown > 0 || !tempToken) return;
+    setResendingSms(true);
+    setErrorMsg(null);
+    setResendFeedback(null);
+
+    try {
+      const res = await fetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempToken }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'No se pudo reenviar el código SMS');
+      }
+      if (data.maskedPhone) {
+        setMaskedPhone(String(data.maskedPhone));
+      }
+      setResendFeedback(`Nuevo código SMS enviado a ${data.maskedPhone || maskedPhone}.`);
+      setResendCooldown(60);
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al reenviar código SMS');
+    } finally {
+      setResendingSms(false);
     }
   };
 
@@ -122,7 +165,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
         if (data.remainingAttempts !== undefined) {
           setRemainingAttempts(data.remainingAttempts);
         }
-        throw new Error(data.error || 'Código 2FA inválido');
+        throw new Error(data.error || 'Código SMS 2FA inválido');
       }
 
       const session: AuthSession = {
@@ -136,7 +179,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
       setEmail('');
       onClose();
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al verificar 2FA');
+      setErrorMsg(err instanceof Error ? err.message : 'Error al verificar código SMS 2FA');
     } finally {
       setLoading(false);
     }
@@ -163,10 +206,10 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
             </div>
             <div>
               <h3 id="modal-login-title" className="text-xl font-bold text-slate-900 dark:text-white">
-                Acceso Institucional Zero-Trust
+                Acceso Institucional 2FA
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Autenticación de 2 Factores (2FA TOTP RFC 6238 en tu Teléfono Móvil)
+                Verificación de Doble Factor vía Código SMS al Móvil Registrado (Cero Apps)
               </p>
             </div>
           </div>
@@ -190,6 +233,13 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {resendFeedback && !errorMsg && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{resendFeedback}</span>
           </div>
         )}
 
@@ -247,7 +297,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Continuar a Desafío 2FA Móvil</span>
+                  <span>Enviar Código SMS a mi Celular</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -255,30 +305,38 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
           </form>
         ) : (
           <form onSubmit={handleTotpSubmit} className="mt-6 space-y-4 animate-fade-in">
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  {userName} ({userRole.replace('_', ' ').toUpperCase()})
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {enrollment
-                    ? 'Primer acceso: vincula tu teléfono móvil y escribe el código de 6 dígitos que muestre tu app.'
-                    : 'Abre Google/Microsoft Authenticator en tu teléfono móvil e ingresa el código de 6 dígitos.'}
-                </p>
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    {userName} ({userRole.replace('_', ' ').toUpperCase()})
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-300">
+                    Se envió un código SMS de 6 dígitos a tu celular registrado:{' '}
+                    <span className="font-mono font-bold text-[#00D1FF]">{maskedPhone}</span>
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                disabled={resendingSms || resendCooldown > 0}
+                onClick={handleResendSms}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-semibold text-[#00D1FF] border border-[#00D1FF]/30 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
+              >
+                <RefreshCw className={`w-3 h-3 ${resendingSms ? 'animate-spin' : ''}`} />
+                <span>{resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar SMS'}</span>
+              </button>
             </div>
-
-            {enrollment && <TotpEnrollmentPanel enrollment={enrollment} />}
 
             {mustChangePassword && (
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
                   <Lock className="w-4 h-4" />
-                  <span>Cambio Obligatorio de Contraseña Temporal (Guardrail 1)</span>
+                  <span>Cambio Obligatorio de Contraseña Temporal (Primer Ingreso)</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                  Por seguridad, debes reemplazar la contraseña temporal entregada por el administrador por una contraseña personal (mínimo 10 caracteres).
+                  Por seguridad, debes reemplazar la contraseña temporal entregada por el Administrador por una contraseña personal definitiva (mínimo 10 caracteres).
                 </p>
                 <div className="relative">
                   <input
@@ -308,20 +366,18 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                   {useRecoveryMode
                     ? 'Código de Recuperación de Emergencia (XXXX-XXXX)'
-                    : 'Código TOTP de 6 Dígitos en tu Celular'}
+                    : 'Código SMS de 6 Dígitos Recibido en tu Celular'}
                 </label>
-                {!enrollment && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUseRecoveryMode((prev) => !prev);
-                      setTotpCode('');
-                    }}
-                    className="text-[11px] font-semibold text-[#00D1FF] hover:underline"
-                  >
-                    {useRecoveryMode ? 'Usar app autenticadora (6 dígitos)' : '¿Extraviaste tu celular? Usar código de respaldo'}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseRecoveryMode((prev) => !prev);
+                    setTotpCode('');
+                  }}
+                  className="text-[11px] font-semibold text-[#00D1FF] hover:underline"
+                >
+                  {useRecoveryMode ? 'Usar código SMS (6 dígitos)' : '¿Sin señal o extraviaste tu celular? Usar código de emergencia'}
+                </button>
               </div>
               <div className="relative">
                 <input
@@ -366,7 +422,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
-                    <span>{enrollment ? 'Confirmar Celular y Entrar' : 'Validar 2FA Móvil'}</span>
+                    <span>Verificar Código SMS y Entrar</span>
                   </>
                 )}
               </button>

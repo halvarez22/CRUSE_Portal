@@ -2,11 +2,11 @@
  * PANEL DE FONDEO E INVERSIONISTAS — MODELO 3FN v4 (RN-09, RN-10, RN-11)
  *
  * @implements RN-09 (Interés Simple vs Compuesto), RN-10 (Exención ISR applies_isr) y RN-11 (Capital al Corte)
- * @implements Guardrail Forense 4 (< 270 líneas y 0 any)
+ * @implements Sincronización UI-Documento (Botón '+ Nuevo Inversionista' -> 'Guardar y Generar Pagaré')
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Landmark, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Play, Landmark, CheckCircle2, RefreshCw, Plus, X } from 'lucide-react';
 import { AuthSession } from '../../types';
 import { OperationalNotesPanel } from './OperationalNotesPanel';
 
@@ -46,6 +46,14 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
   const [settling, setSettling] = useState(false);
   const [settleBanner, setSettleBanner] = useState<{ message: string; alreadyProcessed: boolean } | null>(null);
 
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [invName, setInvName] = useState('');
+  const [invCapital, setInvCapital] = useState('250000');
+  const [invRate, setInvRate] = useState('18');
+  const [invType, setInvType] = useState<'SIMPLE' | 'COMPOUND'>('SIMPLE');
+  const [invIsrOption, setInvIsrOption] = useState<'RETENCION_0_9' | 'EXENTO'>('RETENCION_0_9');
+  const [creatingInv, setCreatingInv] = useState(false);
+
   const fetchOverview = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,6 +75,39 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
   useEffect(() => {
     fetchOverview();
   }, [fetchOverview]);
+
+  const handleCreateInvestor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingInv(true);
+    setSettleBanner(null);
+    try {
+      const res = await fetch('/api/funding/investors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({
+          name: invName,
+          capital: Number(invCapital),
+          annualRate: Number(invRate),
+          interestType: invType,
+          appliesIsr: invIsrOption === 'RETENCION_0_9' ? 1 : 0,
+          isrRetentionRate: 0.009,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setSettleBanner({ message: String(data.message), alreadyProcessed: false });
+        setShowNewModal(false);
+        setInvName('');
+        await fetchOverview();
+      } else {
+        setSettleBanner({ message: String(data.error || 'Error al crear pagaré'), alreadyProcessed: true });
+      }
+    } catch {
+      setSettleBanner({ message: 'Error de red al guardar inversionista', alreadyProcessed: true });
+    } finally {
+      setCreatingInv(false);
+    }
+  };
 
   const handleRunMonthlySettle = async () => {
     if (settling) return;
@@ -103,21 +144,40 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
           <Landmark className="w-5 h-5 text-[#00D1FF]" />
           <div>
             <h2 className="text-sm font-bold text-white">
-              Motor de Fondeo e Inversionistas (RN-09 Compuesto • RN-10 Exención ISR • RN-11 Capital al Corte)
+              Fondeo e Inversionistas (Pagarés Interés Simple y Compuesto • Retención ISR)
             </h2>
-            <p className="text-xs text-slate-400">Cálculo determinista base 360 con Decimal.js y registro WORM</p>
+            <p className="text-xs text-slate-400">Control de capital aportado, pagarés activos y corte mensual</p>
           </div>
         </div>
 
-        {session.user.role === 'admin' && (
-          <div className="flex flex-wrap items-center gap-2">
-            <input type="date" value={targetMonthDate} onChange={(e) => setTargetMonthDate(e.target.value)} className="bg-black/50 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white" />
-            <button onClick={handleRunMonthlySettle} disabled={settling} className="px-4 py-2 rounded-xl bg-[#249E82] hover:bg-[#1fa789] text-white text-xs font-bold flex items-center gap-2 disabled:opacity-50">
-              {settling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-white" />}
-              <span>Ejecutar Corte Mensual Idempotente</span>
-            </button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {session.user.role === 'admin' && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowNewModal(true)}
+                className="px-3.5 py-2 rounded-xl bg-[#00D1FF] hover:bg-cyan-400 text-[#0D1B3E] text-xs font-bold flex items-center gap-1.5 shadow-lg"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Nuevo Inversionista</span>
+              </button>
+              <input
+                type="date"
+                value={targetMonthDate}
+                onChange={(e) => setTargetMonthDate(e.target.value)}
+                className="bg-black/50 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white"
+              />
+              <button
+                onClick={handleRunMonthlySettle}
+                disabled={settling}
+                className="px-4 py-2 rounded-xl bg-[#249E82] hover:bg-[#1fa789] text-white text-xs font-bold flex items-center gap-2 disabled:opacity-50"
+              >
+                {settling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-white" />}
+                <span>Ejecutar Corte Mensual Idempotente</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {settleBanner && (
@@ -127,17 +187,94 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
         </div>
       )}
 
+      {showNewModal && (
+        <form onSubmit={handleCreateInvestor} className="p-5 rounded-2xl bg-slate-900 border border-[#00D1FF]/40 space-y-4 text-xs">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <h3 className="font-bold text-white text-sm">Alta de Nuevo Inversionista y Emisión de Pagaré</h3>
+            <button type="button" onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Nombre</label>
+              <input
+                type="text"
+                required
+                value={invName}
+                onChange={(e) => setInvName(e.target.value)}
+                placeholder="Nombre del Inversionista"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/15 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Capital Inicial ($)</label>
+              <input
+                type="number"
+                required
+                min={1000}
+                step="0.01"
+                value={invCapital}
+                onChange={(e) => setInvCapital(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/15 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Tasa Anual (%)</label>
+              <input
+                type="number"
+                required
+                step="0.1"
+                value={invRate}
+                onChange={(e) => setInvRate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/15 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Esquema de Interés</label>
+              <select
+                value={invType}
+                onChange={(e) => setInvType(e.target.value as 'SIMPLE' | 'COMPOUND')}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/15 text-white"
+              >
+                <option value="SIMPLE">Interés Simple (Pago Mensual)</option>
+                <option value="COMPOUND">Interés Compuesto (Capitalizable)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Régimen de Retención ISR</label>
+              <select
+                value={invIsrOption}
+                onChange={(e) => setInvIsrOption(e.target.value as 'RETENCION_0_9' | 'EXENTO')}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/15 text-white"
+              >
+                <option value="RETENCION_0_9">Retención ISR: 0.9%</option>
+                <option value="EXENTO">Exento de ISR: 0.0%</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setShowNewModal(false)} className="px-4 py-2 rounded-xl bg-white/10 text-slate-300 font-semibold">
+              Cancelar
+            </button>
+            <button type="submit" disabled={creatingInv} className="px-5 py-2 rounded-xl bg-[#249E82] hover:bg-[#1fa789] text-white font-bold">
+              {creatingInv ? 'Generando Pagaré...' : 'Guardar y Generar Pagaré'}
+            </button>
+          </div>
+        </form>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10">
           <span className="text-[11px] text-slate-400">Capital Original Colocado</span>
           <p className="text-xl font-bold text-white mt-1">${totalInitialCapital.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
         </div>
         <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10">
-          <span className="text-[11px] text-slate-400">Capital Base Actual (current_capital)</span>
+          <span className="text-[11px] text-slate-400">Capital Base Actual</span>
           <p className="text-xl font-bold text-[#00D1FF] mt-1">${totalCurrentCapital.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
         </div>
         <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10">
-          <span className="text-[11px] text-slate-400">Inversiones Activas / Movimientos WORM</span>
+          <span className="text-[11px] text-slate-400">Inversiones Activas / Movimientos</span>
           <p className="text-xl font-bold text-emerald-400 mt-1">{investments.length} / {movements.length}</p>
         </div>
       </div>
@@ -147,11 +284,11 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
           <thead>
             <tr className="border-b border-white/10 bg-white/[0.03] text-slate-400 font-semibold">
               <th className="py-3 px-4">ID Inversión</th>
-              <th className="py-3 px-4">Esquema (RN-09)</th>
+              <th className="py-3 px-4">Esquema</th>
               <th className="py-3 px-4 text-right">Capital Inicial</th>
-              <th className="py-3 px-4 text-right">Capital Actual (RN-11)</th>
+              <th className="py-3 px-4 text-right">Capital Actual</th>
               <th className="py-3 px-4 text-right">Tasa Anual</th>
-              <th className="py-3 px-4 text-center">Régimen ISR (RN-10)</th>
+              <th className="py-3 px-4 text-center">Régimen ISR</th>
               <th className="py-3 px-4 text-center">Bitácora</th>
             </tr>
           </thead>
@@ -174,9 +311,9 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
                     <td className="py-3 px-4 text-right text-emerald-400 font-semibold">{(Number(inv.annual_rate) * 100).toFixed(2)}%</td>
                     <td className="py-3 px-4 text-center">
                       {inv.applies_isr === 1 ? (
-                        <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[10px] font-semibold">Retiene ISR ({(Number(inv.isr_retention_rate) * 100).toFixed(2)}%)</span>
+                        <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[10px] font-semibold">Retención ISR: {(Number(inv.isr_retention_rate) * 100).toFixed(1)}%</span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 text-[10px] font-semibold">Exento ISR (applies_isr = 0)</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 text-[10px] font-semibold">Exento ISR (0%)</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -193,7 +330,7 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
       </div>
 
       {selectedInvestmentId && (
-        <OperationalNotesPanel entityType="INVESTMENT" entityId={selectedInvestmentId} title={`Block de Notas Operativas de la Inversión ${selectedInvestmentId} (RN-04)`} />
+        <OperationalNotesPanel entityType="INVESTMENT" entityId={selectedInvestmentId} title={`Block de Notas Operativas de la Inversión ${selectedInvestmentId}`} />
       )}
     </div>
   );

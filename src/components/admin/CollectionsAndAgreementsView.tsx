@@ -352,7 +352,7 @@ export const CollectionsAndAgreementsView: React.FC<CollectionsAndAgreementsView
                         <>
                           <button onClick={() => openActionModal(row, 'SUSPEND_OR_FREEZE', 'DEMANDA_JUDICIAL')} className="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-[11px]">Congelar / Demanda</button>
                           <button onClick={() => openActionModal(row, 'SUSPEND_OR_FREEZE', 'CONVENIO_EXTRAJUDICIAL')} className="px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-[11px]">Convenio Pago</button>
-                          <button onClick={() => openActionModal(row, 'SUSPEND_OR_FREEZE', 'LICENCIA_SIN_GOCE')} className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[11px]">Licencia s/Goce</button>
+                          <button onClick={() => openActionModal(row, 'SUSPEND_OR_FREEZE', 'LICENCIA_SIN_GOCE')} className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[11px]">Suspensión Temporal</button>
                         </>
                       )}
                       {(row.projectedStatus === 'FROZEN_EXTRAJUDICIAL' || row.projectedStatus === 'SUSPENDED_LEAVE') && (
@@ -441,7 +441,7 @@ export const CollectionsAndAgreementsView: React.FC<CollectionsAndAgreementsView
               <span>Remanente neto a entregar: <strong className="text-emerald-400">${restructureCalc.netDisbursed}</strong></span>
             </div>
             <button type="submit" disabled={submittingRestructure || selectedPrevLoanIds.length === 0} className="px-5 py-2 rounded-lg bg-[#00D1FF] hover:bg-cyan-400 disabled:opacity-40 text-[#0D1B3E] font-bold text-xs">
-              {submittingRestructure ? 'Sellando Reestructura N-a-1...' : 'Ejecutar y Sellar Reestructura N-a-1'}
+              {submittingRestructure ? 'Consolidando Contrato...' : 'Consolidar en Nuevo Contrato'}
             </button>
           </div>
         </form>

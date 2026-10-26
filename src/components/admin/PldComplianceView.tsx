@@ -297,7 +297,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-[#249E82]" />
             <h3 className="text-sm font-bold text-white">
-              Ingesta Criptográfica de Listas Oficiales (69-B SAT / UIF / OFAC / PEPs)
+              Ingestar Lista Oficial (69-B SAT / UIF / OFAC / PEPs)
             </h3>
           </div>
           <span className="text-[11px] text-slate-400 font-mono">
@@ -348,14 +348,33 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
           className="w-full p-3 rounded-xl glass-input text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none"
         />
 
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const lines = csvContent
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter((l) => l.length > 0 && !l.toUpperCase().startsWith('CURP'));
+              setFeedback({
+                type: lines.length > 0 ? 'success' : 'error',
+                message:
+                  lines.length > 0
+                    ? `Previsualización lista: ${lines.length} registro(s) detectados para la lista ${LIST_TYPE_LABELS[selectedListType]}. Haz clic en "Sellar e Ingresar a Base de Datos" para confirmar.`
+                    : 'No se detectaron renglones válidos para previsualizar. Selecciona un archivo CSV o ingresa registros.',
+              });
+            }}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-all"
+          >
+            Previsualizar
+          </button>
           <button
             onClick={handleIngestList}
             disabled={ingestLoading}
             className="px-5 py-2 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50"
           >
             {ingestLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-            <span>Hashear con HMAC-SHA256 y Sellar en Catálogo WORM</span>
+            <span>Sellar e Ingresar a Base de Datos</span>
           </button>
         </div>
       </div>

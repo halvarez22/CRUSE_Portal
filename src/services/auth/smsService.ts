@@ -58,15 +58,29 @@ export class SmsDeliveryError extends Error {
   }
 }
 
-export async function sendSmsOtp(userId: string, toPhone?: string): Promise<void> {
+export function formatMaskedPhoneForDisplay(phone: string | null | undefined): string {
+  const cleaned = (phone ?? '').trim();
+  if (!cleaned) return '+52 •••• •••• ••••';
+  const last4 = cleaned.slice(-4);
+  const countryPrefix = cleaned.startsWith('+52')
+    ? '+52'
+    : cleaned.slice(0, Math.max(0, cleaned.length - 10)) || '+52';
+  return `${countryPrefix} •••• •••• ${last4}`;
+}
+
+export async function sendSmsOtp(
+  userId: string,
+  toPhone?: string | null
+): Promise<{ maskedPhone: string }> {
   const env = getServerEnv();
   // Regla 2 y Regla 5: Cero Hardcoding. Prioridad: 1. toPhone (DB), 2. TEST_PHONE_NUMBER (.env)
-  const targetPhone = toPhone?.trim() || '';
+  const targetPhone = toPhone?.trim() || env.testPhoneNumber?.trim() || '';
 
   if (!targetPhone) {
-    throw new SmsDeliveryError('No existe número telefónico destino configurado para 2FA.', 503);
+    throw new SmsDeliveryError('No existe número telefónico móvil registrado para este usuario.', 503);
   }
 
+  const maskedPhone = formatMaskedPhoneForDisplay(targetPhone);
   const twilioClient = getTwilioClient();
 
   if (twilioClient) {
@@ -85,8 +99,8 @@ export async function sendSmsOtp(userId: string, toPhone?: string): Promise<void
         serviceSid,
         expires: Date.now() + OTP_TTL_MS,
       });
-      console.log(`[SMS Verify] OTP despachado vía Twilio Verify (${serviceSid}) de forma segura.`);
-      return;
+      console.log(`[SMS Verify] OTP despachado vía Twilio Verify (${serviceSid}) a ${maskedPhone}.`);
+      return { maskedPhone };
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error(`[SMS Verify] Fallo al despachar con Twilio Verify: ${errMsg}`);
@@ -104,11 +118,11 @@ export async function sendSmsOtp(userId: string, toPhone?: string): Promise<void
         console.warn(
           `[FALLBACK DESARROLLO 2FA] Twilio rechazó el envío. Código OTP criptográfico local para ${userId}: ${fallbackCode} (expira en 5 min)`
         );
-        return;
+        return { maskedPhone };
       }
 
       throw new SmsDeliveryError(
-        'Servicio de mensajería 2FA temporalmente no disponible. Intente más tarde.',
+        'Servicio de mensajería SMS 2FA temporalmente no disponible. Intente más tarde o utilice un código de recuperación.',
         503
       );
     }
@@ -126,10 +140,10 @@ export async function sendSmsOtp(userId: string, toPhone?: string): Promise<void
     console.warn(
       `[SIMULACIÓN DESARROLLO 2FA] Twilio no configurado. Código OTP criptográfico local para ${userId}: ${fallbackCode}`
     );
-    return;
+    return { maskedPhone };
   }
 
-  throw new SmsDeliveryError('Proveedor de mensajería 2FA no configurado en producción.', 503);
+  throw new SmsDeliveryError('Proveedor de mensajería SMS 2FA no configurado en producción.', 503);
 }
 
 export async function verifySmsOtp(userId: string, code: string): Promise<boolean> {
