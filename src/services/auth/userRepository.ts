@@ -72,6 +72,15 @@ export async function ensureUsersPhoneColumn(): Promise<void> {
       // La columna ya existe en SQLite.
     }
   }
+  const fallbackPhone = process.env.TEST_PHONE_NUMBER?.trim() || '+524777241148';
+  try {
+    await db.execute(
+      `UPDATE users SET phone_number = $1 WHERE phone_number IS NULL OR phone_number = ''`,
+      [fallbackPhone]
+    );
+  } catch {
+    // Backfill opcional si la tabla aún no está inicializada.
+  }
   schemaColsChecked = true;
 }
 
