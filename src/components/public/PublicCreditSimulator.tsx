@@ -4,7 +4,12 @@ import { ProductId } from '../../types';
 import { LOAN_PRODUCTS } from '../../data/cruseData';
 import { FINANCIAL_CONSTANTS, calculateSimulation } from '../../config/financialConstants';
 import { PreApplicationModal } from './PreApplicationModal';
-import { exportAmortizationToExcel, exportAmortizationToPdf, AmortizationExportParams } from '../../utils/amortizationExport';
+import {
+  exportAmortizationToExcel,
+  exportAmortizationToPdf,
+  formatCurrencyCell,
+  AmortizationExportParams,
+} from '../../utils/amortizationExport';
 
 export const PublicCreditSimulator: React.FC = () => {
   const [productType, setProductType] = useState<ProductId>('normal');
@@ -341,11 +346,11 @@ export const PublicCreditSimulator: React.FC = () => {
                   <thead className="sticky top-0 bg-slate-100 dark:bg-slate-900 border-b border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300">
                     <tr>
                       <th className="py-2.5 px-2">Qna</th>
-                      <th className="py-2.5 px-2">Saldo Insoluto</th>
-                      <th className="py-2.5 px-2">Capital</th>
-                      <th className="py-2.5 px-2">Interés</th>
-                      <th className="py-2.5 px-2">IVA (16%)</th>
-                      <th className="py-2.5 px-2">Seguro</th>
+                      <th className="py-2.5 px-2 text-right">Saldo Insoluto</th>
+                      <th className="py-2.5 px-2 text-right">Capital</th>
+                      <th className="py-2.5 px-2 text-right">Interés</th>
+                      <th className="py-2.5 px-2 text-right">IVA (16%)</th>
+                      <th className="py-2.5 px-2 text-right">Seguro</th>
                       <th className="py-2.5 px-2 text-right">Pago Fijo</th>
                     </tr>
                   </thead>
@@ -353,15 +358,26 @@ export const PublicCreditSimulator: React.FC = () => {
                     {simulation.schedule.map((row) => (
                       <tr key={row.period} className="hover:bg-slate-50 dark:hover:bg-white/5">
                         <td className="py-2 px-2 text-slate-600 dark:text-slate-400 font-bold">{row.period}</td>
-                        <td className="py-2 px-2 text-slate-800 dark:text-slate-300">${row.balance}</td>
-                        <td className="py-2 px-2 text-[#0F766E] dark:text-[#4CD360] font-semibold">${row.capital}</td>
-                        <td className="py-2 px-2 text-[#1E3A8A] dark:text-[#00D1FF]">${row.interest}</td>
-                        <td className="py-2 px-2 text-slate-600 dark:text-slate-400">${row.vat}</td>
-                        <td className="py-2 px-2 text-slate-600 dark:text-slate-400">${row.insurance}</td>
-                        <td className="py-2 px-2 text-right font-black text-slate-950 dark:text-white">${row.payment}</td>
+                        <td className="py-2 px-2 text-right text-slate-800 dark:text-slate-300">{formatCurrencyCell(row.balance)}</td>
+                        <td className="py-2 px-2 text-right text-[#0F766E] dark:text-[#4CD360] font-semibold">{formatCurrencyCell(row.capital)}</td>
+                        <td className="py-2 px-2 text-right text-[#1E3A8A] dark:text-[#00D1FF]">{formatCurrencyCell(row.interest)}</td>
+                        <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">{formatCurrencyCell(row.vat)}</td>
+                        <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">{formatCurrencyCell(row.insurance)}</td>
+                        <td className="py-2 px-2 text-right font-black text-slate-950 dark:text-white">{formatCurrencyCell(row.payment)}</td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot className="sticky bottom-0 bg-emerald-50/95 dark:bg-slate-900 border-t-2 border-slate-900 dark:border-[#249E82] text-[11px] font-black">
+                    <tr>
+                      <td className="py-2.5 px-2 text-slate-950 dark:text-white">TOTALES</td>
+                      <td className="py-2.5 px-2 text-right text-slate-800 dark:text-slate-300">{formatCurrencyCell(0)}</td>
+                      <td className="py-2.5 px-2 text-right text-[#0F766E] dark:text-[#4CD360]">{formatCurrencyCell(amount)}</td>
+                      <td className="py-2.5 px-2 text-right text-[#1E3A8A] dark:text-[#00D1FF]">{formatCurrencyCell(simulation.totalInterest)}</td>
+                      <td className="py-2.5 px-2 text-right text-slate-800 dark:text-slate-200">{formatCurrencyCell(simulation.totalVat)}</td>
+                      <td className="py-2.5 px-2 text-right text-slate-800 dark:text-slate-200">{formatCurrencyCell(simulation.totalInsurance)}</td>
+                      <td className="py-2.5 px-2 text-right text-[#0F766E] dark:text-[#4CD360]">{formatCurrencyCell(simulation.totalToPay)}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
 

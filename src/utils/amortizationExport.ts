@@ -1,10 +1,11 @@
 /**
- * Utilidad pura de exportación de Tabla de Amortización Oficial (Excel .xlsx y PDF / Impresión Vectorial).
- * Cumple con Guardrail 1 (Cero dependencias pesadas de PDF), Guardrail 2 (Valores Decimal.js pre-calculados)
- * y Guardrail 3 (Módulo 100% puro sin imports de React ni estado global).
+ * Utilidad pura de exportación de Tabla de Amortización Oficial (Excel .xlsx Estilizado y PDF Vectorial).
+ * Cumple con Guardrail 1 (Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }) en capa de presentación),
+ * Guardrail 2 (Plantilla OpenXML .xlsx con diseño institucional y formato '"$"#,##0.00')
+ * y Guardrail 3 (Fila obligatoria de TOTALES al cierre de la tabla en PDF y Excel).
  */
-import * as XLSX from 'xlsx';
 import { AmortizationRow } from '../types';
+import { generateStyledAmortizationXlsxBytes } from './excelStyledTemplate';
 
 export interface AmortizationExportParams {
   productName: string;
@@ -21,79 +22,32 @@ export interface AmortizationExportParams {
   schedule: AmortizationRow[];
 }
 
-const formatMxn = (val: number): string =>
-  `$${val.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+const mxnCurrencyFormatter = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'MXN',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 /**
- * Genera y descarga un archivo Excel (.xlsx) nativo con la ficha resumen y la tabla completa de amortización.
+ * Formateador puro de capa de presentación con separadores de miles ($23,958.33).
+ * No altera los valores numéricos de cálculo (Guardrail 1).
+ */
+export function formatCurrencyCell(val: string | number): string {
+  const numericVal = typeof val === 'number' ? val : Number(val);
+  if (!Number.isFinite(numericVal)) return '$0.00';
+  return mxnCurrencyFormatter.format(numericVal);
+}
+
+const formatMxn = (val: number): string => `${formatCurrencyCell(val)} MXN`;
+
+/**
+ * Genera y descarga un archivo Excel (.xlsx) con diseño institucional pre-construido,
+ * formato contable nativo '"$"#,##0.00' con separador de miles y fila de TOTALES.
  */
 export function exportAmortizationToExcel(params: AmortizationExportParams): void {
-  const {
-    productName,
-    amount,
-    selectedTerm,
-    interestRateText,
-    fortnightlyPayment,
-    monthlyPaymentEquivalent,
-    totalInterest,
-    totalVat,
-    totalInsurance,
-    totalToPay,
-    catPercent,
-    schedule,
-  } = params;
-
-  const summaryRows: (string | number)[][] = [
-    ['MICROFINANCIERA CRUSE, S.A. DE C.V., SOFOM, E.N.R.'],
-    ['TABLA DE AMORTIZACIÓN QUINCENAL OFICIAL — CONFORME A NOM-186-SCFI-2013'],
-    [],
-    ['Producto Financiero', productName],
-    ['Monto Solicitado (MXN)', amount],
-    ['Plazo Contratado', `${selectedTerm} quincenas (${selectedTerm / 2} meses)`],
-    ['Tasa de Interés Ordinaria', interestRateText],
-    ['Pago Quincenal Fijo (MXN)', fortnightlyPayment],
-    ['Importe Mensual Equivalente (2 Quincenas MXN)', monthlyPaymentEquivalent],
-    ['Total de Intereses Calculados (MXN)', totalInterest],
-    ['IVA sobre Intereses 16% (MXN)', totalVat],
-    ['Total Seguro de Vida Institucional (MXN)', totalInsurance],
-    ['Comisión por Apertura', '$0.00 MXN (0%)'],
-    ['Monto Total a Pagar (MXN)', totalToPay],
-    ['CAT Promedio Ponderado Informativo', `${catPercent}% sin IVA`],
-    [],
-    [
-      'Quincena',
-      'Saldo Insoluto (MXN)',
-      'Capital (MXN)',
-      'Interés (MXN)',
-      'IVA 16% (MXN)',
-      'Seguro (MXN)',
-      'Pago Fijo Quincenal (MXN)',
-    ],
-  ];
-
-  const scheduleRows: (string | number)[][] = schedule.map((row) => [
-    row.period,
-    Number(row.balance),
-    Number(row.capital),
-    Number(row.interest),
-    Number(row.vat),
-    Number(row.insurance),
-    Number(row.payment),
-  ]);
-
-  const worksheet = XLSX.utils.aoa_to_sheet([...summaryRows, ...scheduleRows]);
-  worksheet['!cols'] = [
-    { wch: 36 },
-    { wch: 24 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 24 },
-  ];
-
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Tabla_Amortizacion');
+  const { productName, amount, selectedTerm } = params;
+  const xlsxBytes = generateStyledAmortizationXlsxBytes(params);
 
   const safeProductSlug = productName
     .toLowerCase()
@@ -101,11 +55,22 @@ export function exportAmortizationToExcel(params: AmortizationExportParams): voi
     .replace(/^_|_$/g, '');
   const fileName = `CRUSE_Amortizacion_${safeProductSlug}_${amount}MXN_${selectedTerm}Q.xlsx`;
 
-  XLSX.writeFile(workbook, fileName);
+  const blob = new Blob([xlsxBytes], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 /**
- * Abre una vista vectorial con diseño institucional CRUSE y dispara el diálogo nativo de impresión/guardado PDF.
+ * Abre una vista vectorial con diseño institucional CRUSE, separadores de miles en cada celda
+ * y fila ejecutiva de TOTALES al cierre de la tabla, disparando el diálogo de impresión/guardado PDF.
  */
 export function exportAmortizationToPdf(params: AmortizationExportParams): void {
   const {
@@ -117,6 +82,7 @@ export function exportAmortizationToPdf(params: AmortizationExportParams): void 
     monthlyPaymentEquivalent,
     totalInterest,
     totalVat,
+    totalInsurance,
     totalToPay,
     catPercent,
     schedule,
@@ -133,15 +99,28 @@ export function exportAmortizationToPdf(params: AmortizationExportParams): void 
       (row) => `
         <tr>
           <td class="center bold">${row.period}</td>
-          <td class="num">$${row.balance}</td>
-          <td class="num emerald">$${row.capital}</td>
-          <td class="num blue">$${row.interest}</td>
-          <td class="num">$${row.vat}</td>
-          <td class="num">$${row.insurance}</td>
-          <td class="num bold">$${row.payment}</td>
+          <td class="num">${formatCurrencyCell(row.balance)}</td>
+          <td class="num emerald">${formatCurrencyCell(row.capital)}</td>
+          <td class="num blue">${formatCurrencyCell(row.interest)}</td>
+          <td class="num">${formatCurrencyCell(row.vat)}</td>
+          <td class="num">${formatCurrencyCell(row.insurance)}</td>
+          <td class="num bold">${formatCurrencyCell(row.payment)}</td>
         </tr>`
     )
     .join('');
+
+  const totalsRowHtml = `
+      <tfoot>
+        <tr class="totals-row">
+          <td class="center bold">TOTALES</td>
+          <td class="num bold">${formatCurrencyCell(0)}</td>
+          <td class="num bold emerald">${formatCurrencyCell(amount)}</td>
+          <td class="num bold blue">${formatCurrencyCell(totalInterest)}</td>
+          <td class="num bold">${formatCurrencyCell(totalVat)}</td>
+          <td class="num bold">${formatCurrencyCell(totalInsurance)}</td>
+          <td class="num bold total-highlight">${formatCurrencyCell(totalToPay)}</td>
+        </tr>
+      </tfoot>`;
 
   const htmlDocument = `<!DOCTYPE html>
 <html lang="es">
@@ -167,6 +146,8 @@ export function exportAmortizationToPdf(params: AmortizationExportParams): void 
     th.center, td.center { text-align: center; }
     td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; text-align: right; }
     tr:nth-child(even) { background: #f8fafc; }
+    .totals-row td { background: #e6f7f3; border-top: 2px solid #041734; border-bottom: 3px double #041734; padding: 7px 8px; font-weight: 800; color: #041734; }
+    .total-highlight { color: #0f766e !important; font-size: 11px; }
     .bold { font-weight: 700; }
     .emerald { color: #059669; font-weight: 700; }
     .blue { color: #2563eb; }
@@ -179,7 +160,7 @@ export function exportAmortizationToPdf(params: AmortizationExportParams): void 
 <body>
   <div class="header">
     <div class="brand">
-      <img src="/CRUSE_LOGO.png" alt="Microfinanciera Cruse" onerror="this.style.display='none'" />
+      <img src="/branding/logotipo-cruse-oficial.png" alt="Microfinanciera Cruse" onerror="this.style.display='none'" />
       <div>
         <h1 class="brand-title">MICROFINANCIERA CRUSE, S.A. DE C.V., SOFOM, E.N.R.</h1>
         <p class="brand-sub">Tabla de Amortización Quincenal Oficial — Conforme a NOM-186-SCFI-2013</p>
@@ -224,6 +205,7 @@ export function exportAmortizationToPdf(params: AmortizationExportParams): void 
     <tbody>
       ${rowsHtml}
     </tbody>
+    ${totalsRowHtml}
   </table>
 
   <div class="footer">
