@@ -104,7 +104,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="dark min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <header className="px-6 py-4 bg-slate-900/90 border-b border-white/10 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md">
         <div className="flex items-center gap-4">
           <button

@@ -3,24 +3,36 @@ import React from 'react';
 interface ChatFormattedMessageProps {
   text: string;
   isUser?: boolean;
+  /**
+   * Guardrail 1 & 2 (CRUSE-APO-2026-034): Fuerza tokens de alto contraste WCAG AAA (>15:1)
+   * cuando el mensaje se renderiza sobre una superficie oscura fija (ej. Alma Virtual en Admin),
+   * sin depender de la clase global `html.dark` ni afectar al Asistente Público (`AiAssistantPublic.tsx`).
+   */
+  forceDarkSurface?: boolean;
 }
 
 /**
- * Renderizador seguro de Markdown ligero a nodos React nativos (CRUSE-APO-2026-016).
+ * Renderizador seguro de Markdown ligero a nodos React nativos (CRUSE-APO-2026-016 / 034).
  * - Regla 5 SSD (Zero-XSS): Prohibido usar dangerouslySetInnerHTML.
  * - Preserva filas de tablas Markdown (| col | col |) que contengan <br> internos en sus celdas.
  * - Soporta encabezados (###), listas (1., -), separadores (---), citas (>), tablas y negritas (**texto**).
  */
-export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text, isUser = false }) => {
+export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({
+  text,
+  isUser = false,
+  forceDarkSurface = false,
+}) => {
   const renderInline = (content: string, keyPrefix: string): React.ReactNode[] => {
     const parts = content.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, idx) => {
       if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        const strongClass = isUser
+          ? 'font-extrabold text-white'
+          : forceDarkSurface
+            ? 'font-bold text-white'
+            : 'font-bold text-[#041734] dark:text-white';
         return (
-          <strong
-            key={`${keyPrefix}-b-${idx}`}
-            className={isUser ? 'font-extrabold text-white' : 'font-bold text-[#041734] dark:text-white'}
-          >
+          <strong key={`${keyPrefix}-b-${idx}`} className={strongClass}>
             {part.slice(2, -2)}
           </strong>
         );
@@ -73,7 +85,16 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
 
     // 1. Separador horizontal (---)
     if (/^-{3,}$/.test(line)) {
-      blocks.push(<hr key={`hr-${i}`} className="my-3 border-slate-200 dark:border-white/10" />);
+      blocks.push(
+        <hr
+          key={`hr-${i}`}
+          className={
+            forceDarkSurface
+              ? 'my-3 border-slate-700/80'
+              : 'my-3 border-slate-200 dark:border-white/10'
+          }
+        />
+      );
       i++;
       continue;
     }
@@ -84,7 +105,11 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
       blocks.push(
         <blockquote
           key={`bq-${i}`}
-          className="border-l-4 border-[#249E82] pl-3 py-1 my-2 text-xs sm:text-sm italic text-slate-600 dark:text-slate-300 bg-[#249E82]/5 rounded-r-lg"
+          className={
+            forceDarkSurface
+              ? 'border-l-4 border-[#249E82] pl-3 py-1.5 my-2 text-xs sm:text-sm italic text-slate-100 bg-[#249E82]/15 rounded-r-lg'
+              : 'border-l-4 border-[#249E82] pl-3 py-1 my-2 text-xs sm:text-sm italic text-slate-600 dark:text-slate-200 bg-[#249E82]/5 dark:bg-[#249E82]/15 rounded-r-lg'
+          }
         >
           {renderInline(quoteText, `bq-${i}`)}
         </blockquote>
@@ -110,23 +135,63 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
         const headerCells = validRows[0]!;
         const bodyRows = validRows.slice(1);
         blocks.push(
-          <div key={`tbl-${i}`} className="my-2.5 overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
+          <div
+            key={`tbl-${i}`}
+            className={
+              forceDarkSurface
+                ? 'my-2.5 overflow-x-auto rounded-xl border border-slate-700 bg-slate-900/90'
+                : 'my-2.5 overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10'
+            }
+          >
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-white/10">
+                <tr
+                  className={
+                    forceDarkSurface
+                      ? 'bg-slate-800/95 border-b border-slate-700'
+                      : 'bg-slate-100/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-white/10'
+                  }
+                >
                   {headerCells.map((cell, cIdx) => (
-                    <th key={`th-${cIdx}`} className="py-2 px-3 font-bold text-[#041734] dark:text-[#00D1FF]">
+                    <th
+                      key={`th-${cIdx}`}
+                      className={
+                        forceDarkSurface
+                          ? 'py-2.5 px-3 font-bold text-[#00D1FF]'
+                          : 'py-2 px-3 font-bold text-[#041734] dark:text-[#00D1FF]'
+                      }
+                    >
                       {renderCellContent(cell || 'N/A', `th-${i}-${cIdx}`)}
                     </th>
                   ))}
                 </tr>
               </thead>
               {bodyRows.length > 0 && (
-                <tbody className="divide-y divide-slate-200/60 dark:divide-white/5">
+                <tbody
+                  className={
+                    forceDarkSurface
+                      ? 'divide-y divide-slate-800'
+                      : 'divide-y divide-slate-200/60 dark:divide-white/10'
+                  }
+                >
                   {bodyRows.map((rowCells, rIdx) => (
-                    <tr key={`tr-${rIdx}`} className="hover:bg-slate-50/50 dark:hover:bg-white/5">
+                    <tr
+                      key={`tr-${rIdx}`}
+                      className={
+                        forceDarkSurface
+                          ? 'bg-slate-900/80 even:bg-slate-800/45 hover:bg-slate-800/90 transition-colors'
+                          : 'hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors'
+                      }
+                    >
                       {headerCells.map((_, cIdx) => (
-                        <td key={`td-${rIdx}-${cIdx}`} className="py-2 px-3 align-top">
+                        <td
+                          key={`td-${rIdx}-${cIdx}`}
+                          className={
+                            forceDarkSurface
+                              ? 'py-2.5 px-3 align-top text-slate-100'
+                              : 'py-2 px-3 align-top text-slate-800 dark:text-slate-100'
+                          }
+                        >
                           {renderCellContent(rowCells[cIdx] || '—', `td-${i}-${rIdx}-${cIdx}`)}
                         </td>
                       ))}
@@ -144,13 +209,13 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
     // 4. Encabezados (### o ##)
     const headingMatch = /^(#{1,4})\s+(.+)$/.exec(line);
     if (headingMatch) {
+      const headingColor = isUser
+        ? 'text-white'
+        : forceDarkSurface
+          ? 'text-[#4CD360]'
+          : 'text-[#041734] dark:text-[#4CD360]';
       blocks.push(
-        <h4
-          key={`h-${i}`}
-          className={`font-bold text-xs sm:text-sm mt-2.5 mb-1 ${
-            isUser ? 'text-white' : 'text-[#041734] dark:text-[#4CD360]'
-          }`}
-        >
+        <h4 key={`h-${i}`} className={`font-bold text-xs sm:text-sm mt-2.5 mb-1 ${headingColor}`}>
           {renderInline(headingMatch[2]!, `h-${i}`)}
         </h4>
       );
@@ -166,7 +231,12 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
         i++;
       }
       blocks.push(
-        <ol key={`ol-${i}`} className="list-decimal list-inside space-y-1.5 my-2 pl-1">
+        <ol
+          key={`ol-${i}`}
+          className={`list-decimal list-inside space-y-1.5 my-2 pl-1 ${
+            forceDarkSurface ? 'text-slate-100' : ''
+          }`}
+        >
           {items.map((item, idx) => (
             <li key={`oli-${idx}`} className="leading-relaxed">
               {renderInline(item, `ol-${i}-${idx}`)}
@@ -185,7 +255,12 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
         i++;
       }
       blocks.push(
-        <ul key={`ul-${i}`} className="list-disc list-inside space-y-1 my-2 pl-1">
+        <ul
+          key={`ul-${i}`}
+          className={`list-disc list-inside space-y-1 my-2 pl-1 ${
+            forceDarkSurface ? 'text-slate-100' : ''
+          }`}
+        >
           {items.map((item, idx) => (
             <li key={`uli-${idx}`} className="leading-relaxed">
               {renderInline(item, `ul-${i}-${idx}`)}
@@ -198,12 +273,19 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({ text
 
     // 7. Párrafo estándar
     blocks.push(
-      <p key={`p-${i}`} className="mb-2 last:mb-0 leading-relaxed">
+      <p
+        key={`p-${i}`}
+        className={`mb-2 last:mb-0 leading-relaxed ${forceDarkSurface ? 'text-slate-100' : ''}`}
+      >
         {renderInline(line, `p-${i}`)}
       </p>
     );
     i++;
   }
 
-  return <div className="space-y-1 break-words">{blocks}</div>;
+  return (
+    <div className={`space-y-1 break-words ${forceDarkSurface ? 'text-slate-100' : ''}`}>
+      {blocks}
+    </div>
+  );
 };
