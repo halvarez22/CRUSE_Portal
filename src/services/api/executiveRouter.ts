@@ -17,6 +17,8 @@ import { auditEventStore } from '../audit/auditEventStore';
 import { extractClientIp, buildSourceSummary } from '../audit/auditMask';
 import { evaluateParametricCreditScoring } from '../executive/scoringService';
 import { answerInternalOperationalQuery } from '../executive/internalAiService';
+import { ToolCallRateLimitError } from '../executive/almaVirtualQueryEngine';
+
 import {
   CompetitorBenchmark,
   HubRegion,
@@ -285,16 +287,16 @@ executiveRouter.put('/competitors/:id', requireAuth('executive:competitors_manag
 // POST /api/executive/internal-ai-query (Módulo B.4 — Guardrail Forense 2 Zero-PII)
 // ============================================================================
 executiveRouter.post('/internal-ai-query', requireAuth('executive:internal_ai'), async (req, res) => {
+  const auth = getAuth(req);
+  const ip = extractClientIp(req.headers);
   try {
-    const auth = getAuth(req);
     const rawQuestion = String(req.body?.question ?? '').trim();
     if (!rawQuestion) {
       return res.status(400).json({ error: 'La consulta operativa no puede estar vacía.' });
     }
 
-    const result = await answerInternalOperationalQuery(rawQuestion);
+    const result = await answerInternalOperationalQuery(rawQuestion, auth.user.email);
 
-    const ip = extractClientIp(req.headers);
     await auditEventStore.append({
       actorEmail: auth.user.email,
       actorRole: auth.user.role,
@@ -302,11 +304,23 @@ executiveRouter.post('/internal-ai-query', requireAuth('executive:internal_ai'),
       outcome: 'success',
       sourceIp: ip,
       sourceSummary: buildSourceSummary(ip, req.headers['user-agent']),
-      details: `Consulta operativa IA interna Zero-PII ejecutada (Modelo: ${result.model})`,
+      details: `Consulta operativa IA interna Zero-PII ejecutada (Modelo: ${result.model} | Tools: ${(result.toolsInvoked ?? []).join(', ') || 'none'})`,
     });
 
     return res.json(result);
   } catch (err) {
+    if (err instanceof ToolCallRateLimitError) {
+      await auditEventStore.append({
+        actorEmail: auth.user.email,
+        actorRole: auth.user.role,
+        action: 'TOOL_CALL_RATE_LIMIT_EXCEEDED',
+        outcome: 'denied',
+        sourceIp: ip,
+        sourceSummary: buildSourceSummary(ip, req.headers['user-agent']),
+        details: err.message,
+      });
+      return res.status(429).json({ error: err.message });
+    }
     console.error('[executiveRouter] Error en POST /internal-ai-query:', err);
     return res.status(500).json({ error: 'Error al procesar la consulta en el Asistente Operativo Interno.' });
   }

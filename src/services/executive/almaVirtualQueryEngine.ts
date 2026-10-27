@@ -1,15 +1,21 @@
 /**
- * ALMA VIRTUAL — ORQUESTADOR DE INTENCIONES, VALIDADOR REGEX Y SANITIZADOR ZERO-PII
- * Expediente: CRUSE-APO-2026-033
- * Guardrail 1: Validación estricta de entidades por Regex antes de consultas parametrizadas ($1, $2).
- * Guardrail 2: Función sanitizeForLlm() obligatoria que garantiza Cero PII hacia Groq LLaMA 3.3 70B.
- * Guardrail 4: Archivo modular < 450 líneas con degradación elegante determinista.
+ * ALMA VIRTUAL — DESPACHADOR DE HERRAMIENTAS (TOOL CALLING), RATE LIMITER, TIMEOUT 10S Y ZERO-PII
+ * Expediente: CRUSE-APO-2026-033-R3
+ * Guardrail A: El LLM nunca escribe SQL; invoca funciones puras vía dispatchAlmaToolCall().
+ * Guardrail B: Validación Zero-Trust de parámetros mediante validateAndSanitizeToolArgs().
+ * Guardrail D: Sanitización recursiva sanitizeForLlm() antes de entregar resultados al LLM.
+ * Ajuste 3: Rate Limiter (máx. 30 tool_calls/min/usuario y máx. 5 tool_calls en paralelo por turno).
+ * Ajuste 4: Timeout de 10 segundos por herramienta con Promise.race (TOOL_TIMEOUT_10S).
+ * Ajuste 5: Respuesta estructurada NO_RESULTS cuando una consulta retorna 0 filas.
  */
 
 import {
+  AlmaToolName,
+  AlmaValidatedToolArgs,
   AlmaVirtualDomainExecutionResult,
   AlmaVirtualValidatedEntities,
 } from '../../types/executive';
+import { validateAndSanitizeToolArgs } from './toolsSchema';
 import {
   resolveQ01PartialPaymentsByConvenio,
   resolveQ02PaymentWaterfallAllocation,
@@ -39,18 +45,47 @@ import {
   resolveQ24LatestOperationalNoteForFolio,
 } from './almaDomainQueriesPart2';
 
-const ALLOWED_CONVENIOS = new Set<string>([
-  'STSGECH',
-  'SUPREMO_TRIBUNAL',
-  'HACIENDA',
-  'MUNICIPIO_Q',
-  'AUDITORIA',
-  'PODER_JUDICIAL_GTO',
-  'SINDICATO_SALUD_GTO',
-  'AYUNTAMIENTO_CANCUN',
-  'PODER_JUDICIAL_QROO',
-  'TRIBUNAL-CONF',
-]);
+export const MAX_TOOL_CALLS_PER_MINUTE_PER_USER = 30;
+export const MAX_PARALLEL_TOOL_CALLS_PER_TURN = 5;
+export const TOOL_EXECUTION_TIMEOUT_MS = 10000;
+
+const userToolCallTimestamps = new Map<string, number[]>();
+
+export class ToolCallRateLimitError extends Error {
+  public readonly statusCode = 429;
+  public readonly auditAction = 'TOOL_CALL_RATE_LIMIT_EXCEEDED';
+  constructor(message: string) {
+    super(message);
+    this.name = 'ToolCallRateLimitError';
+  }
+}
+
+/**
+ * Ajuste Obligatorio 3: Rate Limiter por herramienta y por usuario (máx 30/min y máx 5 paralelas).
+ */
+export function enforceAlmaToolCallRateLimit(actorEmail: string, requestedParallelCount: number): void {
+  if (requestedParallelCount > MAX_PARALLEL_TOOL_CALLS_PER_TURN) {
+    throw new ToolCallRateLimitError(
+      `Se excedió el límite de ${MAX_PARALLEL_TOOL_CALLS_PER_TURN} tool_calls simultáneos por turno (${requestedParallelCount} solicitados).`
+    );
+  }
+
+  const key = (actorEmail || 'anonymous').toLowerCase().trim();
+  const now = Date.now();
+  const windowStart = now - 60_000;
+  const previous = (userToolCallTimestamps.get(key) ?? []).filter((ts) => ts > windowStart);
+
+  if (previous.length + requestedParallelCount > MAX_TOOL_CALLS_PER_MINUTE_PER_USER) {
+    throw new ToolCallRateLimitError(
+      `Límite de velocidad excedido: máximo ${MAX_TOOL_CALLS_PER_MINUTE_PER_USER} ejecuciones de herramientas por minuto por usuario.`
+    );
+  }
+
+  for (let i = 0; i < requestedParallelCount; i++) {
+    previous.push(now);
+  }
+  userToolCallTimestamps.set(key, previous);
+}
 
 const FORBIDDEN_PII_KEYS = new Set<string>([
   'full_name',
@@ -64,93 +99,7 @@ const FORBIDDEN_PII_KEYS = new Set<string>([
 ]);
 
 /**
- * Extrae y valida estrictamente mediante expresiones regulares las entidades operativas
- * mencionadas en la pregunta del Administrador (Guardrail Forense 1).
- */
-export function extractValidatedEntities(rawQuestion: string): AlmaVirtualValidatedEntities {
-  const upper = rawQuestion.toUpperCase();
-  const normalized = rawQuestion
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-
-  // 1. Folio de contrato (soporta CNT-YYYY-NNNN o CRUSE-YYYY-NNNN normalizando a CNT-YYYY-NNNN)
-  let folio: string | null = null;
-  const folioMatch = upper.match(/\b(?:CNT|CRUSE)-(\d{4}-\d{4})\b/);
-  if (folioMatch && folioMatch[1] && /^\d{4}-\d{4}$/.test(folioMatch[1])) {
-    folio = `CNT-${folioMatch[1]}`;
-  }
-
-  // 2. Periodo quincenal (YYYY-MM-1Q o YYYY-MM-2Q)
-  let fortnightPeriod: string | null = null;
-  const periodMatch = upper.match(/\b(202[4-9]-\d{2}-[12]Q)\b/);
-  if (periodMatch && periodMatch[1] && /^\d{4}-\d{2}-[12]Q$/.test(periodMatch[1])) {
-    fortnightPeriod = periodMatch[1];
-  }
-
-  // 3. Convenio validado contra lista blanca
-  let convenioCode: string | null = null;
-  if (normalized.includes('supremo tribunal')) {
-    convenioCode = 'SUPREMO_TRIBUNAL';
-  } else if (normalized.includes('stsgech')) {
-    convenioCode = 'STSGECH';
-  } else if (normalized.includes('hacienda')) {
-    convenioCode = 'HACIENDA';
-  } else if (normalized.includes('municipio')) {
-    convenioCode = 'MUNICIPIO_Q';
-  } else if (normalized.includes('auditoria')) {
-    convenioCode = 'AUDITORIA';
-  } else if (normalized.includes('salud')) {
-    convenioCode = 'SINDICATO_SALUD_GTO';
-  } else if (normalized.includes('poder judicial gto') || normalized.includes('guanajuato')) {
-    convenioCode = 'PODER_JUDICIAL_GTO';
-  } else if (normalized.includes('cancun')) {
-    convenioCode = 'AYUNTAMIENTO_CANCUN';
-  }
-  if (convenioCode && !ALLOWED_CONVENIOS.has(convenioCode)) {
-    convenioCode = null;
-  }
-
-  // 4. Prefijo de CURP (4 letras iniciales validadas)
-  let curpPrefix: string | null = null;
-  const curpMatch = upper.match(/\b([A-Z]{4})(?:\*{4,}|\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/);
-  if (curpMatch && curpMatch[1] && /^[A-Z]{4}$/.test(curpMatch[1])) {
-    curpPrefix = curpMatch[1];
-  }
-
-  // 5. Mes de reporte a Buró (YYYY-MM)
-  let reportingMonth: string | null = null;
-  const monthMatch = upper.match(/\b(202[4-9]-\d{2})\b/);
-  if (monthMatch && monthMatch[1] && !fortnightPeriod) {
-    reportingMonth = monthMatch[1];
-  } else if (normalized.includes('octubre 2026') || normalized.includes('octubre')) {
-    reportingMonth = '2026-10';
-  }
-
-  // 6. Pista de monto numérico (ej. $300 o $1,000)
-  let amountHint: number | null = null;
-  const amtMatch = rawQuestion.match(/\$\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+)/);
-  if (amtMatch && amtMatch[1]) {
-    const parsed = Number(amtMatch[1].replace(/,/g, ''));
-    if (Number.isFinite(parsed) && parsed > 0) {
-      amountHint = parsed;
-    }
-  }
-
-  return {
-    folio,
-    fortnightPeriod,
-    convenioCode,
-    curpPrefix,
-    reportingMonth,
-    amountHint,
-  };
-}
-
-/**
- * Sanitiza recursivamente cualquier estructura JSON antes de enviarla al LLM externo
- * garantizando que ningún nombre completo, CURP en claro, RFC en claro o dirección viaje a Groq
- * (Guardrail Forense 2: Zero-PII en el Payload al LLM).
+ * Guardrail Forense D: Sanitiza recursivamente cualquier payload antes de entregarlo al LLM.
  */
 export function sanitizeForLlm(input: unknown): unknown {
   if (input === null || input === undefined) {
@@ -180,134 +129,187 @@ export function sanitizeForLlm(input: unknown): unknown {
   return String(input);
 }
 
+function toEntities(args: AlmaValidatedToolArgs): AlmaVirtualValidatedEntities {
+  return {
+    folio: args.folio ?? null,
+    fortnightPeriod: args.fortnight_period ?? null,
+    convenioCode: args.convenio ?? null,
+    curpPrefix: args.curp_prefix ?? null,
+    reportingMonth: args.reporting_month ?? null,
+    amountHint: null,
+  };
+}
+
 /**
- * Clasifica la pregunta operativa del Administrador y ejecuta la consulta SQL parametrizada
- * correspondiente sobre las 38 tablas de PostgreSQL 16 (24 Preguntas Estratégicas).
+ * Ejecuta la función SQL pura correspondiente a la herramienta y sub-consulta validada.
  */
-export async function executeAlmaVirtualQuery(
-  rawQuestion: string
-): Promise<AlmaVirtualDomainExecutionResult | null> {
-  const q = rawQuestion
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-  const entities = extractValidatedEntities(rawQuestion);
+async function executePureDomainTool(
+  toolName: AlmaToolName,
+  args: AlmaValidatedToolArgs
+): Promise<AlmaVirtualDomainExecutionResult> {
+  const entities = toEntities(args);
+  const qt = args.query_type ?? '';
 
-  // --- DOMINIO 5: SEGURIDAD, DERECHOS ARCO Y BITÁCORA FORENSE WORM (21–24) ---
-  if (
-    (q.includes('worm') || q.includes('bitacora')) &&
-    (q.includes('ajuste manual') || q.includes('capital') || q.includes('aplicacion de pago'))
-  ) {
-    return resolveQ21WormAuditManualCapitalOverride(entities);
+  switch (toolName) {
+    case 'get_cobranza_data': {
+      if (qt === 'PARTIAL_PAYMENTS') return resolveQ01PartialPaymentsByConvenio(entities);
+      if (qt === 'WATERFALL_BY_FOLIO') return resolveQ02PaymentWaterfallAllocation(entities);
+      if (qt === 'EXPECTED_RETENTION') return resolveQ03ExpectedRetentionByConvenio(entities);
+      if (qt === 'EXPRESS_UNDER_1000') return resolveQ04ExpressNearPayoff();
+      return resolveQ05PayrollDiscrepanciesLastCut();
+    }
+    case 'get_originacion_reestructuras_data': {
+      if (qt === 'SIMULTANEOUS_NORMAL_LOANS') return resolveQ06SimultaneousNormalLoansByCurp(entities);
+      if (qt === 'RESTRUCTURE_TRACEABILITY') return resolveQ07RestructureTraceability(entities);
+      if (qt === 'CHECK_DISBURSEMENTS_30D') return resolveQ08CheckDisbursementsLast30Days();
+      if (qt === 'FIRST_PAYMENT_OFFICIAL_LETTER') return resolveQ09FirstPaymentOfficialLetterDoc(entities);
+      return resolveQ10MaxPayrollDiscountRule30(entities);
+    }
+    case 'get_insurance_status': {
+      if (qt === 'RETIREES_EXEMPT_BY_AGE') return resolveQ11RetireesExemptLifeInsurance();
+      if (qt === 'TOTAL_COLLECTED_BY_FORTNIGHT') return resolveQ12TotalLifeInsuranceCollected(entities);
+      if (qt === 'ACTIVE_DEATH_CLAIMS') return resolveQ13PendingDeathInsuranceClaims();
+      if (qt === 'COVERAGE_BY_FOLIO') return resolveQ14LoanInsuranceDetails(entities);
+      return resolveQ15HealthSectorInsuredLoans();
+    }
+    case 'get_credit_bureau_closings': {
+      if (qt === 'CIRCULO_CREDITO_MONTHLY_SUMMARY') return resolveQ16PastDueSummaryCirculoCredito(entities);
+      if (qt === 'ACCOUNTS_OVER_90_DPD') return resolveQ17ClientsOver90Dpd();
+      if (qt === 'SUPREMO_TRIBUNAL_BALANCE_AUDIT') return resolveQ18SupremoTribunalBalanceSum();
+      if (qt === 'REPORTED_BALANCE_BY_FOLIO') return resolveQ19ReportedBureauBalanceForFolio(entities);
+      return resolveQ20ExpressDelinquencyRate();
+    }
+    case 'get_worm_audit_and_arco_log': {
+      if (qt === 'WORM_MANUAL_CAPITAL_OVERRIDE') return resolveQ21WormAuditManualCapitalOverride(entities);
+      if (qt === 'PENDING_ARCO_CANCELLATIONS') return resolveQ22PendingArcoCancellationRequests();
+      if (qt === 'WORM_RESTRUCTURE_AUTHORIZER_IP') return resolveQ23RestructureAuthorizationAndIp();
+      return resolveQ24LatestOperationalNoteForFolio(entities);
+    }
+    case 'get_executive_portfolio_overview': {
+      return {
+        intentCode: 'EXECUTIVE_PORTFOLIO_OVERVIEW',
+        domain: 'RESUMEN_EJECUTIVO',
+        questionNumber: null,
+        structuredData: { status: 'OK', note: 'Use macro portfolio snapshot metrics.' },
+        deterministicMarkdown: '📊 Snapshot Ejecutivo Global consultado desde PostgreSQL 16.',
+      };
+    }
   }
-  if (q.includes('arco') || (q.includes('cancelacion') && q.includes('ex-cliente'))) {
-    return resolveQ22PendingArcoCancellationRequests();
-  }
-  if (
-    (q.includes('quien autorizo') || q.includes('direccion ip') || q.includes('ip')) &&
-    q.includes('reestructura')
-  ) {
-    return resolveQ23RestructureAuthorizationAndIp();
-  }
-  if (q.includes('nota operativa') || (q.includes('nota') && q.includes('expediente'))) {
-    return resolveQ24LatestOperationalNoteForFolio(entities);
-  }
+}
 
-  // --- DOMINIO 1: COBRANZA QUINCENAL Y PAGOS PARCIALES (1–5) ---
-  if (
-    (q.includes('conceptos') || q.includes('prelacion') || q.includes('$300') || q.includes('capital, interes')) &&
-    (q.includes('pago parcial') || q.includes('recibido del credito') || q.includes('destino'))
-  ) {
-    return resolveQ02PaymentWaterfallAllocation(entities);
+/**
+ * Ajuste Obligatorio 5: Detecta si una consulta retornó 0 filas en sus colecciones de datos.
+ */
+function isZeroResultsPayload(structuredData: Record<string, unknown>): boolean {
+  for (const val of Object.values(structuredData)) {
+    if (Array.isArray(val) && val.length === 0) {
+      return true;
+    }
   }
-  if (q.includes('pagos parciales') || q.includes('incompletos')) {
-    return resolveQ01PartialPaymentsByConvenio(entities);
-  }
-  if (
-    (q.includes('acumulado total esperado') || q.includes('proxima quincena')) &&
-    (q.includes('retencion') || q.includes('cuotas'))
-  ) {
-    return resolveQ03ExpectedRetentionByConvenio(entities);
-  }
-  if (
-    q.includes('express') &&
-    (q.includes('menor a $1,000') || q.includes('menor a 1000') || q.includes('por liquidarse'))
-  ) {
-    return resolveQ04ExpressNearPayoff();
-  }
-  if (
-    q.includes('descuento esperado') &&
-    (q.includes('no coincidio') || q.includes('depositado'))
-  ) {
-    return resolveQ05PayrollDiscrepanciesLastCut();
-  }
+  return false;
+}
 
-  // --- DOMINIO 2: REESTRUCTURAS Y ORIGINACIÓN (6–10) ---
-  if (
-    (q.includes('simultaneamente') || q.includes('creditos normales activos')) &&
-    (q.includes('curp') || q.includes('sumatoria de sus cuotas'))
-  ) {
-    return resolveQ06SimultaneousNormalLoansByCurp(entities);
-  }
-  if (
-    q.includes('fue una reestructura') ||
-    (q.includes('reestructura') && q.includes('folio del credito original'))
-  ) {
-    return resolveQ07RestructureTraceability(entities);
-  }
-  if (q.includes('cheque fisico') || (q.includes('cheque') && q.includes('30 dias'))) {
-    return resolveQ08CheckDisbursementsLast30Days();
-  }
-  if (q.includes('oficio de 1er pago') || q.includes('oficio de primer pago')) {
-    return resolveQ09FirstPaymentOfficialLetterDoc(entities);
-  }
-  if (q.includes('regla del 30%') || q.includes('limite maximo de descuento')) {
-    return resolveQ10MaxPayrollDiscountRule30(entities);
-  }
+/**
+ * Ajuste Obligatorio 4: Envuelve la ejecución de cada herramienta en un Promise.race con timeout de 10s.
+ */
+async function executeWithTimeout10s<T>(promise: Promise<T>): Promise<T> {
+  let timerId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timerId = setTimeout(() => {
+      reject(new Error('TOOL_TIMEOUT_10S'));
+    }, TOOL_EXECUTION_TIMEOUT_MS);
+  });
 
-  // --- DOMINIO 3: SEGUROS Y EXCEPCIONES (11–15) ---
-  if (
-    q.includes('jubilados') ||
-    q.includes('pensionados') ||
-    q.includes('exceder la edad')
-  ) {
-    return resolveQ11RetireesExemptLifeInsurance();
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
   }
-  if (
-    q.includes('total cobrado') &&
-    (q.includes('seguro de vida') || q.includes('22.85'))
-  ) {
-    return resolveQ12TotalLifeInsuranceCollected(entities);
-  }
-  if (q.includes('fallecimiento') || q.includes('hacerse efectiva')) {
-    return resolveQ13PendingDeathInsuranceClaims();
-  }
-  if (q.includes('sector salud') && q.includes('seguro')) {
-    return resolveQ15HealthSectorInsuredLoans();
-  }
-  if (q.includes('cobertura de seguro') || (q.includes('detalles') && q.includes('seguro'))) {
-    return resolveQ14LoanInsuranceDetails(entities);
-  }
+}
 
-  // --- DOMINIO 4: BURÓ DE CRÉDITO Y CIERRES MENSUALES (16–20) ---
-  if (q.includes('90 dias de atraso') || q.includes('dpd > 90') || q.includes('dpd>90')) {
-    return resolveQ17ClientsOver90Dpd();
-  }
-  if (
-    q.includes('sumatoria mensual del saldo insoluto') ||
-    (q.includes('supremo tribunal') && q.includes('auditoria interna'))
-  ) {
-    return resolveQ18SupremoTribunalBalanceSum();
-  }
-  if (q.includes('saldo reportado al buro') || q.includes('credito de equivalencia')) {
-    return resolveQ19ReportedBureauBalanceForFolio(entities);
-  }
-  if (q.includes('indice de morosidad') && q.includes('express')) {
-    return resolveQ20ExpressDelinquencyRate();
-  }
-  if (q.includes('circulo de credito') || (q.includes('cartera vencida') && q.includes('fin del mes'))) {
-    return resolveQ16PastDueSummaryCirculoCredito(entities);
+export interface DispatchedToolExecutionResult {
+  toolName: string;
+  queryType: string;
+  status: 'SUCCESS' | 'NO_RESULTS' | 'VALIDATION_ERROR' | 'TIMEOUT';
+  llmPayload: Record<string, unknown>;
+  deterministicMarkdown?: string;
+}
+
+/**
+ * Despachador principal de Tool Calling (Guardrails A, B, D + Ajustes 1, 2, 4 y 5).
+ */
+export async function dispatchAlmaToolCall(
+  toolName: string,
+  rawArgs: Record<string, unknown>
+): Promise<DispatchedToolExecutionResult> {
+  // 1. Guardrail B + Ajustes 1 y 2: Validación Zero-Trust en Backend
+  const validation = validateAndSanitizeToolArgs(toolName, rawArgs);
+  if (!validation.valid || !validation.sanitizedArgs) {
+    return {
+      toolName,
+      queryType: String(rawArgs.query_type ?? 'UNKNOWN'),
+      status: 'VALIDATION_ERROR',
+      llmPayload: {
+        status: 'VALIDATION_ERROR',
+        errorCode: validation.errorCode ?? 'INVALID_ARGUMENTS',
+        message: validation.message ?? 'Invalid tool arguments rejected by backend security gate.',
+      },
+    };
   }
 
-  return null;
+  const vArgs = validation.sanitizedArgs;
+  const typedTool = toolName as AlmaToolName;
+
+  try {
+    // 2. Ajuste 4: Ejecución con timeout estricto de 10 segundos
+    const domainRes = await executeWithTimeout10s(executePureDomainTool(typedTool, vArgs));
+
+    // 3. Ajuste 5: Manejo elegante cuando no existen registros para el parámetro consultado
+    if (isZeroResultsPayload(domainRes.structuredData)) {
+      const targetLabel = vArgs.folio ?? vArgs.convenio ?? vArgs.fortnight_period ?? 'los criterios indicados';
+      return {
+        toolName,
+        queryType: vArgs.query_type ?? 'OVERVIEW',
+        status: 'NO_RESULTS',
+        llmPayload: {
+          status: 'NO_RESULTS',
+          message: `No se encontraron datos para folio ${targetLabel} en el dominio ${domainRes.domain}.`,
+          suggestion: 'Verifica que el folio sea correcto o consulta otro dominio.',
+        },
+        deterministicMarkdown: `ℹ️ No se encontraron datos para **${targetLabel}** en el dominio **${domainRes.domain}**.`,
+      };
+    }
+
+    // 4. Guardrail D: Sanitización Zero-PII antes de devolver el resultado al LLM
+    const sanitizedData = sanitizeForLlm(domainRes.structuredData) as Record<string, unknown>;
+
+    return {
+      toolName,
+      queryType: vArgs.query_type ?? 'OVERVIEW',
+      status: 'SUCCESS',
+      llmPayload: {
+        status: 'SUCCESS',
+        domain: domainRes.domain,
+        intentCode: domainRes.intentCode,
+        data: sanitizedData,
+      },
+      deterministicMarkdown: domainRes.deterministicMarkdown,
+    };
+  } catch (err) {
+    if (err instanceof Error && err.message === 'TOOL_TIMEOUT_10S') {
+      return {
+        toolName,
+        queryType: vArgs.query_type ?? 'OVERVIEW',
+        status: 'TIMEOUT',
+        llmPayload: {
+          status: 'TIMEOUT',
+          error: 'TOOL_TIMEOUT_10S',
+          message: 'Tool execution timed out. Please try a more specific query.',
+        },
+      };
+    }
+    throw err;
+  }
 }

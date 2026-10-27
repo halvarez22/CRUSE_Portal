@@ -160,7 +160,33 @@ export interface InternalAiQueryResponse {
   intentCode?: string;
   domain?: AlmaVirtualDomainId;
   questionNumber?: number | null;
+  toolsInvoked?: string[];
 }
+
+export type AlmaToolName =
+  | 'get_cobranza_data'
+  | 'get_originacion_reestructuras_data'
+  | 'get_insurance_status'
+  | 'get_credit_bureau_closings'
+  | 'get_worm_audit_and_arco_log'
+  | 'get_executive_portfolio_overview';
+
+export interface AlmaValidatedToolArgs {
+  query_type?: string;
+  folio?: string | null;
+  convenio?: string | null;
+  fortnight_period?: string | null;
+  curp_prefix?: string | null;
+  reporting_month?: string | null;
+}
+
+export interface AlmaToolValidationOutcome {
+  valid: boolean;
+  errorCode?: string;
+  message?: string;
+  sanitizedArgs?: AlmaValidatedToolArgs;
+}
+
 
 export type AlmaVirtualDomainId =
   | 'COBRANZA'

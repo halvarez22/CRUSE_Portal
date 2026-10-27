@@ -218,7 +218,8 @@ export type AuditAction =
   | 'PLD_ALERT_RESOLVED'
   | 'SCORING_EVALUATED'
   | 'COMPETITOR_BENCHMARK_UPDATED'
-  | 'INTERNAL_AI_QUERY';
+  | 'INTERNAL_AI_QUERY'
+  | 'TOOL_CALL_RATE_LIMIT_EXCEEDED';
 
 export interface AuditEvent {
   id: string;

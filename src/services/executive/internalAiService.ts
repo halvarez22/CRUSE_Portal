@@ -1,43 +1,51 @@
 /**
- * ASISTENTE INTELIGENTE OPERATIVO INTERNO 24/7 — ZERO-PII ABSOLUTO (MÓDULO B.4)
- * Expediente: CRUSE-APO-2026-029 — Guardrail Forense 2
- *
- * Garantía Criptográfica y Forense:
- * - Este servicio JAMÁS ejecuta SELECT sobre columnas de identidad o expedientes individuales
- *   (prohibido leer full_name, curp, rfc, id de expediente o montos individuales).
- * - El contexto inyectado al LLM (LLaMA 3.3 70B) consiste 100% en agregaciones estadísticas
- *   (COUNT, SUM, GROUP BY hub_region) certificadas bajo LFPDPPP y CNBV.
+ * ALMA VIRTUAL — ORQUESTADOR DE TOOL CALLING CON GROQ LLaMA 3.3 70B (MÓDULO B.4)
+ * Expediente: CRUSE-APO-2026-033-R3
+ * Guardrail A: Cero Text-to-SQL directo (uso exclusivo de ALMA_VIRTUAL_TOOLS).
+ * Guardrail B: Validación Zero-Trust de parámetros en dispatchAlmaToolCall().
+ * Guardrail C: Declinación institucional estricta ante preguntas fuera de dominio.
+ * Guardrail D: Zero-PII inquebrantable (datos enmascarados en origen + negativa explícita LFPDPPP).
  */
 
 import Groq from 'groq-sdk';
+import type { ChatCompletionMessageParam } from 'groq-sdk/resources/chat/completions';
 import { db } from '../db/connectionPool';
 import {
   HubRegion,
   InternalAiAggregatedContext,
   InternalAiQueryResponse,
 } from '../../types/executive';
+import { ALMA_VIRTUAL_TOOLS } from './toolsSchema';
 import {
-  executeAlmaVirtualQuery,
-  sanitizeForLlm,
+  dispatchAlmaToolCall,
+  enforceAlmaToolCallRateLimit,
 } from './almaVirtualQueryEngine';
 
-
 const GROQ_INTERNAL_MODEL = 'llama-3.3-70b-versatile';
+
+/**
+ * Ajuste Obligatorio 6: System Prompt explícito con reglas inquebrantables (Guardrails C y D).
+ */
+export const ALMA_VIRTUAL_SYSTEM_PROMPT = `Eres "Alma Virtual", el Copiloto Financiero y Operativo Interno 24/7 de Microfinanciera Cruse SOFOM E.N.R.
+REGLAS INQUEBRANTABLES:
+1. SOLO puedes responder preguntas operativas, financieras y de cumplimiento usando las herramientas proporcionadas conectadas a PostgreSQL 16. Cuando una consulta abarque múltiples dominios (por ejemplo: Cobranza/Prelación, Póliza de Seguro y Bitácora Forense WORM), DEBES invocar todas las herramientas correspondientes en paralelo.
+2. NUNCA reveles nombres completos, CURP, RFC o direcciones en texto plano. Si el usuario los solicita, incluye obligatoriamente en tu respuesta: "⚠️ ACCESO DENEGADO: Las políticas de LFPDPPP y CNBV prohíben la exposición de datos personales. Solo puedo proporcionar identificadores enmascarados (ej. MAGR************01)."
+3. Si la pregunta no puede responderse con las herramientas disponibles o es ajena a la operación de Microfinanciera Cruse (ej. clima, recetas de cocina, deportes, historia general), NO invoques ninguna herramienta y responde exactamente: "Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?"
+4. Estructura tus respuestas en tablas Markdown ejecutivas cuando sea apropiado, respetando las cifras exactas centavo a centavo ($#,##0.00 MXN).
+5. Sé conciso, profesional y basado únicamente en los datos que las herramientas te devuelvan.`;
 
 function sanitizeQuestionZeroPii(rawQuestion: string): string {
   return rawQuestion
     .replace(/[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d/gi, '[CURP_OMITIDO_ZERO_PII]')
     .replace(/[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}/gi, '[RFC_OMITIDO_ZERO_PII]')
-    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_OMITIDO_ZERO_PII]')
-    .slice(0, 600)
+    .slice(0, 1200)
     .trim();
 }
 
 /**
- * Construye el snapshot estadístico 100% agregado y anonimizado desde la BD relacional.
+ * Construye el snapshot estadístico 100% agregado y anonimizado desde PostgreSQL 16.
  */
 export async function buildAggregatedOperationalSnapshot(): Promise<InternalAiAggregatedContext> {
-  // 1. Métricas globales de cartera (agregadas con SUM y COUNT)
   const portfolioAgg = await db.query<{
     total_active_loans: number;
     total_placed_mxn: number;
@@ -55,7 +63,6 @@ export async function buildAggregatedOperationalSnapshot(): Promise<InternalAiAg
     FROM loan_accounts la
   `);
 
-  // 2. Desglose por los 3 Hubs Nacionales (CHIHUAHUA, LEON, CANCUN) y Semáforo de Morosidad
   const hubRows = await db.query<{
     hub_region: string;
     active_loans: number;
@@ -98,7 +105,6 @@ export async function buildAggregatedOperationalSnapshot(): Promise<InternalAiAg
     GROUP BY COALESCE(e.hub_region, 'CHIHUAHUA')
   `);
 
-  // 3. Métricas agregadas de Prevención de Lavado de Dinero (PLD/FT) con proyección Event-Sourced
   const pldAgg = await db.query<{
     pending_alerts: number;
     confirmed_blocked: number;
@@ -128,7 +134,6 @@ export async function buildAggregatedOperationalSnapshot(): Promise<InternalAiAg
     `SELECT COUNT(*) AS total_entries FROM pld_risk_entries`
   );
 
-  // 4. Métricas agregadas de Líneas de Fondeo e Inversionistas
   const fundingAgg = await db.query<{
     investors_count: number;
     committed_capital: number;
@@ -201,18 +206,15 @@ export async function buildAggregatedOperationalSnapshot(): Promise<InternalAiAg
 }
 
 /**
- * Ejecuta una consulta operativa interna garantizando Zero-PII absoluto en el prompt.
+ * Ejecuta el ciclo completo de Tool Calling de 2 etapas con Groq LLaMA 3.3 70B.
  */
 export async function answerInternalOperationalQuery(
-  rawQuestion: string
+  rawQuestion: string,
+  actorEmail = 'admin@cruse.com.mx'
 ): Promise<InternalAiQueryResponse> {
   const sanitizedQuestion = sanitizeQuestionZeroPii(rawQuestion);
-  const [aggregatedSnapshot, domainResult] = await Promise.all([
-    buildAggregatedOperationalSnapshot(),
-    executeAlmaVirtualQuery(rawQuestion),
-  ]);
+  const aggregatedSnapshot = await buildAggregatedOperationalSnapshot();
 
-  // Payload estrictamente sanitizado bajo Zero-PII que se envía al LLM (Guardrail Forense 2)
   const zeroPiiAggregatedPayload = {
     total_loans_this_month: aggregatedSnapshot.totalLoansThisMonth,
     total_active_loans: aggregatedSnapshot.totalActiveLoans,
@@ -223,86 +225,137 @@ export async function answerInternalOperationalQuery(
     pld_alerts_confirmed_blocked: aggregatedSnapshot.pldAlertsConfirmedBlockedCount,
     pld_catalog_entries: aggregatedSnapshot.pldTotalRiskEntriesCount,
     semaphore_distribution: aggregatedSnapshot.semaphoreDistribution,
-    delinquency_by_hub: {
-      CHIHUAHUA: aggregatedSnapshot.hubSummary.CHIHUAHUA,
-      LEON: aggregatedSnapshot.hubSummary.LEON,
-      CANCUN: aggregatedSnapshot.hubSummary.CANCUN,
-    },
+    delinquency_by_hub: aggregatedSnapshot.hubSummary,
     funding_summary: aggregatedSnapshot.fundingSummary,
-    alma_virtual_domain_query: domainResult
-      ? {
-          intent_code: domainResult.intentCode,
-          domain: domainResult.domain,
-          question_number: domainResult.questionNumber,
-          sql_verified_data: sanitizeForLlm(domainResult.structuredData),
-        }
-      : null,
   };
 
   const groqKey = process.env.GROQ_API_KEY?.trim();
   if (groqKey && groqKey.startsWith('gsk_')) {
-    try {
-      const groq = new Groq({ apiKey: groqKey });
-      const completion = await groq.chat.completions.create({
-        model: GROQ_INTERNAL_MODEL,
-        temperature: 0.1,
-        max_tokens: 550,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Eres "Alma Virtual", Copiloto Financiero y Operativo Interno 24/7 de Microfinanciera Cruse SOFOM E.N.R. para la Administradora, Dirección General y el Oficial de Cumplimiento. Responde en español de manera amable, ejecutiva, puntual y estrictamente apegada a los datos reales de PostgreSQL 16 contenidos en `alma_virtual_domain_query.sql_verified_data` y en las métricas agregadas (Zero-PII certificado). Cita folios, convenios, montos en MXN con separador de miles y reglas de negocio (Prelación WORM, RN-01 máx 4 créditos, Regla 30%/35%, Póliza $35,000 MXN / $22.85).',
-          },
-          {
-            role: 'user',
-            content: `CONTEXTO VERIFICADO EN POSTGRESQL 16 (ZERO-PII): ${JSON.stringify(
-              zeroPiiAggregatedPayload
-            )}\n\nCONSULTA DE LA ADMINISTRADORA / DIRECCIÓN: ${sanitizedQuestion}`,
-          },
-        ],
-      });
-      const text = completion.choices[0]?.message?.content?.trim();
-      if (text) {
-        const enrichedAnswer = domainResult
-          ? `${text}\n\n---\n${domainResult.deterministicMarkdown}`
-          : text;
+    const groq = new Groq({ apiKey: groqKey });
+
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: ALMA_VIRTUAL_SYSTEM_PROMPT,
+      },
+      {
+        role: 'user',
+        content: sanitizedQuestion,
+      },
+    ];
+
+    // Etapa 1: El LLM analiza la intención semántica y selecciona 0, 1 o N herramientas en paralelo
+    const stage1 = await groq.chat.completions.create({
+      model: GROQ_INTERNAL_MODEL,
+      temperature: 0.0,
+      max_tokens: 600,
+      messages,
+      tools: ALMA_VIRTUAL_TOOLS,
+      tool_choice: 'auto',
+    });
+
+    const assistantMsg = stage1.choices[0]?.message;
+    const toolCalls = assistantMsg?.tool_calls ?? [];
+
+    // Caso A: El LLM determinó que no requiere herramientas (ej. Pregunta Fuera de Dominio - Guardrail C)
+    if (toolCalls.length === 0) {
+      const directReply =
+        assistantMsg?.content?.trim() ||
+        'Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?';
+
+      return {
+        answer: directReply,
+        model: `${GROQ_INTERNAL_MODEL} · Tool Calling (0 tools)`,
+        zeroPiiCertified: true,
+        aggregatedSnapshot,
+        intentCode: 'OUT_OF_DOMAIN_GUARDRAIL_C',
+        domain: 'RESUMEN_EJECUTIVO',
+        questionNumber: null,
+        toolsInvoked: [],
+      };
+    }
+
+    // Caso B: El LLM solicitó 1 o más tool_calls -> Ajuste 3: Verificar Rate Limiter (máx 5 paralelas, máx 30/min)
+    enforceAlmaToolCallRateLimit(actorEmail, toolCalls.length);
+
+    messages.push({
+      role: 'assistant',
+      content: assistantMsg?.content ?? null,
+      tool_calls: toolCalls,
+    });
+
+    const toolsInvoked: string[] = [];
+
+    // Ejecutar todas las herramientas solicitadas en paralelo (Promise.all) con validación Zero-Trust y Timeout 10s
+    const dispatchedResults = await Promise.all(
+      toolCalls.map(async (tc) => {
+        const fnName = tc.function.name;
+        let parsedArgs: Record<string, unknown> = {};
+        try {
+          parsedArgs = tc.function.arguments
+            ? (JSON.parse(tc.function.arguments) as Record<string, unknown>)
+            : {};
+        } catch {
+          parsedArgs = {};
+        }
+
+        if (fnName === 'get_executive_portfolio_overview') {
+          toolsInvoked.push('get_executive_portfolio_overview');
+          return {
+            toolCallId: tc.id,
+            payload: {
+              status: 'SUCCESS',
+              domain: 'RESUMEN_EJECUTIVO',
+              data: zeroPiiAggregatedPayload,
+            },
+          };
+        }
+
+        const execResult = await dispatchAlmaToolCall(fnName, parsedArgs);
+        toolsInvoked.push(`${fnName}(${execResult.queryType})`);
         return {
-          answer: enrichedAnswer,
-          model: `${GROQ_INTERNAL_MODEL} · Alma Virtual SQL-Verified`,
-          zeroPiiCertified: true,
-          aggregatedSnapshot,
-          intentCode: domainResult?.intentCode ?? 'MACRO_EXECUTIVE_SUMMARY',
-          domain: domainResult?.domain ?? 'RESUMEN_EJECUTIVO',
-          questionNumber: domainResult?.questionNumber ?? null,
+          toolCallId: tc.id,
+          payload: execResult.llmPayload,
         };
-      }
-    } catch {
-      // Degradación elegante determinista si la red externa o Groq no responde (Guardrail Forense 4)
+      })
+    );
+
+    for (const item of dispatchedResults) {
+      messages.push({
+        role: 'tool',
+        tool_call_id: item.toolCallId,
+        content: JSON.stringify(item.payload),
+      });
+    }
+
+    // Etapa 2: El LLM redacta la respuesta ejecutiva final en Markdown usando los resultados verificados
+    const stage2 = await groq.chat.completions.create({
+      model: GROQ_INTERNAL_MODEL,
+      temperature: 0.1,
+      max_tokens: 950,
+      messages,
+    });
+
+    const finalAnswer = stage2.choices[0]?.message?.content?.trim();
+    if (finalAnswer) {
+      return {
+        answer: finalAnswer,
+        model: `${GROQ_INTERNAL_MODEL} · Tool Calling (${toolsInvoked.length} tools)`,
+        zeroPiiCertified: true,
+        aggregatedSnapshot,
+        intentCode: toolsInvoked.join(' + '),
+        domain: 'RESUMEN_EJECUTIVO',
+        questionNumber: null,
+        toolsInvoked,
+      };
     }
   }
 
-  if (domainResult) {
-    return {
-      answer: `👩‍💼 **Alma Virtual — Respuesta Determinista desde Azure PostgreSQL 16 (\`cruse_fintech_v4\`):**\n\n${domainResult.deterministicMarkdown}`,
-      model: 'Alma Virtual · Motor SQL Determinista PostgreSQL 16 (Zero-PII)',
-      zeroPiiCertified: true,
-      aggregatedSnapshot,
-      intentCode: domainResult.intentCode,
-      domain: domainResult.domain,
-      questionNumber: domainResult.questionNumber,
-    };
-  }
-
+  // Fallback si GROQ_API_KEY no está configurada en el entorno
   const fallbackAnswer = [
     `📊 **Reporte Ejecutivo en Tiempo Real (Zero-PII Certificado):**`,
     `• **Colocación y Cartera:** Se registran **${aggregatedSnapshot.totalActiveLoans} créditos activos** (${aggregatedSnapshot.totalLoansThisMonth} originados este mes), con un capital colocado acumulado de **$${aggregatedSnapshot.totalCapitalPlacedMxn.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN** y saldo insoluto vigente de **$${aggregatedSnapshot.totalActiveBalanceMxn.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN**.`,
     `• **Blindaje PLD/FT (CNBV / UIF):** Hay **${aggregatedSnapshot.pldAlertsPendingCount} alerta(s) pendiente(s) de revisión**, **${aggregatedSnapshot.pldAlertsConfirmedBlockedCount} alerta(s) bloqueada(s) confirmada(s)** y **${aggregatedSnapshot.pldTotalRiskEntriesCount} registros** activos en listas de riesgo (69-B SAT, UIF, OFAC, PEPs).`,
-    `• **Semáforo de Morosidad Global:** 🟢 Verde (Al corriente): **${aggregatedSnapshot.semaphoreDistribution.VERDE}** | 🟡 Amarillo (Suspensión/Preventivo): **${aggregatedSnapshot.semaphoreDistribution.AMARILLO}** | 🔴 Rojo (Congelado/Vencido): **${aggregatedSnapshot.semaphoreDistribution.ROJO}**.`,
-    `• **Desglose por los 3 Hubs Nacionales:**`,
-    `  - **Hub Chihuahua (HQ):** ${aggregatedSnapshot.hubSummary.CHIHUAHUA.activeLoans} créditos ($${aggregatedSnapshot.hubSummary.CHIHUAHUA.placedAmountMxn.toLocaleString('es-MX')} MXN | Mora: ${aggregatedSnapshot.hubSummary.CHIHUAHUA.delinquencyRatePercent})`,
-    `  - **Hub León (Bajío):** ${aggregatedSnapshot.hubSummary.LEON.activeLoans} créditos ($${aggregatedSnapshot.hubSummary.LEON.placedAmountMxn.toLocaleString('es-MX')} MXN | Mora: ${aggregatedSnapshot.hubSummary.LEON.delinquencyRatePercent})`,
-    `  - **Hub Cancún (Sur):** ${aggregatedSnapshot.hubSummary.CANCUN.activeLoans} créditos ($${aggregatedSnapshot.hubSummary.CANCUN.placedAmountMxn.toLocaleString('es-MX')} MXN | Mora: ${aggregatedSnapshot.hubSummary.CANCUN.delinquencyRatePercent})`,
-    `• **Fondeo Institucional:** **${aggregatedSnapshot.fundingSummary.activeInvestorsCount} inversionista(s) activo(s)** con **$${aggregatedSnapshot.fundingSummary.totalCommittedCapitalMxn.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN** en líneas de fondeo.`,
   ].join('\n');
 
   return {
@@ -313,6 +366,6 @@ export async function answerInternalOperationalQuery(
     intentCode: 'MACRO_EXECUTIVE_SUMMARY',
     domain: 'RESUMEN_EJECUTIVO',
     questionNumber: null,
+    toolsInvoked: [],
   };
 }
-
