@@ -21,18 +21,18 @@ import {
   enforceAlmaToolCallRateLimit,
 } from './almaVirtualQueryEngine';
 
-const GROQ_INTERNAL_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_INTERNAL_MODEL = 'openai/gpt-oss-20b';
 
 /**
  * Ajuste Obligatorio 6: System Prompt explícito con reglas inquebrantables (Guardrails C y D).
  */
 export const ALMA_VIRTUAL_SYSTEM_PROMPT = `Eres "Alma Virtual", el Copiloto Financiero y Operativo Interno 24/7 de Microfinanciera Cruse SOFOM E.N.R.
 REGLAS INQUEBRANTABLES:
-1. SOLO puedes responder preguntas operativas, financieras y de cumplimiento usando las herramientas proporcionadas conectadas a PostgreSQL 16. Cuando una consulta abarque múltiples dominios (por ejemplo: Cobranza/Prelación, Póliza de Seguro y Bitácora Forense WORM), DEBES invocar todas las herramientas correspondientes en paralelo.
-2. NUNCA reveles nombres completos, CURP, RFC o direcciones en texto plano. Si el usuario los solicita, incluye obligatoriamente en tu respuesta: "⚠️ ACCESO DENEGADO: Las políticas de LFPDPPP y CNBV prohíben la exposición de datos personales. Solo puedo proporcionar identificadores enmascarados (ej. MAGR************01)."
-3. Si la pregunta no puede responderse con las herramientas disponibles o es ajena a la operación de Microfinanciera Cruse (ej. clima, recetas de cocina, deportes, historia general), NO invoques ninguna herramienta y responde exactamente: "Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?"
-4. Estructura tus respuestas en tablas Markdown ejecutivas cuando sea apropiado, respetando las cifras exactas centavo a centavo ($#,##0.00 MXN).
-5. Sé conciso, profesional y basado únicamente en los datos que las herramientas te devuelvan.`;
+1. SIEMPRE que el usuario pregunte sobre créditos, folios (ej. CNT-2026-0201), convenios (ej. SUPREMO_TRIBUNAL, STSGECH), pagos parciales, prelación (WATERFALL_BY_FOLIO), pólizas de seguro (COVERAGE_BY_FOLIO), buró de crédito o bitácora forense WORM (WORM_MANUAL_CAPITAL_OVERRIDE), DEBES invocar las herramientas correspondientes para obtener los datos reales de PostgreSQL 16. Si la consulta abarca 2 o 3 temas distintos (ej. Prelación + Seguro + Bitácora WORM), invoca cada una de las herramientas necesarias antes de redactar tu respuesta final.
+2. NUNCA reveles nombres completos, CURP, RFC o direcciones en texto plano. Si el usuario solicita el nombre completo o la CURP real junto con datos del crédito, DEBES invocar igualmente las herramientas para responder todos los datos financieros/operativos del crédito, y en la sección de titularidad responde explícitamente: "⚠️ ACCESO DENEGADO: Las políticas de LFPDPPP y CNBV prohíben la exposición de datos personales. Solo puedo proporcionar identificadores enmascarados (ej. MAGR************01)."
+3. ÚNICAMENTE cuando la totalidad de la pregunta sea completamente ajena a Microfinanciera Cruse (ej. clima, recetas de cocina, deportes, cultura general), NO invoques herramientas y responde exactamente: "Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?"
+4. Estructura tus respuestas en tablas Markdown ejecutivas limpias (sin etiquetas HTML como <ul> o <li>; usa filas individuales por concepto) mostrando las cifras exactas centavo a centavo ($#,##0.00 MXN).
+5. Sé conciso, profesional y basado únicamente en los datos verificados que las herramientas te devuelvan.`;
 
 function sanitizeQuestionZeroPii(rawQuestion: string): string {
   return rawQuestion
@@ -244,102 +244,125 @@ export async function answerInternalOperationalQuery(
       },
     ];
 
-    // Etapa 1: El LLM analiza la intención semántica y selecciona 0, 1 o N herramientas en paralelo
-    const stage1 = await groq.chat.completions.create({
-      model: GROQ_INTERNAL_MODEL,
-      temperature: 0.0,
-      max_tokens: 600,
-      messages,
-      tools: ALMA_VIRTUAL_TOOLS,
-      tool_choice: 'auto',
-    });
-
-    const assistantMsg = stage1.choices[0]?.message;
-    const toolCalls = assistantMsg?.tool_calls ?? [];
-
-    // Caso A: El LLM determinó que no requiere herramientas (ej. Pregunta Fuera de Dominio - Guardrail C)
-    if (toolCalls.length === 0) {
-      const directReply =
-        assistantMsg?.content?.trim() ||
-        'Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?';
-
-      return {
-        answer: directReply,
-        model: `${GROQ_INTERNAL_MODEL} · Tool Calling (0 tools)`,
-        zeroPiiCertified: true,
-        aggregatedSnapshot,
-        intentCode: 'OUT_OF_DOMAIN_GUARDRAIL_C',
-        domain: 'RESUMEN_EJECUTIVO',
-        questionNumber: null,
-        toolsInvoked: [],
-      };
-    }
-
-    // Caso B: El LLM solicitó 1 o más tool_calls -> Ajuste 3: Verificar Rate Limiter (máx 5 paralelas, máx 30/min)
-    enforceAlmaToolCallRateLimit(actorEmail, toolCalls.length);
-
-    messages.push({
-      role: 'assistant',
-      content: assistantMsg?.content ?? null,
-      tool_calls: toolCalls,
-    });
-
     const toolsInvoked: string[] = [];
+    const maxRounds = 5;
 
-    // Ejecutar todas las herramientas solicitadas en paralelo (Promise.all) con validación Zero-Trust y Timeout 10s
-    const dispatchedResults = await Promise.all(
-      toolCalls.map(async (tc) => {
-        const fnName = tc.function.name;
-        let parsedArgs: Record<string, unknown> = {};
-        try {
-          parsedArgs = tc.function.arguments
-            ? (JSON.parse(tc.function.arguments) as Record<string, unknown>)
-            : {};
-        } catch {
-          parsedArgs = {};
-        }
+    for (let round = 0; round < maxRounds; round++) {
+      const completion = await groq.chat.completions.create({
+        model: GROQ_INTERNAL_MODEL,
+        temperature: 0.0,
+        max_tokens: 950,
+        messages,
+        tools: ALMA_VIRTUAL_TOOLS,
+        tool_choice: 'auto',
+      });
 
-        if (fnName === 'get_executive_portfolio_overview') {
-          toolsInvoked.push('get_executive_portfolio_overview');
+      const assistantMsg = completion.choices[0]?.message;
+      const toolCalls = assistantMsg?.tool_calls ?? [];
+
+      // Si el LLM ya no solicita más herramientas:
+      if (toolCalls.length === 0) {
+        if (round === 0) {
+          // Caso A: 0 herramientas invocadas en la primera ronda (Pregunta Fuera de Dominio - Guardrail C)
+          const directReply =
+            assistantMsg?.content?.trim() ||
+            'Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?';
+
           return {
-            toolCallId: tc.id,
-            payload: {
-              status: 'SUCCESS',
-              domain: 'RESUMEN_EJECUTIVO',
-              data: zeroPiiAggregatedPayload,
-            },
+            answer: directReply,
+            model: `${GROQ_INTERNAL_MODEL} · Tool Calling (0 tools)`,
+            zeroPiiCertified: true,
+            aggregatedSnapshot,
+            intentCode: 'OUT_OF_DOMAIN_GUARDRAIL_C',
+            domain: 'RESUMEN_EJECUTIVO',
+            questionNumber: null,
+            toolsInvoked: [],
           };
         }
 
-        const execResult = await dispatchAlmaToolCall(fnName, parsedArgs);
-        toolsInvoked.push(`${fnName}(${execResult.queryType})`);
-        return {
-          toolCallId: tc.id,
-          payload: execResult.llmPayload,
-        };
-      })
-    );
+        // Caso B: El LLM ya ejecutó 1 o N herramientas en rondas previas y entrega la síntesis final
+        const finalAnswer = assistantMsg?.content?.trim();
+        if (finalAnswer) {
+          return {
+            answer: finalAnswer,
+            model: `${GROQ_INTERNAL_MODEL} · Tool Calling (${toolsInvoked.length} tools)`,
+            zeroPiiCertified: true,
+            aggregatedSnapshot,
+            intentCode: toolsInvoked.join(' + '),
+            domain: 'RESUMEN_EJECUTIVO',
+            questionNumber: null,
+            toolsInvoked,
+          };
+        }
+        break;
+      }
 
-    for (const item of dispatchedResults) {
+      // Ajuste 3: Verificar Rate Limiter (máx 5 herramientas por turno de conversación y máx 30/min/usuario)
+      enforceAlmaToolCallRateLimit(actorEmail, toolCalls.length);
+      if (toolsInvoked.length + toolCalls.length > 5) {
+        enforceAlmaToolCallRateLimit(actorEmail, 6);
+      }
+
       messages.push({
-        role: 'tool',
-        tool_call_id: item.toolCallId,
-        content: JSON.stringify(item.payload),
+        role: 'assistant',
+        content: assistantMsg?.content ?? null,
+        tool_calls: toolCalls,
       });
+
+      // Ejecutar todas las herramientas solicitadas en esta ronda en paralelo (Promise.all)
+      const dispatchedResults = await Promise.all(
+        toolCalls.map(async (tc) => {
+          const fnName = tc.function.name;
+          let parsedArgs: Record<string, unknown> = {};
+          try {
+            parsedArgs = tc.function.arguments
+              ? (JSON.parse(tc.function.arguments) as Record<string, unknown>)
+              : {};
+          } catch {
+            parsedArgs = {};
+          }
+
+          if (fnName === 'get_executive_portfolio_overview') {
+            toolsInvoked.push('get_executive_portfolio_overview');
+            return {
+              toolCallId: tc.id,
+              payload: {
+                status: 'SUCCESS',
+                domain: 'RESUMEN_EJECUTIVO',
+                data: zeroPiiAggregatedPayload,
+              },
+            };
+          }
+
+          const execResult = await dispatchAlmaToolCall(fnName, parsedArgs);
+          toolsInvoked.push(`${fnName}(${execResult.queryType})`);
+          return {
+            toolCallId: tc.id,
+            payload: execResult.llmPayload,
+          };
+        })
+      );
+
+      for (const item of dispatchedResults) {
+        messages.push({
+          role: 'tool',
+          tool_call_id: item.toolCallId,
+          content: JSON.stringify(item.payload),
+        });
+      }
     }
 
-    // Etapa 2: El LLM redacta la respuesta ejecutiva final en Markdown usando los resultados verificados
-    const stage2 = await groq.chat.completions.create({
+    // Si alcanzó maxRounds con herramientas pendientes, solicitar síntesis final sin tools
+    const finalStage = await groq.chat.completions.create({
       model: GROQ_INTERNAL_MODEL,
       temperature: 0.1,
       max_tokens: 950,
       messages,
     });
-
-    const finalAnswer = stage2.choices[0]?.message?.content?.trim();
-    if (finalAnswer) {
+    const synthesized = finalStage.choices[0]?.message?.content?.trim();
+    if (synthesized) {
       return {
-        answer: finalAnswer,
+        answer: synthesized,
         model: `${GROQ_INTERNAL_MODEL} · Tool Calling (${toolsInvoked.length} tools)`,
         zeroPiiCertified: true,
         aggregatedSnapshot,
