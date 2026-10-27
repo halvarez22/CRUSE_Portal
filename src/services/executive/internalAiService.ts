@@ -31,8 +31,17 @@ REGLAS INQUEBRANTABLES:
 1. SIEMPRE que el usuario pregunte sobre créditos, folios (ej. CNT-2026-0201), convenios (ej. SUPREMO_TRIBUNAL, STSGECH), pagos parciales, prelación (WATERFALL_BY_FOLIO), pólizas de seguro (COVERAGE_BY_FOLIO), buró de crédito o bitácora forense WORM (WORM_MANUAL_CAPITAL_OVERRIDE), DEBES invocar las herramientas correspondientes para obtener los datos reales de PostgreSQL 16. Si la consulta abarca 2 o 3 temas distintos (ej. Prelación + Seguro + Bitácora WORM), invoca cada una de las herramientas necesarias antes de redactar tu respuesta final.
 2. NUNCA reveles nombres completos, CURP, RFC o direcciones en texto plano. Si el usuario solicita el nombre completo o la CURP real junto con datos del crédito, DEBES invocar igualmente las herramientas para responder todos los datos financieros/operativos del crédito, y en la sección de titularidad responde explícitamente: "⚠️ ACCESO DENEGADO: Las políticas de LFPDPPP y CNBV prohíben la exposición de datos personales. Solo puedo proporcionar identificadores enmascarados (ej. MAGR************01)."
 3. ÚNICAMENTE cuando la totalidad de la pregunta sea completamente ajena a Microfinanciera Cruse (ej. clima, recetas de cocina, deportes, cultura general), NO invoques herramientas y responde exactamente: "Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?"
-4. Estructura tus respuestas en tablas Markdown ejecutivas limpias (sin etiquetas HTML como <ul> o <li>; usa filas individuales por concepto) mostrando las cifras exactas centavo a centavo ($#,##0.00 MXN).
+4. Estructura tus respuestas en tablas Markdown ejecutivas cuando sea apropiado, mostrando las cifras exactas centavo a centavo ($#,##0.00 MXN).
 5. Sé conciso, profesional y basado únicamente en los datos verificados que las herramientas te devuelvan.`;
+
+function normalizeTableHtmlLists(md: string): string {
+  return md
+    .replace(/<ul>/gi, '')
+    .replace(/<\/ul>/gi, '')
+    .replace(/<li>/gi, '• ')
+    .replace(/<\/li>/gi, '<br>')
+    .replace(/(<br>)+(\s*\|)/g, '$2');
+}
 
 function sanitizeQuestionZeroPii(rawQuestion: string): string {
   return rawQuestion
@@ -40,6 +49,62 @@ function sanitizeQuestionZeroPii(rawQuestion: string): string {
     .replace(/[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}/gi, '[RFC_OMITIDO_ZERO_PII]')
     .slice(0, 1200)
     .trim();
+}
+
+function isCruseOperationalDomainQuestion(q: string): boolean {
+  const norm = q
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const domainKeywords = [
+    'cnt-',
+    'cruse-',
+    'folio',
+    'credito',
+    'convenio',
+    'quincena',
+    'prelacion',
+    'pago',
+    'saldo',
+    'insoluto',
+    'poliza',
+    'seguro',
+    'siniestro',
+    'fallecimiento',
+    'jubilado',
+    'pensionado',
+    'bitacora',
+    'worm',
+    'manual_override',
+    'ajuste manual',
+    'arco',
+    'reestructura',
+    'cheque',
+    'oficio',
+    'regla del 30',
+    'descuento',
+    'sueldo',
+    'buro',
+    'circulo de credito',
+    'dpd',
+    'atraso',
+    'morosidad',
+    'cartera',
+    'colocacion',
+    'pld',
+    'fondeo',
+    'inversionista',
+    'hub',
+    'tribunal',
+    'stsgech',
+    'hacienda',
+    'salud',
+    'auditoria',
+    'municipio',
+    'nota operativa',
+    'expediente',
+  ];
+  return domainKeywords.some((kw) => norm.includes(kw));
 }
 
 /**
@@ -251,7 +316,7 @@ export async function answerInternalOperationalQuery(
       const completion = await groq.chat.completions.create({
         model: GROQ_INTERNAL_MODEL,
         temperature: 0.0,
-        max_tokens: 950,
+        max_tokens: 4096,
         messages,
         tools: ALMA_VIRTUAL_TOOLS,
         tool_choice: 'auto',
@@ -269,7 +334,7 @@ export async function answerInternalOperationalQuery(
             'Lo siento, solo estoy capacitado para responder preguntas operativas, financieras y de cumplimiento de Microfinanciera Cruse. ¿En qué más puedo ayudarte dentro de mi ámbito?';
 
           return {
-            answer: directReply,
+            answer: normalizeTableHtmlLists(directReply),
             model: `${GROQ_INTERNAL_MODEL} · Tool Calling (0 tools)`,
             zeroPiiCertified: true,
             aggregatedSnapshot,
@@ -284,7 +349,7 @@ export async function answerInternalOperationalQuery(
         const finalAnswer = assistantMsg?.content?.trim();
         if (finalAnswer) {
           return {
-            answer: finalAnswer,
+            answer: normalizeTableHtmlLists(finalAnswer),
             model: `${GROQ_INTERNAL_MODEL} · Tool Calling (${toolsInvoked.length} tools)`,
             zeroPiiCertified: true,
             aggregatedSnapshot,
