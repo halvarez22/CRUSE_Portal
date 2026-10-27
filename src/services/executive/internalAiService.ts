@@ -16,6 +16,11 @@ import {
   InternalAiAggregatedContext,
   InternalAiQueryResponse,
 } from '../../types/executive';
+import {
+  executeAlmaVirtualQuery,
+  sanitizeForLlm,
+} from './almaVirtualQueryEngine';
+
 
 const GROQ_INTERNAL_MODEL = 'llama-3.3-70b-versatile';
 
@@ -202,9 +207,12 @@ export async function answerInternalOperationalQuery(
   rawQuestion: string
 ): Promise<InternalAiQueryResponse> {
   const sanitizedQuestion = sanitizeQuestionZeroPii(rawQuestion);
-  const aggregatedSnapshot = await buildAggregatedOperationalSnapshot();
+  const [aggregatedSnapshot, domainResult] = await Promise.all([
+    buildAggregatedOperationalSnapshot(),
+    executeAlmaVirtualQuery(rawQuestion),
+  ]);
 
-  // Payload estrictamente agregado que se envía al LLM (Guardrail Forense 2)
+  // Payload estrictamente sanitizado bajo Zero-PII que se envía al LLM (Guardrail Forense 2)
   const zeroPiiAggregatedPayload = {
     total_loans_this_month: aggregatedSnapshot.totalLoansThisMonth,
     total_active_loans: aggregatedSnapshot.totalActiveLoans,
@@ -221,6 +229,14 @@ export async function answerInternalOperationalQuery(
       CANCUN: aggregatedSnapshot.hubSummary.CANCUN,
     },
     funding_summary: aggregatedSnapshot.fundingSummary,
+    alma_virtual_domain_query: domainResult
+      ? {
+          intent_code: domainResult.intentCode,
+          domain: domainResult.domain,
+          question_number: domainResult.questionNumber,
+          sql_verified_data: sanitizeForLlm(domainResult.structuredData),
+        }
+      : null,
   };
 
   const groqKey = process.env.GROQ_API_KEY?.trim();
@@ -230,33 +246,51 @@ export async function answerInternalOperationalQuery(
       const completion = await groq.chat.completions.create({
         model: GROQ_INTERNAL_MODEL,
         temperature: 0.1,
-        max_tokens: 400,
+        max_tokens: 550,
         messages: [
           {
             role: 'system',
             content:
-              'Eres el Asistente Ejecutivo Operativo Interno de Microfinanciera Cruse SOFOM E.N.R. para Dirección General y el Oficial de Cumplimiento. Responde en español de forma ejecutiva, precisa y estructurada utilizando EXCLUSIVAMENTE las métricas agregadas en tiempo real de PostgreSQL 16 proporcionadas en el JSON (Zero-PII certificado).',
+              'Eres "Alma Virtual", Copiloto Financiero y Operativo Interno 24/7 de Microfinanciera Cruse SOFOM E.N.R. para la Administradora, Dirección General y el Oficial de Cumplimiento. Responde en español de manera amable, ejecutiva, puntual y estrictamente apegada a los datos reales de PostgreSQL 16 contenidos en `alma_virtual_domain_query.sql_verified_data` y en las métricas agregadas (Zero-PII certificado). Cita folios, convenios, montos en MXN con separador de miles y reglas de negocio (Prelación WORM, RN-01 máx 4 créditos, Regla 30%/35%, Póliza $35,000 MXN / $22.85).',
           },
           {
             role: 'user',
-            content: `MÉTRICAS AGREGADAS EN TIEMPO REAL (ZERO-PII): ${JSON.stringify(
+            content: `CONTEXTO VERIFICADO EN POSTGRESQL 16 (ZERO-PII): ${JSON.stringify(
               zeroPiiAggregatedPayload
-            )}\n\nPREGUNTA DEL DIRECTIVO / OFICIAL DE CUMPLIMIENTO: ${sanitizedQuestion}`,
+            )}\n\nCONSULTA DE LA ADMINISTRADORA / DIRECCIÓN: ${sanitizedQuestion}`,
           },
         ],
       });
       const text = completion.choices[0]?.message?.content?.trim();
       if (text) {
+        const enrichedAnswer = domainResult
+          ? `${text}\n\n---\n${domainResult.deterministicMarkdown}`
+          : text;
         return {
-          answer: text,
-          model: GROQ_INTERNAL_MODEL,
+          answer: enrichedAnswer,
+          model: `${GROQ_INTERNAL_MODEL} · Alma Virtual SQL-Verified`,
           zeroPiiCertified: true,
           aggregatedSnapshot,
+          intentCode: domainResult?.intentCode ?? 'MACRO_EXECUTIVE_SUMMARY',
+          domain: domainResult?.domain ?? 'RESUMEN_EJECUTIVO',
+          questionNumber: domainResult?.questionNumber ?? null,
         };
       }
     } catch {
-      // Fallback determinista si la red externa no responde
+      // Degradación elegante determinista si la red externa o Groq no responde (Guardrail Forense 4)
     }
+  }
+
+  if (domainResult) {
+    return {
+      answer: `👩‍💼 **Alma Virtual — Respuesta Determinista desde Azure PostgreSQL 16 (\`cruse_fintech_v4\`):**\n\n${domainResult.deterministicMarkdown}`,
+      model: 'Alma Virtual · Motor SQL Determinista PostgreSQL 16 (Zero-PII)',
+      zeroPiiCertified: true,
+      aggregatedSnapshot,
+      intentCode: domainResult.intentCode,
+      domain: domainResult.domain,
+      questionNumber: domainResult.questionNumber,
+    };
   }
 
   const fallbackAnswer = [
@@ -276,5 +310,9 @@ export async function answerInternalOperationalQuery(
     model: 'Motor Estadístico Determinista PostgreSQL 16 (Zero-PII)',
     zeroPiiCertified: true,
     aggregatedSnapshot,
+    intentCode: 'MACRO_EXECUTIVE_SUMMARY',
+    domain: 'RESUMEN_EJECUTIVO',
+    questionNumber: null,
   };
 }
+

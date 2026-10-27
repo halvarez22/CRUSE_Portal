@@ -157,4 +157,40 @@ export interface InternalAiQueryResponse {
   model: string;
   zeroPiiCertified: true;
   aggregatedSnapshot: InternalAiAggregatedContext;
+  intentCode?: string;
+  domain?: AlmaVirtualDomainId;
+  questionNumber?: number | null;
 }
+
+export type AlmaVirtualDomainId =
+  | 'COBRANZA'
+  | 'ORIGINACION'
+  | 'SEGUROS'
+  | 'BURO'
+  | 'WORM_ARCO'
+  | 'RESUMEN_EJECUTIVO';
+
+export interface AlmaVirtualQuestionPrompt {
+  id: number;
+  domain: AlmaVirtualDomainId;
+  shortLabel: string;
+  question: string;
+}
+
+export interface AlmaVirtualValidatedEntities {
+  folio: string | null;
+  fortnightPeriod: string | null;
+  convenioCode: string | null;
+  curpPrefix: string | null;
+  reportingMonth: string | null;
+  amountHint: number | null;
+}
+
+export interface AlmaVirtualDomainExecutionResult {
+  intentCode: string;
+  domain: AlmaVirtualDomainId;
+  questionNumber: number | null;
+  structuredData: Record<string, unknown>;
+  deterministicMarkdown: string;
+}
+

@@ -1,6 +1,7 @@
 /**
- * MÓDULO B.4 (MODO INTERNO): ASISTENTE INTELIGENTE OPERATIVO 24/7 ZERO-PII
- * Expediente: CRUSE-APO-2026-029 — Guardrail Forense 1 (< 400 líneas) y Guardrail Forense 2 (Zero-PII)
+ * MÓDULO B.4 (MODO INTERNO): ALMA VIRTUAL — COPILOTO FINANCIERO & OPERATIVO INTERNO 24/7
+ * Expediente: CRUSE-APO-2026-033 — 24 Preguntas Estratégicas Operativas en 5 Dominios
+ * Guardrails: SQL 100% Parametrizado ($1, $2), Zero-PII en Payload a Groq, Anti-God-Object (< 300 líneas).
  */
 
 import React, { useState } from 'react';
@@ -11,12 +12,18 @@ import {
   Sparkles,
   X,
   Database,
+  Layers,
 } from 'lucide-react';
-import { INTERNAL_AI_QUICK_PROMPTS } from '../../data/cruseExecutiveData';
 import {
+  ALMA_VIRTUAL_DOMAIN_TABS,
+  ALMA_VIRTUAL_STRATEGIC_QUESTIONS,
+} from '../../data/cruseExecutiveData';
+import {
+  AlmaVirtualDomainId,
   InternalAiAggregatedContext,
   InternalAiQueryResponse,
 } from '../../types/executive';
+import { ChatFormattedMessage } from '../public/ChatFormattedMessage';
 
 interface InternalAiAssistantDrawerProps {
   isOpen: boolean;
@@ -29,6 +36,7 @@ interface InternalChatTurn {
   sender: 'user' | 'assistant';
   text: string;
   model?: string;
+  intentCode?: string;
   ts: string;
 }
 
@@ -39,18 +47,23 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
 }) => {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeDomainTab, setActiveDomainTab] = useState<AlmaVirtualDomainId>('COBRANZA');
   const [snapshot, setSnapshot] = useState<InternalAiAggregatedContext | null>(null);
   const [messages, setMessages] = useState<InternalChatTurn[]>([
     {
-      id: 'welcome_internal_ai',
+      id: 'welcome_alma_virtual',
       sender: 'assistant',
-      text: 'Bienvenido al Asistente Inteligente Operativo Interno 24/7 de Microfinanciera Cruse. Estoy conectado en tiempo real a las métricas agregadas de Azure PostgreSQL 16 bajo protocolo estricto Zero-PII. Puedes consultarme sobre colocación del mes, alertas PLD/FT pendientes, semáforo de morosidad por Hub (Chihuahua, León, Cancún) o estado de líneas de fondeo.',
-      model: 'Zero-PII Executive Engine',
+      text: '¡Hola! Soy **Alma Virtual**, tu Copiloto Financiero y Operativo Interno 24/7 en Microfinanciera Cruse. Estoy conectada en tiempo real a las **38 tablas de Azure PostgreSQL 16 (`cruse_fintech_v4`)** bajo protocolo estricto **Zero-PII**. Selecciona cualquiera de los **5 dominios operativos (24 preguntas estratégicas)** arriba o escríbeme cualquier consulta sobre cobranza quincenal, prelación de pagos, reestructuras N-a-1, seguros de vida ($22.85 / $35,000), Círculo de Crédito o bitácora forense WORM.',
+      model: 'Alma Virtual · SQL-Verified Engine',
       ts: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
 
   if (!isOpen) return null;
+
+  const filteredQuestions = ALMA_VIRTUAL_STRATEGIC_QUESTIONS.filter(
+    (q) => q.domain === activeDomainTab
+  );
 
   const sendQuery = async (qText: string) => {
     const trimmed = qText.trim();
@@ -77,7 +90,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
       });
       const data = (await res.json()) as InternalAiQueryResponse & { error?: string };
       if (!res.ok) {
-        throw new Error(data.error || 'Error al consultar el Asistente Operativo Interno');
+        throw new Error(data.error || 'Error al consultar a Alma Virtual');
       }
       setSnapshot(data.aggregatedSnapshot);
       setMessages((prev) => [
@@ -87,6 +100,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
           sender: 'assistant',
           text: data.answer,
           model: data.model,
+          intentCode: data.intentCode,
           ts: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -110,31 +124,31 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end">
-      <div className="w-full max-w-2xl bg-slate-950 border-l border-slate-800 h-full flex flex-col shadow-2xl">
+      <div className="w-full max-w-3xl bg-slate-950 border-l border-slate-800 h-full flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="p-5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-4 sm:p-5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#249E82] to-[#396CAE] flex items-center justify-center text-white shadow-lg">
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-extrabold text-white">
-                  Asistente Operativo Interno 24/7 (Dirección & Cumplimiento)
+                  Alma Virtual — Copiloto Financiero & Operativo Interno 24/7
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> Zero-PII
+                  <ShieldCheck className="w-3 h-3" /> Zero-PII · SQL Parametrizado
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Consultas en lenguaje natural sobre PostgreSQL 16 sin exponer nombres, CURP ni RFC al modelo IA.
+                Conectada en vivo a Azure PostgreSQL 16 (`cruse_fintech_v4`) · 24 Consultas Estratégicas de Administración y Mesa de Control.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
-            title="Cerrar asistente"
+            title="Cerrar Alma Virtual"
           >
             <X className="w-4 h-4" />
           </button>
@@ -142,9 +156,9 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
 
         {/* Snapshot Agregado Certificado */}
         {snapshot && (
-          <div className="px-5 py-2.5 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="px-5 py-2 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
             <span className="text-teal-400 font-bold flex items-center gap-1">
-              <Database className="w-3.5 h-3.5" /> Snapshot Agregado PostgreSQL:
+              <Database className="w-3.5 h-3.5" /> PostgreSQL 16 En Vivo:
             </span>
             <span className="text-slate-300">
               Créditos Activos: <strong>{snapshot.totalActiveLoans}</strong>
@@ -158,22 +172,51 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
           </div>
         )}
 
-        {/* Preguntas Rápidas para Oficial de Cumplimiento y Gerencia */}
-        <div className="p-4 bg-slate-900/40 border-b border-slate-800 space-y-2">
-          <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
-            <span>Consultas Ejecutivas Frecuentes (1 Clic):</span>
+        {/* Selector de los 5 Dominios Operativos (24 Preguntas Estratégicas) */}
+        <div className="p-3.5 bg-slate-900/40 border-b border-slate-800 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Pool de 24 Preguntas Estratégicas Operativas (5 Dominios):</span>
+            </div>
+            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+              <Layers className="w-3 h-3 text-[#00D1FF]" /> Clic para consultar en BD real
+            </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {INTERNAL_AI_QUICK_PROMPTS.map((item, idx) => (
+
+          {/* Pestañas de Dominio */}
+          <div className="flex flex-wrap gap-1.5">
+            {ALMA_VIRTUAL_DOMAIN_TABS.map((tab) => {
+              const isSelected = activeDomainTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveDomainTab(tab.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
+                    isSelected
+                      ? 'bg-[#249E82] text-white border-[#249E82] shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                  }`}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lista de preguntas del dominio activo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+            {filteredQuestions.map((item) => (
               <button
-                key={idx}
+                key={item.id}
+                type="button"
                 onClick={() => sendQuery(item.question)}
                 disabled={loading}
-                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-left text-xs text-slate-200 transition-all"
+                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800/90 border border-slate-800 hover:border-[#00D1FF]/40 text-left transition-all"
               >
-                <div className="font-bold text-[#00D1FF]">{item.title}</div>
-                <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{item.question}</div>
+                <div className="text-[11px] font-bold text-[#00D1FF]">{item.shortLabel}</div>
+                <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{item.question}</div>
               </button>
             ))}
           </div>
@@ -187,22 +230,23 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
               className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[88%] rounded-2xl p-4 text-xs leading-relaxed whitespace-pre-line ${
+                className={`max-w-[92%] rounded-2xl p-4 text-xs leading-relaxed ${
                   m.sender === 'user'
                     ? 'bg-gradient-to-r from-[#249E82] to-[#396CAE] text-white font-medium'
                     : 'bg-slate-900 border border-slate-800 text-slate-200'
                 }`}
               >
-                {m.text}
+                <ChatFormattedMessage text={m.text} isUser={m.sender === 'user'} />
               </div>
               <span className="text-[10px] text-slate-500 mt-1 px-1">
-                {m.ts} {m.model ? `· ${m.model}` : ''}
+                {m.ts} {m.model ? `· ${m.model}` : ''}{' '}
+                {m.intentCode ? `· [${m.intentCode}]` : ''}
               </span>
             </div>
           ))}
           {loading && (
             <div className="text-xs text-teal-400 animate-pulse">
-              Consultando agregaciones en PostgreSQL 16 y generando respuesta Zero-PII...
+              Ejecutando consulta parametrizada en PostgreSQL 16 (`cruse_fintech_v4`) y sintetizando respuesta con Alma Virtual...
             </div>
           )}
         </div>
@@ -219,7 +263,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ej: ¿Cuántos créditos se otorgaron este mes? ¿Hay alertas pendientes de PLD?"
+            placeholder="Pregunta a Alma Virtual sobre pagos parciales, prelación, reestructuras, seguros, buró o bitácora WORM..."
             className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00D1FF]"
           />
           <button

@@ -5,10 +5,13 @@
  */
 
 import {
+  AlmaVirtualDomainId,
+  AlmaVirtualQuestionPrompt,
   ExpansionHubItem,
   OperationsManualStep,
   PitchSlideItem,
 } from '../types/executive';
+
 
 export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
   {
@@ -338,3 +341,192 @@ export const INTERNAL_AI_QUICK_PROMPTS: readonly { title: string; question: stri
     question: '¿Cuál es el resumen actual de inversionistas activos y capital comprometido en fondeo frente a la cartera colocada?',
   },
 ];
+
+export const ALMA_VIRTUAL_DOMAIN_TABS: readonly {
+  id: AlmaVirtualDomainId;
+  label: string;
+  count: number;
+}[] = [
+  { id: 'COBRANZA', label: '1. Cobranza y Prelación', count: 5 },
+  { id: 'ORIGINACION', label: '2. Reestructuras y Regla 30%', count: 5 },
+  { id: 'SEGUROS', label: '3. Seguros y Siniestros', count: 5 },
+  { id: 'BURO', label: '4. Buró y Cierres', count: 5 },
+  { id: 'WORM_ARCO', label: '5. Bitácora WORM y ARCO', count: 4 },
+];
+
+export const ALMA_VIRTUAL_STRATEGIC_QUESTIONS: readonly AlmaVirtualQuestionPrompt[] = [
+  // Dominio 1: Cobranza Quincenal y Pagos Parciales (1–5)
+  {
+    id: 1,
+    domain: 'COBRANZA',
+    shortLabel: 'Q1 · Pagos Parciales por Convenio (2026-10-1Q)',
+    question:
+      '¿Qué empleados del convenio Supremo Tribunal realizaron pagos parciales o incompletos en la quincena 2026-10-1Q?',
+  },
+  {
+    id: 2,
+    domain: 'COBRANZA',
+    shortLabel: 'Q2 · Prelación de Pago Parcial $300 (CNT-2026-0201)',
+    question:
+      '¿A qué conceptos (Capital, Interés, IVA, Seguro) se destinó el pago parcial de $300 recibido del crédito CNT-2026-0201?',
+  },
+  {
+    id: 3,
+    domain: 'COBRANZA',
+    shortLabel: 'Q3 · Retención Esperada Próxima Quincena',
+    question:
+      '¿Cuál es el acumulado total esperado de retención para la dependencia Supremo Tribunal para la próxima quincena, sumando todas las cuotas?',
+  },
+  {
+    id: 4,
+    domain: 'COBRANZA',
+    shortLabel: 'Q4 · Créditos Express con Saldo < $1,000',
+    question:
+      '¿Cuáles créditos Express tienen un saldo insoluto menor a $1,000 pesos y están por liquidarse?',
+  },
+  {
+    id: 5,
+    domain: 'COBRANZA',
+    shortLabel: 'Q5 · Discrepancias Descuento vs Depósito',
+    question:
+      'Lista todos los créditos Quincenales donde el descuento esperado de la última nómina no coincidió con lo depositado por la dependencia.',
+  },
+  // Dominio 2: Reestructuras y Originación (6–10)
+  {
+    id: 6,
+    domain: 'ORIGINACION',
+    shortLabel: 'Q6 · Créditos Normales Simultáneos (RN-01)',
+    question:
+      '¿Cuántos créditos normales activos tiene simultáneamente el empleado con CURP MORA************08, y cuál es la sumatoria de sus cuotas quincenales?',
+  },
+  {
+    id: 7,
+    domain: 'ORIGINACION',
+    shortLabel: 'Q7 · Trazabilidad de Reestructura N-a-1 (CNT-2026-9027)',
+    question:
+      '¿El crédito CNT-2026-9027 fue una reestructura? Si es así, ¿cuál fue el folio del crédito original que se liquidó con ese movimiento?',
+  },
+  {
+    id: 8,
+    domain: 'ORIGINACION',
+    shortLabel: 'Q8 · Desembolsos con Cheque Físico (30 días)',
+    question:
+      '¿Qué créditos fueron desembolsados mediante cheque físico en los últimos 30 días?',
+  },
+  {
+    id: 9,
+    domain: 'ORIGINACION',
+    shortLabel: 'Q9 · Verificación de Oficio de 1er Pago',
+    question:
+      "Verifica si el empleado del crédito CNT-2026-0201 cuenta con el documento 'Oficio de 1er Pago' cargado en su expediente.",
+  },
+  {
+    id: 10,
+    domain: 'ORIGINACION',
+    shortLabel: 'Q10 · Límite Máximo Descuento (Regla 30%)',
+    question:
+      '¿Cuál es el límite máximo de descuento permitido (Regla del 30%) para el sueldo reportado del crédito CNT-2026-0201?',
+  },
+  // Dominio 3: Seguros y Excepciones (11–15)
+  {
+    id: 11,
+    domain: 'SEGUROS',
+    shortLabel: 'Q11 · Jubilados Exentos de Seguro por Edad',
+    question:
+      '¿Cuántos créditos activos de Jubilados/Pensionados tenemos actualmente marcados sin cobro de seguro de vida por exceder la edad permitida?',
+  },
+  {
+    id: 12,
+    domain: 'SEGUROS',
+    shortLabel: 'Q12 · Total Cobrado Seguro $22.85 (2026-10-1Q)',
+    question:
+      '¿Cuál es el total cobrado por concepto de Seguro de Vida de $22.85 en la quincena 2026-10-1Q a nivel global?',
+  },
+  {
+    id: 13,
+    domain: 'SEGUROS',
+    shortLabel: 'Q13 · Siniestros por Fallecimiento del Mes',
+    question:
+      '¿Hay alguna póliza de seguro de crédito que deba hacerse efectiva por reporte de fallecimiento este mes?',
+  },
+  {
+    id: 14,
+    domain: 'SEGUROS',
+    shortLabel: 'Q14 · Detalle de Póliza por Crédito (CNT-2026-0201)',
+    question:
+      'Muestra los detalles de la cobertura de seguro asociada al crédito CNT-2026-0201.',
+  },
+  {
+    id: 15,
+    domain: 'SEGUROS',
+    shortLabel: 'Q15 · Sector Salud Pagando Prima de Seguro',
+    question:
+      '¿Cuántos créditos vigentes del sector Salud están pagando actualmente la prima del seguro?',
+  },
+  // Dominio 4: Buró de Crédito y Cierres Mensuales (16–20)
+  {
+    id: 16,
+    domain: 'BURO',
+    shortLabel: 'Q16 · Resumen Cartera Vencida Círculo de Crédito',
+    question:
+      'Dame el resumen de cartera vencida a fin del mes Octubre 2026 para enviar el reporte al Círculo de Crédito.',
+  },
+  {
+    id: 17,
+    domain: 'BURO',
+    shortLabel: 'Q17 · Cuentas con Atraso DPD > 90 Días',
+    question:
+      '¿Qué clientes superaron los 90 días de atraso (DPD > 90) en el corte del mes pasado?',
+  },
+  {
+    id: 18,
+    domain: 'BURO',
+    shortLabel: 'Q18 · Sumatoria Saldo Insoluto Supremo Tribunal',
+    question:
+      'Genera la sumatoria mensual del saldo insoluto de todos los créditos del Supremo Tribunal para auditoría interna.',
+  },
+  {
+    id: 19,
+    domain: 'BURO',
+    shortLabel: 'Q19 · Saldo Reportado a Buró (CNT-2026-0201)',
+    question:
+      'Verifica cuál fue el saldo reportado al buró el mes pasado para el crédito de equivalencia CNT-2026-0201.',
+  },
+  {
+    id: 20,
+    domain: 'BURO',
+    shortLabel: 'Q20 · Índice de Morosidad Cartera Express',
+    question:
+      '¿Cuál es el índice de morosidad actual de la cartera de Créditos Express?',
+  },
+  // Dominio 5: Seguridad, Derechos ARCO y Bitácora Forense WORM (21–24)
+  {
+    id: 21,
+    domain: 'WORM_ARCO',
+    shortLabel: 'Q21 · Bitácora WORM Ajuste Manual Capital',
+    question:
+      'Consulta en la bitácora WORM qué usuario del sistema realizó el ajuste manual de capital en la última aplicación de pago del crédito CNT-2026-0201.',
+  },
+  {
+    id: 22,
+    domain: 'WORM_ARCO',
+    shortLabel: 'Q22 · Solicitudes de Cancelación ARCO Pendientes',
+    question:
+      '¿Tenemos alguna solicitud de cancelación de Derechos ARCO pendiente de resolver para algún ex-cliente?',
+  },
+  {
+    id: 23,
+    domain: 'WORM_ARCO',
+    shortLabel: 'Q23 · Autorizador e IP de Última Reestructura',
+    question:
+      '¿Quién autorizó y desde qué dirección IP se realizó la última reestructura del cliente?',
+  },
+  {
+    id: 24,
+    domain: 'WORM_ARCO',
+    shortLabel: 'Q24 · Nota Operativa más Reciente (CNT-2026-0201)',
+    question:
+      'Léeme la nota operativa interna más reciente añadida al expediente CNT-2026-0201.',
+  },
+];
+

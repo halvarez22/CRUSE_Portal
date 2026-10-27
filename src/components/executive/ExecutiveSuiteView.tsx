@@ -82,7 +82,7 @@ export const ExecutiveSuiteView: React.FC<ExecutiveSuiteViewProps> = ({
           className="px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-[#D4AF37]/50 text-[#D4AF37] text-xs font-extrabold flex items-center gap-2 transition-all"
         >
           <Bot className="w-4 h-4" />
-          <span>Asistente IA Interno 24/7 (B.4)</span>
+          <span>Alma Virtual IA 24/7 (24 Consultas)</span>
         </button>
       </div>
 
