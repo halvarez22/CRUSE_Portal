@@ -42,7 +42,7 @@ export const SMS_RATE_LIMIT_TIERS = [
 ] as const;
 
 /** Emisor institucional para notificaciones SMS 2FA. */
-export const AUTH_ISSUER_NAME = 'Microfinanciera Cruse';
+export const AUTH_ISSUER_NAME = 'Micro Financiera CRUSE';
 
 /** Contraseña temporal generada por los scripts de alta (bytes aleatorios → base64url). */
 export const TEMP_PASSWORD_BYTES = 18;

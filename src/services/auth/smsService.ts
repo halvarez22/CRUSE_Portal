@@ -1,6 +1,7 @@
 import twilio from 'twilio';
 import crypto from 'node:crypto';
 import { getServerEnv } from '../../config/serverEnv';
+import { AUTH_ISSUER_NAME } from '../../config/authConfig';
 
 export type SmsDispatchMode = 'verify' | 'programmable_sms' | 'local_fallback';
 
@@ -58,11 +59,19 @@ async function resolveVerifyServiceSid(twilioClient: twilio.Twilio): Promise<str
   }
 
   const created = await twilioClient.verify.v2.services.create({
-    friendlyName: 'Microfinanciera Cruse',
+    friendlyName: AUTH_ISSUER_NAME,
     codeLength: 6,
+    customCodeEnabled: false,
   });
   cachedVerifyServiceSid = created.sid;
   return cachedVerifyServiceSid;
+}
+
+/**
+ * Construye el cuerpo institucional canónico para el canal secundario Programmable SMS (CRUSE-APO-2026-039).
+ */
+export function buildInstitutionalSmsBody(otpCode: string): string {
+  return `Su código de verificación para ${AUTH_ISSUER_NAME} es: ${otpCode}`;
 }
 
 // Registro de sesiones OTP pendientes con TTL de 10 minutos (CRUSE-APO-2026-038)
@@ -156,6 +165,8 @@ export async function sendSmsOtp(
         .verifications.create({
           to: targetPhone,
           channel: 'sms',
+          locale: 'es',
+          customFriendlyName: AUTH_ISSUER_NAME,
         });
 
       otpMap.set(userId, {
@@ -179,7 +190,7 @@ export async function sendSmsOtp(
           const message = await twilioClient.messages.create({
             from: env.twilioPhoneNumber,
             to: targetPhone,
-            body: `[Microfinanciera Cruse] Tu codigo de verificacion 2FA es: ${generatedOtp}. Valido por 10 minutos. No lo compartas con nadie.`,
+            body: buildInstitutionalSmsBody(generatedOtp),
           });
 
           otpMap.set(userId, {
