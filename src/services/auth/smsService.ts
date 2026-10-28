@@ -19,8 +19,12 @@ let cachedVerifyServiceSid: string | null = null;
 
 /**
  * Guardrail Forense 1: Deriva el digest SHA-256 irreversible del código OTP de 6 dígitos.
+ * Defensa en Profundidad (R7 Zero Trust): Valida explícitamente que `code` sea string no vacío.
  */
-export function hashOtpCode(code: string): string {
+export function hashOtpCode(code: unknown): string {
+  if (typeof code !== 'string' || code.trim().length === 0) {
+    return '';
+  }
   return crypto.createHash('sha256').update(code.trim()).digest('hex');
 }
 
@@ -233,7 +237,11 @@ export async function sendSmsOtp(
   throw new SmsDeliveryError('Proveedor de mensajería SMS 2FA no configurado en producción.', 502);
 }
 
-export async function verifySmsOtp(userId: string, code: string): Promise<boolean> {
+export async function verifySmsOtp(userId: string, code: unknown): Promise<boolean> {
+  if (typeof code !== 'string' || code.trim().length === 0) {
+    return false;
+  }
+  const trimmedCode = code.trim();
   const record = otpMap.get(userId);
   if (!record) return false;
 
@@ -250,7 +258,7 @@ export async function verifySmsOtp(userId: string, code: string): Promise<boolea
         .services(record.serviceSid)
         .verificationChecks.create({
           to: record.targetPhone,
-          code: code.trim(),
+          code: trimmedCode,
         });
       const isApproved = check.status === 'approved';
       if (isApproved) {
