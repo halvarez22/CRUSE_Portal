@@ -330,13 +330,6 @@ export const PublicCreditSimulator: React.FC = () => {
                     <Printer className="w-3.5 h-3.5" />
                     <span>Exportar PDF</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAmortizationModal(false)}
-                    className="p-2 rounded-xl glass-card text-slate-600 hover:text-slate-950 dark:hover:text-white text-xs font-bold"
-                  >
-                    Cerrar ✕
-                  </button>
                 </div>
               </div>
 
