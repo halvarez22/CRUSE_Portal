@@ -126,6 +126,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
     if (resendingSms || resendCooldown > 0 || !tempToken) return;
     setResendingSms(true);
     setErrorMsg(null);
+    setSmsWarningMsg(null);
     setResendFeedback(null);
 
     try {
@@ -141,10 +142,17 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
       if (data.maskedPhone) {
         setMaskedPhone(String(data.maskedPhone));
       }
+      setSmsWarningMsg(null);
+      setUseRecoveryMode(false);
+      setTotpCode('');
       setResendFeedback(`Nuevo código SMS enviado a ${data.maskedPhone || maskedPhone}.`);
       setResendCooldown(60);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al reenviar código SMS');
+      setSmsWarningMsg(
+        err instanceof Error
+          ? `${err.message} Puedes ingresar con tu Código de Recuperación de Emergencia (XXXX-XXXX).`
+          : 'Error al reenviar código SMS. Utiliza tu Código de Recuperación de Emergencia (XXXX-XXXX).'
+      );
     } finally {
       setResendingSms(false);
     }

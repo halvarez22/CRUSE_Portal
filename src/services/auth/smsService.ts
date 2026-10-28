@@ -17,6 +17,7 @@ interface PendingOtpRecord {
 let client: twilio.Twilio | null = null;
 let clientSidKey: string | null = null;
 let cachedVerifyServiceSid: string | null = null;
+let cachedSenderPhone: string | null = null;
 
 /**
  * Guardrail Forense 1: Deriva el digest SHA-256 irreversible del código OTP de 6 dígitos.
@@ -39,8 +40,40 @@ function getTwilioClient(): twilio.Twilio | null {
     client = twilio(env.twilioAccountSid, env.twilioAuthToken);
     clientSidKey = key;
     cachedVerifyServiceSid = null;
+    cachedSenderPhone = null;
   }
   return client;
+}
+
+/**
+ * Resuelve dinámicamente el número remitente para Programmable SMS (CRUSE-APO-2026-040).
+ * Prioriza TWILIO_PHONE_NUMBER del entorno y, si no está definido o difiere de los números
+ * activos en la cuenta, consulta incomingPhoneNumbers de la cuenta activa con caché en memoria.
+ */
+export async function resolveSenderPhoneNumber(twilioClient: twilio.Twilio): Promise<string | null> {
+  if (cachedSenderPhone) {
+    return cachedSenderPhone;
+  }
+  const env = getServerEnv();
+  try {
+    const incoming = await twilioClient.incomingPhoneNumbers.list({ limit: 5 });
+    if (incoming.length > 0) {
+      const envMatch = env.twilioPhoneNumber
+        ? incoming.find((n) => n.phoneNumber === env.twilioPhoneNumber)
+        : undefined;
+      const smsCapable = incoming.find((n) => n.capabilities?.sms);
+      cachedSenderPhone = (envMatch ?? smsCapable ?? incoming[0]).phoneNumber;
+      return cachedSenderPhone;
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[SMS Sender Resolver] No se pudo listar incomingPhoneNumbers: ${msg}`);
+  }
+  if (env.twilioPhoneNumber) {
+    cachedSenderPhone = env.twilioPhoneNumber;
+    return cachedSenderPhone;
+  }
+  return null;
 }
 
 async function resolveVerifyServiceSid(twilioClient: twilio.Twilio): Promise<string> {
@@ -181,14 +214,15 @@ export async function sendSmsOtp(
       const verifyMsg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
       console.warn(`[SMS Verify] Canal primario Twilio Verify rechazó el envío (${verifyMsg}). Evaluando fallback Programmable SMS...`);
 
-      // Canal Secundario Resiliente (CRUSE-APO-2026-038): Twilio Programmable SMS con número dedicado
-      if (env.twilioPhoneNumber) {
+      // Canal Secundario Resiliente (CRUSE-APO-2026-038 / 040): Twilio Programmable SMS con resolución dinámica de remitente
+      const senderNumber = await resolveSenderPhoneNumber(twilioClient);
+      if (senderNumber) {
         try {
           const generatedOtp = crypto.randomInt(100000, 999999).toString();
           const otpSha256 = hashOtpCode(generatedOtp);
 
           const message = await twilioClient.messages.create({
-            from: env.twilioPhoneNumber,
+            from: senderNumber,
             to: targetPhone,
             body: buildInstitutionalSmsBody(generatedOtp),
           });
@@ -199,11 +233,11 @@ export async function sendSmsOtp(
             codeHash: otpSha256,
             expires: Date.now() + OTP_TTL_MS,
           });
-          console.log(`[SMS Programmable Fallback] OTP despachado vía número dedicado (${message.sid}) a ${maskedPhone}.`);
+          console.log(`[SMS Programmable Fallback] OTP despachado vía número dedicado (${message.sid}) desde ${senderNumber} a ${maskedPhone}.`);
           return { maskedPhone, channel: 'programmable_sms' };
         } catch (progErr: unknown) {
           const progMsg = progErr instanceof Error ? progErr.message : String(progErr);
-          console.error(`[SMS Programmable Fallback] Fallo en envío con número dedicado: ${progMsg}`);
+          console.error(`[SMS Programmable Fallback] Fallo en envío con número dedicado (${senderNumber}): ${progMsg}`);
         }
       }
 
