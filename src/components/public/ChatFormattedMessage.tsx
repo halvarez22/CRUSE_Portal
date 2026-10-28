@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlmaVisualChartCard } from '../executive/AlmaVisualChartCard';
 
 interface ChatFormattedMessageProps {
   text: string;
@@ -9,10 +10,15 @@ interface ChatFormattedMessageProps {
    * sin depender de la clase global `html.dark` ni afectar al Asistente Público (`AiAssistantPublic.tsx`).
    */
   forceDarkSurface?: boolean;
+  /**
+   * Guardrail 2, 3 & 4 (CRUSE-APO-2026-035): Habilita el motor determinista de gráficos SVG
+   * (Dona/Pie y Líneas) debajo de las tablas Markdown de "Alma Virtual" sin alterar `AiAssistantPublic.tsx`.
+   */
+  enableVisualCharts?: boolean;
 }
 
 /**
- * Renderizador seguro de Markdown ligero a nodos React nativos (CRUSE-APO-2026-016 / 034).
+ * Renderizador seguro de Markdown ligero a nodos React nativos (CRUSE-APO-2026-016 / 034 / 035).
  * - Regla 5 SSD (Zero-XSS): Prohibido usar dangerouslySetInnerHTML.
  * - Preserva filas de tablas Markdown (| col | col |) que contengan <br> internos en sus celdas.
  * - Soporta encabezados (###), listas (1., -), separadores (---), citas (>), tablas y negritas (**texto**).
@@ -21,6 +27,7 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({
   text,
   isUser = false,
   forceDarkSurface = false,
+  enableVisualCharts = false,
 }) => {
   const renderInline = (content: string, keyPrefix: string): React.ReactNode[] => {
     const parts = content.split(/(\*\*[^*]+\*\*)/g);
@@ -202,6 +209,15 @@ export const ChatFormattedMessage: React.FC<ChatFormattedMessageProps> = ({
             </table>
           </div>
         );
+        if (enableVisualCharts && bodyRows.length > 0) {
+          blocks.push(
+            <AlmaVisualChartCard
+              key={`chart-${i}`}
+              headers={headerCells}
+              rows={bodyRows}
+            />
+          );
+        }
       }
       continue;
     }

@@ -85,41 +85,12 @@
 
 /* ==============================================================================
    SISTEMA DE DISEÑO GLASSMORPHISM — CALIBRACIÓN MODO OSCURO & MODO CLARO
+   (CRUSE-APO-2026-035: Aislamiento de especificidad CSS para contenedores .dark)
    ============================================================================== */
 
-/* MODO OSCURO (Dark Glassmorphism Premium — Intacto conforme a Guardrail 4) */
-.dark .glass-panel {
-  background: rgba(4, 23, 52, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.55);
-}
-
-.dark .glass-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-}
-
-.dark .glass-input {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(10px);
-  color: #ffffff;
-}
-
-.dark .glass-slab-emerald {
-  background: linear-gradient(135deg, rgba(36, 158, 130, 0.20) 0%, rgba(4, 23, 52, 0.78) 100%);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(36, 158, 130, 0.45);
-  box-shadow: 0 0 35px -5px rgba(36, 158, 130, 0.35);
-}
-
-/* MODO CLARO (Light Executive High-Contrast — WCAG AA/AAA) */
-.light .glass-panel,
-html:not(.dark) .glass-panel {
+/* MODO CLARO (Light Executive High-Contrast — WCAG AA/AAA, aislado fuera de .dark) */
+.light .glass-panel:not(.dark *),
+html:not(.dark) .glass-panel:not(.dark *) {
   background: var(--bg-secondary);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -127,44 +98,97 @@ html:not(.dark) .glass-panel {
   box-shadow: var(--shadow-lg);
 }
 
-.light .glass-card,
-html:not(.dark) .glass-card {
+.light .glass-card:not(.dark *),
+html:not(.dark) .glass-card:not(.dark *) {
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   box-shadow: var(--shadow-sm);
 }
 
-.light .glass-input,
-html:not(.dark) .glass-input {
+.light .glass-input:not(.dark *),
+html:not(.dark) .glass-input:not(.dark *) {
   background: var(--bg-primary);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
 }
 
-.light .glass-slab-emerald,
-html:not(.dark) .glass-slab-emerald {
+.light .glass-slab-emerald:not(.dark *),
+html:not(.dark) .glass-slab-emerald:not(.dark *) {
   background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF9 100%);
   border: 1px solid #99F6E4;
   box-shadow: var(--shadow-md);
 }
 
+/* MODO OSCURO (Dark Glassmorphism Premium — Especificidad >= 0,2,1 para html.dark y contenedores .dark) */
+html.dark .glass-panel,
+html .dark .glass-panel,
+.dark .glass-panel {
+  background: rgba(4, 23, 52, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.55);
+  color: #F8FAFC;
+}
+
+html.dark .glass-card,
+html .dark .glass-card,
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #F8FAFC;
+}
+
+html.dark .glass-input,
+html .dark .glass-input,
+.dark .glass-input {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  color: #FFFFFF;
+}
+
+html.dark .glass-input option,
+html .dark .glass-input option,
+.dark .glass-input option,
+.dark select option {
+  background-color: #0F172A;
+  color: #F8FAFC;
+}
+
+html.dark .glass-slab-emerald,
+html .dark .glass-slab-emerald,
+.dark .glass-slab-emerald {
+  background: linear-gradient(135deg, rgba(36, 158, 130, 0.20) 0%, rgba(4, 23, 52, 0.78) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(36, 158, 130, 0.45);
+  box-shadow: 0 0 35px -5px rgba(36, 158, 130, 0.35);
+  color: #F8FAFC;
+}
+
 /* Resplandores de Apoyo (Activos en Modo Oscuro, Sombras Ejecutivas en Modo Claro) */
+.light .glow-teal:not(.dark *),
+html:not(.dark) .glow-teal:not(.dark *) {
+  box-shadow: 0 4px 14px 0 rgba(36, 158, 130, 0.24);
+}
+
+html.dark .glow-teal,
+html .dark .glow-teal,
 .dark .glow-teal {
   box-shadow: 0 0 30px -5px rgba(36, 158, 130, 0.40);
 }
 
-.light .glow-teal,
-html:not(.dark) .glow-teal {
-  box-shadow: 0 4px 14px 0 rgba(36, 158, 130, 0.24);
+.light .glow-blue:not(.dark *),
+html:not(.dark) .glow-blue:not(.dark *) {
+  box-shadow: 0 4px 14px 0 rgba(57, 108, 174, 0.24);
 }
 
+html.dark .glow-blue,
+html .dark .glow-blue,
 .dark .glow-blue {
   box-shadow: 0 0 30px -5px rgba(57, 108, 174, 0.40);
-}
-
-.light .glow-blue,
-html:not(.dark) .glow-blue {
-  box-shadow: 0 4px 14px 0 rgba(57, 108, 174, 0.24);
 }
 
 /* Optimización GPU para móviles y bajo consumo */

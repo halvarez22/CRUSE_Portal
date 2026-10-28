@@ -284,6 +284,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
                   text={m.text}
                   isUser={m.sender === 'user'}
                   forceDarkSurface={m.sender === 'assistant'}
+                  enableVisualCharts={m.sender === 'assistant'}
                 />
               </div>
               <span className="text-[10px] text-slate-300 mt-1 px-1">

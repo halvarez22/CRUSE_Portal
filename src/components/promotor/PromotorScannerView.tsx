@@ -205,7 +205,7 @@ export const PromotorScannerView: React.FC<PromotorScannerViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="dark min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       {/* Barra superior de la PWA */}
       <header className="px-4 py-3 bg-slate-900/90 border-b border-white/10 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md">
         <div className="flex items-center gap-3">
