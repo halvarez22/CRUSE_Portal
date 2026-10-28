@@ -145,7 +145,13 @@ class DatabaseConnectionPool {
         max: 20,
         idleTimeoutMillis: 30_000,
         connectionTimeoutMillis: 10_000,
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10_000,
         ssl: isLocalPg ? undefined : { rejectUnauthorized: false },
+      });
+      this.pgPool.on('error', (err) => {
+        console.warn(`[PostgreSQL Pool] Conexión inactiva reciclada por el servidor: ${err.message}`);
+        // No llamar a process.exit(). pg.Pool maneja la reconexión automática del cliente afectado.
       });
     }
     return this.pgPool;
