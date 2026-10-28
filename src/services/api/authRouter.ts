@@ -27,7 +27,12 @@ import {
   refreshRateLimiter,
 } from '../auth/rateLimiter';
 import { verifyPassword, verifyPasswordAgainstDummy, hashPassword } from '../auth/passwordHasher';
-import { sendSmsOtp, verifySmsOtp, SmsDeliveryError } from '../auth/smsService';
+import {
+  sendSmsOtp,
+  verifySmsOtp,
+  SmsDeliveryError,
+  formatMaskedPhoneForDisplay,
+} from '../auth/smsService';
 import {
   normalizeEmail,
   findUserByEmail,
@@ -117,9 +122,33 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       });
     }
 
-    const { maskedPhone } = await sendSmsOtp(user.id, user.phone_number);
-    smsSendRateLimiter.recordSend(user.id);
-    smsIpRateLimiter.recordFailure(rateKeyIp);
+    let maskedPhone = formatMaskedPhoneForDisplay(user.phone_number);
+    let smsDelivered = true;
+    let smsWarning: string | undefined;
+
+    try {
+      const dispatchResult = await sendSmsOtp(user.id, user.phone_number);
+      maskedPhone = dispatchResult.maskedPhone;
+      smsSendRateLimiter.recordSend(user.id);
+      smsIpRateLimiter.recordFailure(rateKeyIp);
+    } catch (smsErr: unknown) {
+      if (smsErr instanceof SmsDeliveryError) {
+        smsDelivered = false;
+        smsWarning =
+          'El canal SMS externo (Twilio) se encuentra en validación regulatoria KYC. Puedes ingresar inmediatamente utilizando cualquiera de tus Códigos de Recuperación de Emergencia (XXXX-XXXX).';
+        await auditEventStore.append({
+          actorEmail: user.email,
+          actorRole: 'sistema',
+          action: 'LOGIN_FAILURE',
+          outcome: 'failure',
+          sourceIp: ip,
+          sourceSummary,
+          details: `Degradación de pasarela SMS 2FA en paso 1 (${smsErr.message}). Se habilita desafío 2FA en modo Código de Recuperación de Emergencia (XXXX-XXXX).`,
+        });
+      } else {
+        throw smsErr;
+      }
+    }
 
     const authUser = toAuthenticatedUser(user);
     const tempToken = await createPendingTotp(user.id);
@@ -130,6 +159,8 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       name: authUser.name,
       role: authUser.role,
       maskedPhone,
+      smsDelivered,
+      smsWarning,
       totpEnrolled: authUser.totpEnrolled,
       mustChangePassword: authUser.mustChangePassword,
     };

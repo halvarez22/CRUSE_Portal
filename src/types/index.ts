@@ -165,6 +165,8 @@ export interface LoginChallengeResponse {
   totpEnrolled?: boolean;
   mustChangePassword?: boolean;
   maskedPhone?: string;
+  smsDelivered?: boolean;
+  smsWarning?: string;
   enrollment?: TotpEnrollment;
   recoveryCodes?: string[];
 }

@@ -46,6 +46,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
   const [resendingSms, setResendingSms] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendFeedback, setResendFeedback] = useState<string | null>(null);
+  const [smsWarningMsg, setSmsWarningMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
 
@@ -71,6 +72,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
     setShowNewPassword(false);
     setResendCooldown(0);
     setResendFeedback(null);
+    setSmsWarningMsg(null);
     setRemainingAttempts(null);
     setErrorMsg(null);
   };
@@ -86,6 +88,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
     setLoading(true);
     setErrorMsg(null);
     setResendFeedback(null);
+    setSmsWarningMsg(null);
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -100,14 +103,17 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
       }
 
       const challenge = data as LoginChallengeResponse;
+      const isSmsDelivered = challenge.smsDelivered !== false;
       setTempToken(challenge.tempToken);
       setMaskedPhone(challenge.maskedPhone || '+52 •••• •••• ••••');
       setMustChangePassword(Boolean(challenge.mustChangePassword));
       setUserRole(challenge.role);
       setUserName(challenge.name);
+      setUseRecoveryMode(!isSmsDelivered);
+      setSmsWarningMsg(!isSmsDelivered ? (challenge.smsWarning ?? null) : null);
       setPassword('');
       setShowPassword(false);
-      setResendCooldown(45);
+      setResendCooldown(isSmsDelivered ? 45 : 0);
       setStep('totp');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Error al procesar credenciales');
@@ -307,29 +313,54 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
           </form>
         ) : (
           <form onSubmit={handleTotpSubmit} className="mt-6 space-y-4 animate-fade-in">
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                <div>
-                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-200">
-                    {userName} ({userRole.replace('_', ' ').toUpperCase()})
-                  </p>
-                  <p className="text-[11px] text-slate-700 dark:text-slate-300">
-                    Se envió un código SMS de 6 dígitos a tu celular registrado:{' '}
-                    <span className="font-mono font-bold text-cyan-700 dark:text-[#00D1FF]">{maskedPhone}</span>
-                  </p>
+            {smsWarningMsg ? (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-slate-200">
+                      {userName} ({userRole.replace('_', ' ').toUpperCase()})
+                    </p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                      {smsWarningMsg}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  disabled={resendingSms || resendCooldown > 0}
+                  onClick={handleResendSms}
+                  className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 text-[11px] font-semibold text-cyan-700 dark:text-[#00D1FF] border border-cyan-600/40 dark:border-[#00D1FF]/30 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
+                >
+                  <RefreshCw className={`w-3 h-3 ${resendingSms ? 'animate-spin' : ''}`} />
+                  <span>{resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reintentar SMS'}</span>
+                </button>
               </div>
-              <button
-                type="button"
-                disabled={resendingSms || resendCooldown > 0}
-                onClick={handleResendSms}
-                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 text-[11px] font-semibold text-cyan-700 dark:text-[#00D1FF] border border-cyan-600/40 dark:border-[#00D1FF]/30 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
-              >
-                <RefreshCw className={`w-3 h-3 ${resendingSms ? 'animate-spin' : ''}`} />
-                <span>{resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar SMS'}</span>
-              </button>
-            </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-slate-200">
+                      {userName} ({userRole.replace('_', ' ').toUpperCase()})
+                    </p>
+                    <p className="text-[11px] text-slate-700 dark:text-slate-300">
+                      Se envió un código SMS de 6 dígitos a tu celular registrado:{' '}
+                      <span className="font-mono font-bold text-cyan-700 dark:text-[#00D1FF]">{maskedPhone}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={resendingSms || resendCooldown > 0}
+                  onClick={handleResendSms}
+                  className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 text-[11px] font-semibold text-cyan-700 dark:text-[#00D1FF] border border-cyan-600/40 dark:border-[#00D1FF]/30 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
+                >
+                  <RefreshCw className={`w-3 h-3 ${resendingSms ? 'animate-spin' : ''}`} />
+                  <span>{resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar SMS'}</span>
+                </button>
+              </div>
+            )}
 
             {mustChangePassword && (
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
@@ -424,7 +455,7 @@ export const Login2FAModal: React.FC<Login2FAModalProps> = ({
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Verificar Código SMS y Entrar</span>
+                    <span>{useRecoveryMode ? 'Verificar Código de Respaldo y Entrar' : 'Verificar Código SMS y Entrar'}</span>
                   </>
                 )}
               </button>
