@@ -26,7 +26,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   ];
 
   return (
-    <header className="fixed w-full top-0 z-50 bg-white dark:bg-transparent glass-panel border-b border-slate-200 dark:border-white/10 transition-colors duration-300">
+    <header className="w-full bg-white dark:bg-[#030914] border-b border-slate-200 dark:border-white/15 shadow-md transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo Oficial de Cruse con Contenedor de Alto Contraste */}
@@ -68,7 +68,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
 
             {/* Institutional Access (2FA) Button */}
             <button
-              onClick={onOpenInstitutionalAccess || (() => alert('Acceso al Core Administrativo y PWA Promotores con 2FA. Se activará en el módulo privado!'))}
+              onClick={onOpenInstitutionalAccess}
               type="button"
               className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#041734] to-[#396CAE] dark:from-[#396CAE] dark:to-[#249E82] text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-2 border border-slate-800/20 dark:border-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
               aria-label="Acceso Institucional Seguro con Autenticación de Doble Factor"

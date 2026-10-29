@@ -94,6 +94,27 @@ export interface RequirementItem {
 
 export type UserRole = 'admin' | 'oficial_cumplimiento' | 'promotor';
 
+export interface PrivacyNoticeClause {
+  id: string;
+  number: string;
+  title: string;
+  content: string;
+  highlights?: string[];
+}
+
+export interface PrivacyNoticeData {
+  documentId: string;
+  title: string;
+  subtitle: string;
+  lastUpdated: string;
+  legalFramework: string;
+  responsibleEntity: string;
+  responsibleAddress: string;
+  uneEmail: string;
+  unePhone: string;
+  clauses: PrivacyNoticeClause[];
+}
+
 export interface AuthenticatedUser {
   id: string;
   email: string;

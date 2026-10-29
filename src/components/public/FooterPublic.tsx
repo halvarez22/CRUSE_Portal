@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShieldCheck, Award, FileCheck2, ExternalLink } from 'lucide-react';
 import { COMPANY_INFO } from '../../data/cruseData';
+import { PrivacyNoticeModal } from './PrivacyNoticeModal';
 
 export const FooterPublic: React.FC = () => {
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+
   return (
     <footer className="border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 glass-panel py-12 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -44,16 +47,13 @@ export const FooterPublic: React.FC = () => {
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-400 font-medium">
             <span>© {new Date().getFullYear()} {COMPANY_INFO.name}. Todos los derechos reservados.</span>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                alert('Aviso de Privacidad Integral de Microfinanciera Cruse conforme a la LFPDPPP.');
-              }}
-              className="text-[#0F766E] dark:text-[#2EBD9B] font-bold underline hover:opacity-80"
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(true)}
+              className="text-[#0F766E] dark:text-[#2EBD9B] font-bold underline hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82] rounded"
             >
               Aviso de Privacidad Integral (LFPDPPP)
-            </a>
+            </button>
             <span>•</span>
             <a
               href="https://www.condusef.gob.mx"
@@ -68,6 +68,11 @@ export const FooterPublic: React.FC = () => {
         </div>
 
       </div>
+
+      <PrivacyNoticeModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
     </footer>
   );
 };

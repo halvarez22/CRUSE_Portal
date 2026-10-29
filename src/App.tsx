@@ -136,44 +136,47 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#030914] text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-[#249E82] selection:text-white transition-colors duration-300 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#030914] text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-[#249E82] selection:text-white transition-colors duration-300 relative overflow-x-clip">
       {/* Background Ambient Glowing Orbs (Neutralizados en Modo Claro conforme a Guardrail 3; intactos en Modo Oscuro) */}
       <div className="fixed top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-[#041734] opacity-0 dark:opacity-60 blur-[130px] pointer-events-none -z-10 gpu-accelerated" />
       <div className="fixed top-[25%] right-[-10%] w-[550px] h-[550px] rounded-full bg-[#1E9F81] opacity-0 dark:opacity-20 blur-[150px] pointer-events-none -z-10 gpu-accelerated" />
       <div className="fixed bottom-[-10%] left-[20%] w-[600px] h-[600px] rounded-full bg-[#396CAE] opacity-0 dark:opacity-25 blur-[160px] pointer-events-none -z-10 gpu-accelerated" />
 
-      {/* Barra de estado si hay sesión activa pero el usuario está viendo el portal público */}
-      {session && (
-        <div className="bg-gradient-to-r from-[#249E82] to-[#396CAE] text-white py-1.5 px-4 text-xs font-semibold flex items-center justify-between sticky top-0 z-50 shadow-md">
-          <div className="flex items-center gap-2">
-            <UserCheck className="w-4 h-4" />
-            <span>Sesión 2FA Activa (8h): {session.user.name} ({session.user.role.replace('_', ' ').toUpperCase()})</span>
+      {/* Contenedor Maestro Superior Sticky (CRUSE-APO-2026-041: Cero traslape y superficie sólida sin distorsión) */}
+      <div className="sticky top-0 z-50 w-full">
+        {/* Barra de estado si hay sesión activa pero el usuario está viendo el portal público */}
+        {session && (
+          <div className="bg-gradient-to-r from-[#249E82] to-[#396CAE] text-white py-1.5 px-4 text-xs font-semibold flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4" />
+              <span>Sesión 2FA Activa (8h): {session.user.name} ({session.user.role.replace('_', ' ').toUpperCase()})</span>
+            </div>
+            <button
+              onClick={() => setCurrentView('private')}
+              className="px-3 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all text-xs font-bold flex items-center gap-1.5"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Abrir Mi Módulo Privado</span>
+            </button>
           </div>
-          <button
-            onClick={() => setCurrentView('private')}
-            className="px-3 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all text-xs font-bold flex items-center gap-1.5"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Abrir Mi Módulo Privado</span>
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* Sticky Master Header Navigation */}
-      <HeaderNavbar
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onOpenInstitutionalAccess={() => {
-          if (session) {
-            setCurrentView('private');
-          } else {
-            setShow2FaModal(true);
-          }
-        }}
-      />
+        {/* Master Header Navigation */}
+        <HeaderNavbar
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenInstitutionalAccess={() => {
+            if (session) {
+              setCurrentView('private');
+            } else {
+              setShow2FaModal(true);
+            }
+          }}
+        />
+      </div>
 
       {/* Main Public Content */}
-      <main className="space-y-4 pt-24">
+      <main className="space-y-4 pt-4">
         <HeroPedestalSection />
         <PublicCreditSimulator />
         <RequirementsGlassSlabs />
