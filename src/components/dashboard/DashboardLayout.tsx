@@ -126,7 +126,10 @@ export const DashboardLayout: React.FC = () => {
                 {hub.id === 'ALL' && kpis && (
                   <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
                     <span className="text-slate-400 flex items-center gap-1">
-                      <Activity className="w-3 h-3 text-[#00D1FF]" /> Vista Consolidada
+                      <Activity className="w-3 h-3 text-[#00D1FF]" />{' '}
+                      {kpis.hubBreakdown
+                        ? `${kpis.hubBreakdown.CHIHUAHUA.loansCount + kpis.hubBreakdown.LEON.loansCount + kpis.hubBreakdown.CANCUN.loansCount} expedientes`
+                        : 'Vista Consolidada'}
                     </span>
                     <span className="font-mono font-bold text-[#00D1FF]">
                       {formatCurrency(kpis.capitalColocado)}
@@ -153,6 +156,7 @@ export const DashboardLayout: React.FC = () => {
           <ReconciliationMasterTable
             loans={latestLoans}
             loading={loansLoading}
+            selectedHub={selectedHub}
             onViewDetails={handleViewDetails}
           />
         </section>
