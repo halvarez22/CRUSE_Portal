@@ -44,6 +44,11 @@ import {
   resolveQ23RestructureAuthorizationAndIp,
   resolveQ24LatestOperationalNoteForFolio,
 } from './almaDomainQueriesPart2';
+import {
+  resolvePhase2CibBatchesTraceability,
+  resolvePhase2GrayListAndOcrExceptions,
+  resolvePhase2SitiReportsAndSlaClock,
+} from './almaPhase2ComplianceQueries';
 
 export const MAX_TOOL_CALLS_PER_MINUTE_PER_USER = 30;
 export const MAX_PARALLEL_TOOL_CALLS_PER_TURN = 5;
@@ -145,7 +150,8 @@ function toEntities(args: AlmaValidatedToolArgs): AlmaVirtualValidatedEntities {
  */
 async function executePureDomainTool(
   toolName: AlmaToolName,
-  args: AlmaValidatedToolArgs
+  args: AlmaValidatedToolArgs,
+  actorRole = 'admin'
 ): Promise<AlmaVirtualDomainExecutionResult> {
   const entities = toEntities(args);
   const qt = args.query_type ?? '';
@@ -193,6 +199,15 @@ async function executePureDomainTool(
         structuredData: { status: 'OK', note: 'Use macro portfolio snapshot metrics.' },
         deterministicMarkdown: '📊 Snapshot Ejecutivo Global consultado desde PostgreSQL 16.',
       };
+    }
+    case 'query_phase2_cnbv_and_cib_status': {
+      if (qt === 'GRAY_LIST_AND_OCR_EXCEPTIONS') {
+        return resolvePhase2GrayListAndOcrExceptions(actorRole);
+      }
+      if (qt === 'SITI_REPORTS_AND_SLA_CLOCK') {
+        return resolvePhase2SitiReportsAndSlaClock(actorRole);
+      }
+      return resolvePhase2CibBatchesTraceability(actorRole);
     }
   }
 }
@@ -242,7 +257,8 @@ export interface DispatchedToolExecutionResult {
  */
 export async function dispatchAlmaToolCall(
   toolName: string,
-  rawArgs: Record<string, unknown>
+  rawArgs: Record<string, unknown>,
+  actorRole = 'admin'
 ): Promise<DispatchedToolExecutionResult> {
   // 1. Guardrail B + Ajustes 1 y 2: Validación Zero-Trust en Backend
   const validation = validateAndSanitizeToolArgs(toolName, rawArgs);
@@ -263,8 +279,8 @@ export async function dispatchAlmaToolCall(
   const typedTool = toolName as AlmaToolName;
 
   try {
-    // 2. Ajuste 4: Ejecución con timeout estricto de 10 segundos
-    const domainRes = await executeWithTimeout10s(executePureDomainTool(typedTool, vArgs));
+    // 2. Ajuste 4: Ejecución con timeout estricto de 10 segundos y validación RBAC
+    const domainRes = await executeWithTimeout10s(executePureDomainTool(typedTool, vArgs, actorRole));
 
     // 3. Ajuste 5: Manejo elegante cuando no existen registros para el parámetro consultado
     if (isZeroResultsPayload(domainRes.structuredData)) {

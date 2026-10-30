@@ -33,6 +33,7 @@ export interface CashOperationCandidateInput {
 }
 
 export interface FractionedCashEvaluationSummary {
+  readonly dryRun?: boolean;
   readonly evaluatedOperationsCount: number;
   readonly fxRateUsdMxn: string;
   readonly singleMinUsd: string;
@@ -87,10 +88,12 @@ async function readPldThresholdsFromDb(): Promise<{
  */
 export async function detectFractionedAndRelevantCashOperations(params: {
   operations: ReadonlyArray<CashOperationCandidateInput>;
+  dryRun?: boolean;
   actorEmail: string;
   actorRole: UserRole | 'sistema';
   sourceIp: string;
 }): Promise<FractionedCashEvaluationSummary> {
+  const isDryRun = Boolean(params.dryRun);
   const thresholds = await readPldThresholdsFromDb();
   const triggeredFractionedReports: Array<{
     reportId: string;
@@ -132,26 +135,19 @@ export async function detectFractionedAndRelevantCashOperations(params: {
 
     // 1. ¿Es Operación Relevante directa en una sola exhibición (>= $7,500 USD)?
     if (amountUsdDec.greaterThanOrEqualTo(thresholds.relevantThresholdUsd)) {
-      const reportId = `cnbv_ror_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      await db.execute(
-        `INSERT INTO pld_cnbv_reports_and_whistleblowing (
-          id, report_category, siti_report_type_code, expediente_id,
-          subject_masked_name, subject_curp_masked, subject_rfc_masked, hub_code,
-          operation_amount_mxn, operation_amount_usd, applied_fx_rate_usd_mxn,
-          tentative_amount_mode, mandatory_col40_prefix,
-          col40_operation_description, col41_inusual_reasons,
-          is_anonymous_whistleblowing, reporter_role_or_channel,
-          detected_at, investigation_deadline_at, ccc_decision,
-          sla_clock_status, retention_until_year, created_at
-        ) VALUES ($1, 'ROR_RELEVANTE', '1', $2, $3, $4, $5, $6, $7, $8, $9, 'REQUESTED_AMOUNT_BLOCKED', 'NONE', $10, '', 0, 'MOTOR_AUTOMATIZADO_CAP_V_ROR', $11, $12, 'REPORT_TO_UIF', 'ON_TIME', $13, $14)`,
-        [
-          reportId, op.expedienteId ?? null, op.subjectMaskedName, op.subjectCurpMasked,
-          op.subjectRfcMasked ?? 'XXXX000000XXX', op.hubCode ?? 'HUB-CUU',
-          amountMxnDec.toFixed(2), amountUsdDec.toFixed(2), thresholds.fxRateUsdMxn.toFixed(6),
-          `OPERACION RELEVANTE EN EFECTIVO EN UNA SOLA EXHIBICION POR ${amountMxnDec.toFixed(2)} MXN EQUIVALENTES A ${amountUsdDec.toFixed(2)} USD (TC FIX ${thresholds.fxRateUsdMxn.toFixed(4)}), IGUAL O SUPERIOR AL UMBRAL DE ${thresholds.relevantThresholdUsd.toFixed(2)} USD DEL CAPITULO V DCG ART 115.`,
-          nowIso, investigationDeadlineIso, retentionYear, nowIso,
-        ]
-      );
+      const reportId = isDryRun ? `SIM-PREVIEW-ROR-${op.operationId}` : `cnbv_ror_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      if (!isDryRun) {
+        await db.execute(
+          `INSERT INTO pld_cnbv_reports_and_whistleblowing (id, report_category, siti_report_type_code, expediente_id, subject_masked_name, subject_curp_masked, subject_rfc_masked, hub_code, operation_amount_mxn, operation_amount_usd, applied_fx_rate_usd_mxn, tentative_amount_mode, mandatory_col40_prefix, col40_operation_description, col41_inusual_reasons, is_anonymous_whistleblowing, reporter_role_or_channel, detected_at, investigation_deadline_at, ccc_decision, sla_clock_status, retention_until_year, created_at) VALUES ($1, 'ROR_RELEVANTE', '1', $2, $3, $4, $5, $6, $7, $8, $9, 'REQUESTED_AMOUNT_BLOCKED', 'NONE', $10, '', 0, 'MOTOR_AUTOMATIZADO_CAP_V_ROR', $11, $12, 'REPORT_TO_UIF', 'ON_TIME', $13, $14)`,
+          [
+            reportId, op.expedienteId ?? null, op.subjectMaskedName, op.subjectCurpMasked,
+            op.subjectRfcMasked ?? 'XXXX000000XXX', op.hubCode ?? 'HUB-CUU',
+            amountMxnDec.toFixed(2), amountUsdDec.toFixed(2), thresholds.fxRateUsdMxn.toFixed(6),
+            `OPERACION RELEVANTE EN EFECTIVO EN UNA SOLA EXHIBICION POR ${amountMxnDec.toFixed(2)} MXN EQUIVALENTES A ${amountUsdDec.toFixed(2)} USD (TC FIX ${thresholds.fxRateUsdMxn.toFixed(4)}), IGUAL O SUPERIOR AL UMBRAL DE ${thresholds.relevantThresholdUsd.toFixed(2)} USD DEL CAPITULO V DCG ART 115.`,
+            nowIso, investigationDeadlineIso, retentionYear, nowIso,
+          ]
+        );
+      }
 
       triggeredRelevantReports.push({
         reportId,
@@ -196,28 +192,21 @@ export async function detectFractionedAndRelevantCashOperations(params: {
     const totalUsdFormatted = sumUsd.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
 
     if (sumUsd.greaterThanOrEqualTo(thresholds.monthlyAccumUsd)) {
-      const reportId = `cnbv_frac_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const reportId = isDryRun ? `SIM-PREVIEW-FRAC-${bucket.calendarMonth}` : `cnbv_frac_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const col40Desc = `OPERATIVA ACUMULADA EN EFECTIVO DURANTE EL MES CALENDARIO ${bucket.calendarMonth} MEDIANTE ${bucket.qualifyingOps.length} EXHIBICIONES INDIVIDUALES IGUALES O SUPERIORES A ${thresholds.singleMinUsd.toFixed(2)} USD QUE ACUMULAN ${totalMxnFormatted} MXN (${totalUsdFormatted} USD A TC FIX ${thresholds.fxRateUsdMxn.toFixed(4)}), SUPERANDO EL UMBRAL DE ${thresholds.monthlyAccumUsd.toFixed(2)} USD DE LA FRACCION IV DEL CAPITULO VI DCG ART 115.`;
       const col41Reasons = `ALERTA AUTOMATIZADA POR FRACCIONAMIENTO DE EFECTIVO EN VENTANILLA DENTRO DE UN MISMO MES CALENDARIO QUE ROMPE EL PERFIL TRANSACCIONAL ORDINARIO DE DESCUENTO VIA NOMINA.`;
 
-      await db.execute(
-        `INSERT INTO pld_cnbv_reports_and_whistleblowing (
-          id, report_category, siti_report_type_code, expediente_id,
-          subject_masked_name, subject_curp_masked, subject_rfc_masked, hub_code,
-          operation_amount_mxn, operation_amount_usd, applied_fx_rate_usd_mxn,
-          tentative_amount_mode, mandatory_col40_prefix,
-          col40_operation_description, col41_inusual_reasons,
-          is_anonymous_whistleblowing, reporter_role_or_channel,
-          detected_at, investigation_deadline_at, ccc_decision,
-          sla_clock_status, retention_until_year, created_at
-        ) VALUES ($1, 'ROI_OPERATIVA_FRACCIONADA', '2', $2, $3, $4, $5, $6, $7, $8, $9, 'REQUESTED_AMOUNT_BLOCKED', 'NONE', $10, $11, 0, 'MOTOR_AUTOMATIZADO_FRACCION_IV', $12, $13, 'PENDING_CCC', 'ON_TIME', $14, $15)`,
-        [
-          reportId, bucket.expedienteId, bucket.subjectMaskedName, bucket.subjectCurpMasked,
-          bucket.subjectRfcMasked, bucket.hubCode, totalMxnFormatted, totalUsdFormatted,
-          thresholds.fxRateUsdMxn.toFixed(6), col40Desc, col41Reasons,
-          nowIso, investigationDeadlineIso, retentionYear, nowIso,
-        ]
-      );
+      if (!isDryRun) {
+        await db.execute(
+          `INSERT INTO pld_cnbv_reports_and_whistleblowing (id, report_category, siti_report_type_code, expediente_id, subject_masked_name, subject_curp_masked, subject_rfc_masked, hub_code, operation_amount_mxn, operation_amount_usd, applied_fx_rate_usd_mxn, tentative_amount_mode, mandatory_col40_prefix, col40_operation_description, col41_inusual_reasons, is_anonymous_whistleblowing, reporter_role_or_channel, detected_at, investigation_deadline_at, ccc_decision, sla_clock_status, retention_until_year, created_at) VALUES ($1, 'ROI_OPERATIVA_FRACCIONADA', '2', $2, $3, $4, $5, $6, $7, $8, $9, 'REQUESTED_AMOUNT_BLOCKED', 'NONE', $10, $11, 0, 'MOTOR_AUTOMATIZADO_FRACCION_IV', $12, $13, 'PENDING_CCC', 'ON_TIME', $14, $15)`,
+          [
+            reportId, bucket.expedienteId, bucket.subjectMaskedName, bucket.subjectCurpMasked,
+            bucket.subjectRfcMasked, bucket.hubCode, totalMxnFormatted, totalUsdFormatted,
+            thresholds.fxRateUsdMxn.toFixed(6), col40Desc, col41Reasons,
+            nowIso, investigationDeadlineIso, retentionYear, nowIso,
+          ]
+        );
+      }
 
       triggeredFractionedReports.push({
         reportId,
@@ -230,17 +219,20 @@ export async function detectFractionedAndRelevantCashOperations(params: {
     }
   }
 
-  await auditEventStore.append({
-    actorEmail: params.actorEmail,
-    actorRole: params.actorRole,
-    action: 'PLD_HIT_DETECTED',
-    outcome: 'success',
-    sourceIp: params.sourceIp,
-    sourceSummary: 'cnbvAssistedComplianceService',
-    details: `Evaluación PLD Efectivo: ${params.operations.length} ops analizadas | ${triggeredFractionedReports.length} Fraccionadas ($500-$7,500 USD) | ${triggeredRelevantReports.length} Relevantes`,
-  });
+  if (!isDryRun) {
+    await auditEventStore.append({
+      actorEmail: params.actorEmail,
+      actorRole: params.actorRole,
+      action: 'PLD_HIT_DETECTED',
+      outcome: 'success',
+      sourceIp: params.sourceIp,
+      sourceSummary: 'cnbvAssistedComplianceService',
+      details: `Evaluación PLD Efectivo: ${params.operations.length} ops analizadas | ${triggeredFractionedReports.length} Fraccionadas ($500-$7,500 USD) | ${triggeredRelevantReports.length} Relevantes`,
+    });
+  }
 
   return {
+    dryRun: isDryRun,
     evaluatedOperationsCount: params.operations.length,
     fxRateUsdMxn: thresholds.fxRateUsdMxn.toFixed(6),
     singleMinUsd: thresholds.singleMinUsd.toFixed(2),
@@ -385,8 +377,8 @@ export async function listCibExportBatches(): Promise<ReadonlyArray<CibExportBat
   return res.rows.map((r: CibExportBatchDbRow) => ({
     id: r.id,
     batchCode: r.batch_code,
-    totalExpedientesIncluded: sanitizeDecimalString(String(r.total_expedientes_included), '0').toNumber(),
-    excludedLowConfidenceOrPldCount: sanitizeDecimalString(String(r.excluded_low_confidence_or_pld_count), '0').toNumber(),
+    totalExpedientesIncluded: parseInt(sanitizeDecimalString(String(r.total_expedientes_included), '0').toFixed(0), 10),
+    excludedLowConfidenceOrPldCount: parseInt(sanitizeDecimalString(String(r.excluded_low_confidence_or_pld_count), '0').toFixed(0), 10),
     totalPrincipalMxn: sanitizeDecimalString(String(r.total_principal_mxn), '0.00').toFixed(2),
     totalFortnightlyQuotaMxn: sanitizeDecimalString(String(r.total_fortnightly_quota_mxn), '0.00').toFixed(2),
     fileSha256Hash: r.file_sha256_hash,

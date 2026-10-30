@@ -103,6 +103,12 @@ function isCruseOperationalDomainQuestion(q: string): boolean {
     'municipio',
     'nota operativa',
     'expediente',
+    'lista gris',
+    'siti',
+    'roip',
+    'fraccionada',
+    'cib',
+    'ccc',
   ];
   return domainKeywords.some((kw) => norm.includes(kw));
 }
@@ -275,7 +281,8 @@ export async function buildAggregatedOperationalSnapshot(): Promise<InternalAiAg
  */
 export async function answerInternalOperationalQuery(
   rawQuestion: string,
-  actorEmail = 'admin@cruse.com.mx'
+  actorEmail = 'admin@cruse.com.mx',
+  actorRole = 'admin'
 ): Promise<InternalAiQueryResponse> {
   const sanitizedQuestion = sanitizeQuestionZeroPii(rawQuestion);
   const aggregatedSnapshot = await buildAggregatedOperationalSnapshot();
@@ -399,7 +406,7 @@ export async function answerInternalOperationalQuery(
             };
           }
 
-          const execResult = await dispatchAlmaToolCall(fnName, parsedArgs);
+          const execResult = await dispatchAlmaToolCall(fnName, parsedArgs, actorRole);
           toolsInvoked.push(`${fnName}(${execResult.queryType})`);
           return {
             toolCallId: tc.id,

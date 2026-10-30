@@ -169,7 +169,8 @@ export type AlmaToolName =
   | 'get_insurance_status'
   | 'get_credit_bureau_closings'
   | 'get_worm_audit_and_arco_log'
-  | 'get_executive_portfolio_overview';
+  | 'get_executive_portfolio_overview'
+  | 'query_phase2_cnbv_and_cib_status';
 
 export interface AlmaValidatedToolArgs {
   query_type?: string;
@@ -194,6 +195,7 @@ export type AlmaVirtualDomainId =
   | 'SEGUROS'
   | 'BURO'
   | 'WORM_ARCO'
+  | 'CUMPLIMIENTO_FASE2'
   | 'RESUMEN_EJECUTIVO';
 
 export interface AlmaVirtualQuestionPrompt {

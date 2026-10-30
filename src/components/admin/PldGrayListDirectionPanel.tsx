@@ -3,13 +3,8 @@ import {
   ShieldAlert,
   CheckCircle2,
   XCircle,
-  FileWarning,
   RefreshCw,
-  Clock,
   Scale,
-  Download,
-  Calculator,
-  MessageSquareWarning,
 } from 'lucide-react';
 import {
   AuthSession,
@@ -17,6 +12,7 @@ import {
   ExpedienteComplianceProfileItem,
   TentativeAmountReportingMode,
 } from '../../types';
+import { PldSitiReportsAndCccPanel } from './PldSitiReportsAndCccPanel';
 
 interface PldGrayListDirectionPanelProps {
   session: AuthSession;
@@ -131,116 +127,6 @@ export const PldGrayListDirectionPanel: React.FC<PldGrayListDirectionPanelProps>
     }
   };
 
-  const handleDownloadSiti41ColTxt = async () => {
-    setSubmitting(true);
-    setFeedback(null);
-    try {
-      const res = await fetch('/api/pld/siti-layout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.token}`,
-        },
-        body: JSON.stringify({}),
-      });
-      const data = (await res.json()) as {
-        fileName?: string;
-        txtContent?: string;
-        sha256Hash?: string;
-        totalRows?: number;
-        error?: string;
-      };
-      if (!res.ok || !data.txtContent) {
-        throw new Error(data.error || 'Error generando Layout SITI 41 Columnas');
-      }
-      const blob = new Blob([data.txtContent], { type: 'text/plain;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = data.fileName || 'SITI_UIF_CNBV_41_COL.txt';
-      link.click();
-      URL.revokeObjectURL(url);
-
-      setFeedback({
-        type: 'success',
-        message: `Layout Oficial .TXT SITI 41 Columnas descargado (${data.totalRows} registros separados por ';' y CRLF) | SHA-256: ${data.sha256Hash?.slice(0, 16)}...`,
-      });
-    } catch (err: unknown) {
-      setFeedback({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Error descargando Layout SITI',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEvaluateSlaAndFractionedDemo = async () => {
-    setSubmitting(true);
-    setFeedback(null);
-    try {
-      const res = await fetch('/api/pld/evaluate-sla-clocks', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.token}` },
-      });
-      const data = (await res.json()) as {
-        evaluatedReportsCount?: number;
-        semesterReviewsDueCount?: number;
-        error?: string;
-      };
-      if (!res.ok) throw new Error(data.error || 'Error evaluando Reloj Normativo CNBV');
-      setFeedback({
-        type: 'success',
-        message: `Reloj Normativo CNBV Evaluado (60d CCC + 3d hábiles UIF): ${data.evaluatedReportsCount} reportes auditados y ${data.semesterReviewsDueCount} revisiones semestrales (180d) detectadas.`,
-      });
-      await fetchData();
-    } catch (err: unknown) {
-      setFeedback({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Error evaluando Reloj SLA',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleQuickRoipDemo = async () => {
-    setSubmitting(true);
-    setFeedback(null);
-    try {
-      const res = await fetch('/api/pld/whistleblowing', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.token}`,
-        },
-        body: JSON.stringify({
-          subjectMaskedName: 'COLABORADOR VENTANILLA ZONA NORTE',
-          hubCode: 'HUB-CUU',
-          col40OperationDescription:
-            'DENUNCIA CONFIDENCIAL EN BUZON INTERNO CAPITULO X SOBRE INTENTO DE RECEPCION DE PAGOS EN EFECTIVO FRACCIONADOS SIN IDENTIFICACION ACTUALIZADA.',
-          col41InusualReasons:
-            'OMISION DE DEBIDA DILIGENCIA EN OPERACION DE VENTANILLA REPORTADA ANONIMAMENTE AL OFICIAL DE CUMPLIMIENTO.',
-          isAnonymous: true,
-        }),
-      });
-      const data = (await res.json()) as { reportId?: string; investigationDeadlineAt?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || 'Error registrando ROIP');
-      setFeedback({
-        type: 'success',
-        message: `Denuncia Confidencial ROIP registrada (${data.reportId}, SITI Tipo '3'). Límite de investigación 60 días naturales: ${data.investigationDeadlineAt?.slice(0, 10)}.`,
-      });
-      await fetchData();
-    } catch (err: unknown) {
-      setFeedback({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Error registrando denuncia ROIP',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="glass-panel rounded-2xl p-5 border border-white/10 space-y-4">
@@ -282,7 +168,6 @@ export const PldGrayListDirectionPanel: React.FC<PldGrayListDirectionPanelProps>
           </div>
         )}
 
-        {/* Tabla de Perfiles de Cumplimiento y Escalamiento a Dirección */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -367,95 +252,14 @@ export const PldGrayListDirectionPanel: React.FC<PldGrayListDirectionPanelProps>
         </div>
       </div>
 
-      {/* Tabla de Reportes Tentativos / Inusuales / 24h y Buzón ROIP (Punto de Control #3) */}
-      <div className="glass-panel rounded-2xl p-5 border border-white/10 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="text-sm font-bold text-white flex items-center gap-2">
-            <FileWarning className="w-4 h-4 text-[#00D1FF]" />
-            <span>
-              Bandeja de Reportes Regulatorios SITI CNBV/UIF (Columna 11 Monto y Columna 40 Leyendas Oficiales)
-            </span>
-          </h4>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void handleEvaluateSlaAndFractionedDemo()}
-              disabled={submitting}
-              className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex items-center gap-1"
-            >
-              <Calculator className="w-3.5 h-3.5" />
-              <span>Evaluar Reloj 60+3d / 180d</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleQuickRoipDemo()}
-              disabled={submitting}
-              className="px-2.5 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-[11px] font-bold flex items-center gap-1"
-            >
-              <MessageSquareWarning className="w-3.5 h-3.5" />
-              <span>Buzón ROIP (Tipo 3)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleDownloadSiti41ColTxt()}
-              disabled={submitting}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#396CAE] to-[#249E82] text-white text-[11px] font-bold flex items-center gap-1.5 shadow-md"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Descargar Layout .TXT SITI (41 Cols · ;)</span>
-            </button>
-          </div>
-        </div>
+      {/* Sub-componente desacoplado (< 420 líneas): Bandeja SITI, Simulador Read-Only, Sesión CCC y Descarga 41 Cols */}
+      <PldSitiReportsAndCccPanel
+        token={session.token}
+        reports={reports}
+        onRefreshRequested={fetchData}
+        onNotifyFeedback={setFeedback}
+      />
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px]">
-                <th className="py-2 px-3">ID / Tipo SITI</th>
-                <th className="py-2 px-3">Sujeto / CURP</th>
-                <th className="py-2 px-3">Columna 11 (Monto)</th>
-                <th className="py-2 px-3">Columna 40 (Descripción + Leyenda Obligatoria)</th>
-                <th className="py-2 px-3">Reloj SLA (60+3d / 24h)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {reports.map((rep) => (
-                <tr key={rep.id} className="hover:bg-white/5">
-                  <td className="py-2.5 px-3">
-                    <div className="font-mono font-bold text-white">{rep.id}</div>
-                    <div className="text-[10px] text-[#00D1FF] font-semibold">
-                      Tipo SITI '{rep.sitiReportTypeCode}' · {rep.reportCategory}
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <div className="font-semibold text-slate-200">{rep.subjectMaskedName}</div>
-                    <div className="font-mono text-[11px] text-slate-400">{rep.subjectCurpMasked}</div>
-                  </td>
-                  <td className="py-2.5 px-3 font-mono font-bold text-emerald-400">
-                    {rep.operationAmountMxn} MXN
-                    <div className="text-[10px] text-slate-400 font-normal">
-                      ({rep.tentativeAmountMode})
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-3 max-w-md">
-                    <p className="text-[11px] text-slate-200 font-mono line-clamp-2">
-                      {rep.col40OperationDescription}
-                    </p>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 text-[11px] font-semibold">
-                      <Clock className="w-3 h-3" />
-                      {rep.slaClockStatus} ({rep.remainingCalendarDaysForCcc}d CCC)
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal de Resolución de Dirección para Lista Gris (Puntos de Control #2 y #3) */}
       {selectedProfile && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-panel rounded-2xl max-w-xl w-full p-6 border border-white/15 space-y-4">

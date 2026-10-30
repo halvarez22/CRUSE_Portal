@@ -255,7 +255,8 @@ pldRouter.post('/evaluate-fractioned-cash', requireAuth('pld:screen'), async (re
   try {
     const { user } = getAuth(req);
     const ip = extractClientIp(req.headers);
-    const body = req.body as { operations?: unknown };
+    const body = req.body as { operations?: unknown; dryRun?: unknown };
+    const dryRun = body.dryRun !== undefined ? Boolean(body.dryRun) : true;
 
     const rawOps = Array.isArray(body.operations) ? body.operations : [];
     const operations: CashOperationCandidateInput[] = rawOps.map((item: Record<string, unknown>, idx: number) => ({
@@ -272,6 +273,7 @@ pldRouter.post('/evaluate-fractioned-cash', requireAuth('pld:screen'), async (re
 
     const summary = await detectFractionedAndRelevantCashOperations({
       operations,
+      dryRun,
       actorEmail: user.email,
       actorRole: user.role,
       sourceIp: ip,

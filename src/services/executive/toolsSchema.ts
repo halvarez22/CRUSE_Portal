@@ -37,6 +37,7 @@ const ALLOWED_TOOLS_SET = new Set<AlmaToolName>([
   'get_credit_bureau_closings',
   'get_worm_audit_and_arco_log',
   'get_executive_portfolio_overview',
+  'query_phase2_cnbv_and_cib_status',
 ]);
 
 const QUERY_TYPES_BY_TOOL: Record<AlmaToolName, ReadonlySet<string>> = {
@@ -75,6 +76,11 @@ const QUERY_TYPES_BY_TOOL: Record<AlmaToolName, ReadonlySet<string>> = {
     'LATEST_OPERATIONAL_NOTE_BY_FOLIO',
   ]),
   get_executive_portfolio_overview: new Set(),
+  query_phase2_cnbv_and_cib_status: new Set([
+    'GRAY_LIST_AND_OCR_EXCEPTIONS',
+    'SITI_REPORTS_AND_SLA_CLOCK',
+    'CIB_BATCHES_TRACEABILITY',
+  ]),
 };
 
 /**
@@ -105,6 +111,9 @@ export const REQUIRED_PARAMS_BY_QUERY: Record<string, readonly string[]> = {
   PENDING_ARCO_CANCELLATIONS: [],
   WORM_RESTRUCTURE_AUTHORIZER_IP: [],
   LATEST_OPERATIONAL_NOTE_BY_FOLIO: ['folio'],
+  GRAY_LIST_AND_OCR_EXCEPTIONS: [],
+  SITI_REPORTS_AND_SLA_CLOCK: [],
+  CIB_BATCHES_TRACEABILITY: [],
 };
 
 const ALLOWED_KEYS_SET = new Set([
@@ -323,6 +332,31 @@ export const ALMA_VIRTUAL_TOOLS: ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {},
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_phase2_cnbv_and_cib_status',
+      description:
+        'Consulta en tiempo real el estado de Cumplimiento Asistido Fase 2 (CNBV/UIF y Carga CIB Logic Systems): expedientes en Lista Gris esperando autorización de Dirección y Matriz de Riesgo (GRAY_LIST_AND_OCR_EXCEPTIONS), reportes regulatorios SITI (ROR, ROI Fraccionadas, Tentativas 24h, Buzón ROIP y Reloj SLA 60+3 días hábiles) (SITI_REPORTS_AND_SLA_CLOCK), y lotes de carga semiautomática CIB de 3 pasos (CIB_BATCHES_TRACEABILITY).',
+      parameters: {
+        type: 'object',
+        properties: {
+          query_type: {
+            type: 'string',
+            maxLength: 40,
+            enum: [
+              'GRAY_LIST_AND_OCR_EXCEPTIONS',
+              'SITI_REPORTS_AND_SLA_CLOCK',
+              'CIB_BATCHES_TRACEABILITY',
+            ],
+            description: 'Sub-consulta de Fase 2 Cumplimiento Asistido CNBV y CIB.',
+          },
+        },
+        required: ['query_type'],
         additionalProperties: false,
       },
     },

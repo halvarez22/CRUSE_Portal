@@ -295,7 +295,7 @@ executiveRouter.post('/internal-ai-query', requireAuth('executive:internal_ai'),
       return res.status(400).json({ error: 'La consulta operativa no puede estar vacía.' });
     }
 
-    const result = await answerInternalOperationalQuery(rawQuestion, auth.user.email);
+    const result = await answerInternalOperationalQuery(rawQuestion, auth.user.email, auth.user.role);
 
     await auditEventStore.append({
       actorEmail: auth.user.email,
