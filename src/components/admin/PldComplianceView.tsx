@@ -18,6 +18,7 @@ import {
   PldHitAlertItem,
   PldListType,
 } from '../../types';
+import { PldGrayListDirectionPanel } from './PldGrayListDirectionPanel';
 
 interface PldComplianceViewProps {
   session: AuthSession;
@@ -470,6 +471,12 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
           </table>
         </div>
       </div>
+
+      {/* Fase 2.3: Rama Lista Gris (¿Autoriza Dirección?), Matriz de Riesgo Inicial y Reportes Tentativos */}
+      <PldGrayListDirectionPanel
+        session={session}
+        onDecisionCompleted={() => void fetchOverview()}
+      />
 
       {selectedAlert && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">

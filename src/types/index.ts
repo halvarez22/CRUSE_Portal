@@ -242,7 +242,7 @@ export type AuditAction =
   | 'SCORING_EVALUATED'
   | 'COMPETITOR_BENCHMARK_UPDATED'
   | 'INTERNAL_AI_QUERY'
-  | 'TOOL_CALL_RATE_LIMIT_EXCEEDED';
+  | 'TOOL_CALL_RATE_LIMIT_EXCEEDED' | 'CIB_BATCH_VALIDATED' | 'PLD_SLA_CLOCK_EVALUATED' | 'PLD_SITI_LAYOUT_GENERATED';
 
 export interface AuditEvent {
   id: string;
@@ -577,3 +577,4 @@ export interface PldComplianceOverview {
 }
 
 export * from './executive';
+export * from './phase2Compliance';

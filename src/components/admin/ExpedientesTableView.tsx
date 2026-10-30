@@ -3,6 +3,7 @@ import { Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Download, RotateCcw, E
 import { ExpedienteItem } from '../../types';
 import { ExpedientDetails } from '../../types/dashboard';
 import { ExpedientDetailModal } from '../dashboard/ExpedientDetailModal';
+import { CibBatchControlPanel } from './CibBatchControlPanel';
 
 interface ExpedientesTableViewProps {
   expedientes: ExpedienteItem[];
@@ -186,6 +187,8 @@ export const ExpedientesTableView: React.FC<ExpedientesTableViewProps> = ({ expe
 
   return (
     <div className="space-y-4">
+      <CibBatchControlPanel token={token} />
+
       {/* Barra de Búsqueda Global y Filtros Facetados (Condición 2 CRUSE-APO-2026-015) */}
       <div className="p-4 rounded-2xl glass-card border border-white/10 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
