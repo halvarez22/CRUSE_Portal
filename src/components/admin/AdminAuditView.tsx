@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet, Presentation, Bot } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet, Presentation, Bot, Mail } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
@@ -9,6 +9,7 @@ import { FundingManagementView } from './FundingManagementView';
 import { CreditBureauView } from './CreditBureauView';
 import { CollectionsAndAgreementsView } from './CollectionsAndAgreementsView';
 import { PldComplianceView } from './PldComplianceView';
+import { PreApplicationsInboxPanel } from './PreApplicationsInboxPanel';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
 import { ExecutiveSuiteView } from '../executive/ExecutiveSuiteView';
 import { InternalAiAssistantDrawer } from '../executive/InternalAiAssistantDrawer';
@@ -24,10 +25,11 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   onLogout,
   onBackToPortal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'executive' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'collections' | 'pld' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pre_applications' | 'executive' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'collections' | 'pld' | 'users'>('dashboard');
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
+  const [unreadPreAppsCount, setUnreadPreAppsCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
   const [integrityStatus, setIntegrityStatus] = useState<{
@@ -77,6 +79,16 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
     localStorage.setItem('auth_token', session.token);
     fetchAuditEvents();
     fetchExpedientes();
+    void fetch('/api/pre-applications', {
+      headers: { Authorization: `Bearer ${session.token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.counts?.unreadCount !== undefined) {
+          setUnreadPreAppsCount(d.counts.unreadCount);
+        }
+      })
+      .catch(() => undefined);
   }, [fetchAuditEvents, fetchExpedientes, session.token]);
 
   const handleVerifyChain = async () => {
@@ -157,6 +169,20 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           >
             <LayoutDashboard className="w-4 h-4" />
             <span>Dashboard Cartera ({expedientes.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pre_applications')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'pre_applications' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Mail className="w-4 h-4" />
+            <span>Buzón Pre-Solicitudes</span>
+            {unreadPreAppsCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-[#00D1FF] text-slate-950">
+                {unreadPreAppsCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('executive')}
@@ -286,6 +312,13 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
 
       <main className="max-w-7xl w-full mx-auto p-6 flex-1 flex flex-col">
         {activeTab === 'dashboard' && <DashboardLayout />}
+
+        {activeTab === 'pre_applications' && (
+          <PreApplicationsInboxPanel
+            token={session.token}
+            onUnreadCountChange={setUnreadPreAppsCount}
+          />
+        )}
 
         {activeTab === 'executive' && (
           <ExecutiveSuiteView

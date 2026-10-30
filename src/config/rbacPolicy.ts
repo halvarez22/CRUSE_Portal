@@ -38,6 +38,8 @@ export const RBAC_POLICY: Readonly<Record<RbacPermission, readonly UserRole[]>> 
   'executive:scoring': ['admin', 'oficial_cumplimiento'],
   'executive:competitors_manage': ['admin', 'oficial_cumplimiento'],
   'executive:internal_ai': ['admin', 'oficial_cumplimiento'],
+  'pre_applications:read': ['admin', 'oficial_cumplimiento', 'promotor'],
+  'pre_applications:manage': ['admin', 'oficial_cumplimiento', 'promotor'],
 };
 
 /** Permisos que solo existen fuera de producción (en producción la ruta responde 404). */

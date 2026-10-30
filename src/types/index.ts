@@ -65,6 +65,9 @@ export interface CompanyInfo {
   address: string;
   officePhone: string;
   cellPhone: string;
+  promoterWhatsappE164: string;
+  promoterWhatsappDisplay: string;
+  promoterContactName: string;
   email: string;
   website: string;
   businessHours: string;
@@ -169,7 +172,9 @@ export type RbacPermission =
   | 'executive:read'
   | 'executive:scoring'
   | 'executive:competitors_manage'
-  | 'executive:internal_ai';
+  | 'executive:internal_ai'
+  | 'pre_applications:read'
+  | 'pre_applications:manage';
 
 /** Datos de enrolamiento 2FA: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
@@ -242,7 +247,8 @@ export type AuditAction =
   | 'SCORING_EVALUATED'
   | 'COMPETITOR_BENCHMARK_UPDATED'
   | 'INTERNAL_AI_QUERY'
-  | 'TOOL_CALL_RATE_LIMIT_EXCEEDED' | 'CIB_BATCH_VALIDATED' | 'PLD_SLA_CLOCK_EVALUATED' | 'PLD_SITI_LAYOUT_GENERATED';
+  | 'TOOL_CALL_RATE_LIMIT_EXCEEDED' | 'CIB_BATCH_VALIDATED' | 'PLD_SLA_CLOCK_EVALUATED' | 'PLD_SITI_LAYOUT_GENERATED'
+  | 'PRE_APPLICATION_CREATED' | 'PRE_APPLICATION_STATUS_UPDATED';
 
 export interface AuditEvent {
   id: string;
@@ -578,3 +584,4 @@ export interface PldComplianceOverview {
 
 export * from './executive';
 export * from './phase2Compliance';
+export * from './preApplications';

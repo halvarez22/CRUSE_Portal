@@ -24,6 +24,7 @@ import { creditBureauRouter } from './creditBureauRouter';
 import { collectionsRouter } from './collectionsRouter';
 import { pldRouter } from './pldRouter';
 import { executiveRouter } from './executiveRouter';
+import { preApplicationsRouter } from './preApplicationsRouter';
 
 export const privateApiRouter = Router();
 
@@ -50,6 +51,7 @@ privateApiRouter.use('/credit-bureau', creditBureauRouter);
 privateApiRouter.use('/collections', collectionsRouter);
 privateApiRouter.use('/pld', pldRouter);
 privateApiRouter.use('/executive', executiveRouter);
+privateApiRouter.use('/pre-applications', preApplicationsRouter);
 
 // Sub-enrutador de línea abierta Crédito Especial (RN-01) y Block de Notas (RN-02, RN-04)
 privateApiRouter.use('/', specialCreditAndNotesRouter);

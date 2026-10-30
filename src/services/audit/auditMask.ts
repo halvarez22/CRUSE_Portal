@@ -108,6 +108,10 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return 'Actualización de Pizarra de Estrategia Comercial (B.5)';
     case 'INTERNAL_AI_QUERY':
       return 'Consulta Operativa al Asistente IA Interno Zero-PII (B.4)';
+    case 'PRE_APPLICATION_CREATED':
+      return 'Pre-Solicitud Registrada desde Simulador Público (NO LEÍDO)';
+    case 'PRE_APPLICATION_STATUS_UPDATED':
+      return 'Actualización de Estatus en Buzón de Pre-Solicitudes';
     case 'CONFIG_CHANGE':
       return 'Cambio de Configuración Operativa';
     case 'SCREEN_VIEW':
