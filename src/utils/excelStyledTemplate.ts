@@ -330,8 +330,8 @@ export function generateStyledAmortizationXlsxBytes(params: AmortizationExportPa
       rowNumber: 9,
       height: 22,
       cells: [
-        { col: 1, type: 'str', value: 'CAT Promedio Ponderado', styleIndex: 3 },
-        { col: 2, type: 'str', value: `${catPercent}% sin IVA`, styleIndex: 4 },
+        { col: 1, type: 'str', value: 'CAT Estimado (Circular 21/2009 Banxico)', styleIndex: 3 },
+        { col: 2, type: 'str', value: `${catPercent.toFixed(2)}% sin IVA`, styleIndex: 4 },
         { col: 3, type: 'str', value: '', styleIndex: 4 },
         { col: 5, type: 'str', value: 'MONTO TOTAL A PAGAR', styleIndex: 3 },
         { col: 6, type: 'num', value: totalToPay, styleIndex: 5, z: EXCEL_CURRENCY_FORMAT },

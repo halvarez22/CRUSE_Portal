@@ -360,11 +360,11 @@ export const PublicCreditSimulator: React.FC = () => {
 
             {/* Regulatory Notice for CAT */}
             <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-normal">
-              * Importes sujetos a redondeo y calendario de amortización definitivo. CAT pendiente de validación conforme a la metodología regulatoria (CAT informativo referencial:{' '}
+              * Importes sujetos a redondeo y calendario de amortización definitivo. CAT estimado por flujos de efectivo conforme a la Circular 21/2009 de Banxico:{' '}
               <strong className="text-amber-700 dark:text-[#D4AF37] font-bold">
-                {simulation.catPercent}% sin IVA
-              </strong>
-              ). Límite máximo de retención salarial: <strong>30% del ingreso neto</strong> conforme al Art. 110 de la Ley Federal del Trabajo.
+                {simulation.catPercent.toFixed(2)}% sin IVA
+              </strong>{' '}
+              (sujeto a fecha efectiva de disposición y calendario definitivo). Límite máximo de retención salarial: <strong>30% del ingreso neto</strong> conforme al Art. 110 de la Ley Federal del Trabajo.
             </p>
           </div>
 

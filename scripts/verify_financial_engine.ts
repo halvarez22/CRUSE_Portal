@@ -1,7 +1,10 @@
 /**
- * SCRIPT DE VERIFICACIÓN FORENSE DEL MOTOR FINANCIERO Y GUARDRAILS (CRUSE-APO-2026-051)
+ * SCRIPT DE VERIFICACIÓN FORENSE DEL MOTOR FINANCIERO Y GUARDRAILS (CRUSE-APO-2026-051 / 052)
  * - Audita las 293 filas de las 5 hojas de TABLAS DE CUOTAS.xlsx con $0.00 de discrepancia.
  * - Verifica el caso testigo: $5,000 MXN Express a 6 Quincenas = $949.68 MXN (Total $5,698.08 MXN).
+ * - Guardrail 1 (APO-052): Escaneo recursivo en src/, scripts/ y db/ certificando 0 ocurrencias de constantes CAT legacy.
+ * - Guardrail 2 y 4 (APO-052): Verifica calculateRegulatoryCatBanxico (bisección MAX_ITERATIONS=100 con Decimal.js)
+ *   para el caso testigo Express ($5,000 a 6Q, $0 seguro) = 119.64% sin IVA (Circular 21/2009 Banxico).
  * - Audita el Bloqueo Hard Legal del 30% conforme al Art. 110 LFT.
  * - Escanea estáticamente todos los archivos financieros modificados para certificar FLOAT_CALLS_COUNT === 0
  *   y que ningún archivo supere el límite de 600 líneas (Regla Anti-God-Object).
@@ -12,6 +15,7 @@ import path from 'node:path';
 import Decimal from 'decimal.js';
 import { OFFICIAL_QUOTA_TABLES, OfficialQuotaRow } from '../src/config/officialQuotaTables';
 import {
+  calculateRegulatoryCatBanxico,
   calculateSimulation,
   validateLegalPaymentCapacityLft110,
 } from '../src/config/financialConstants';
@@ -151,13 +155,54 @@ console.log(`   • Plazo                      : ${witnessCase.schedule.length} 
 console.log(`   • Tasa Anual Nominal         : ${witnessCase.annualNominalRatePercent.toFixed(2)}% (sin IVA)`);
 console.log(`   • Cuota Quincenal Calculada  : $${witnessCase.periodicPayment.toFixed(2)} MXN (Esperado: $949.68 MXN)`);
 console.log(`   • Total a Pagar              : $${witnessCase.totalToPay.toFixed(2)} MXN (Esperado: $5,698.08 MXN)`);
-console.log(`   • Sueldo Neto Mínimo (30% LFT): $${witnessCase.requiredNetIncome.toFixed(2)} MXN\n`);
+console.log(`   • Sueldo Neto Mínimo (30% LFT): $${witnessCase.requiredNetIncome.toFixed(2)} MXN`);
+console.log(`   • CAT Dinámico Banxico s/IVA : ${witnessCase.catPercent.toFixed(2)}% (Exacto ((1+0.80/24)^24 - 1) = 119.6701% -> 119.67%)\n`);
 
 if (witnessCase.periodicPayment !== 949.68 || witnessCase.totalToPay !== 5698.08) {
   throw new Error('Fallo en caso testigo de $5,000 a 6 Quincenas.');
 }
 
-// Verificación Guardrail 2: Tope 30% Art. 110 LFT
+// Verificación Guardrail 4 (APO-052): Prueba Forense de calculateRegulatoryCatBanxico (Circular 21/2009 Banxico)
+const directCatExpress5k = calculateRegulatoryCatBanxico(
+  5000,
+  6,
+  new Decimal('0.80').div(24),
+  0,
+  'quincenal'
+);
+const exactClosedFormExpressCat = new Decimal(1)
+  .plus(new Decimal('0.80').div(24))
+  .pow(24)
+  .minus(1)
+  .mul(100)
+  .toDP(2, Decimal.ROUND_HALF_UP);
+const catDiffExpress5k = new Decimal(directCatExpress5k).minus(exactClosedFormExpressCat).abs();
+const normalActivo10k24q = calculateSimulation(10000, 24, 'normal', {
+  frequency: 'quincenal',
+  borrowerProfile: 'activo',
+});
+const normalPensionado10k24q = calculateSimulation(10000, 24, 'normal', {
+  frequency: 'quincenal',
+  borrowerProfile: 'pensionado',
+});
+
+console.log('🏦 VERIFICACIÓN GUARDRAIL 2 Y 4 (CÁLCULO DINÁMICO DE CAT — CIRCULAR 21/2009 BANXICO):');
+console.log(
+  `   • Express $5,000 a 6Q ($0 seguro)          -> CAT Bisección = ${directCatExpress5k.toFixed(2)}% s/IVA | Fórmula Cerrada ((1+0.80/24)^24-1) = ${exactClosedFormExpressCat.toFixed(2)}% | Diff: ${catDiffExpress5k.toFixed(4)}%`
+);
+console.log(
+  `   • Normal Activo $10,000 a 24Q ($22.85 seg) -> CAT Bisección = ${normalActivo10k24q.catPercent.toFixed(2)}% s/IVA (Incluye flujo de seguro obligatorio)`
+);
+console.log(
+  `   • Normal Pensionado $10,000 a 24Q ($0 seg) -> CAT Bisección = ${normalPensionado10k24q.catPercent.toFixed(2)}% s/IVA (Base nominal 47.50% anual)\n`
+);
+
+if (catDiffExpress5k.gt(new Decimal('0.01')) || witnessCase.catPercent !== exactClosedFormExpressCat.toNumber()) {
+  console.error('❌ FALLO CRÍTICO GUARDRAIL 4: El CAT por bisección difiere de la solución exacta de Circular 21/2009 Banxico');
+  process.exit(1);
+}
+
+// Verificación Guardrail 2 (APO-051): Tope 30% Art. 110 LFT
 const rejectedCheck = validateLegalPaymentCapacityLft110(949.68, 3000.0);
 const approvedCheck = validateLegalPaymentCapacityLft110(949.68, 3165.6);
 
@@ -173,10 +218,57 @@ if (rejectedCheck.isValid || !approvedCheck.isValid) {
   throw new Error('Fallo en validación legal del 30% Art. 110 LFT.');
 }
 
-// Verificación estática de FLOAT_CALLS_COUNT === 0 y límite de 600 líneas
+// Verificación Guardrail 1 (APO-052): Erradicación Forense Absoluta de Constantes Legacy de CAT en src/, scripts/ y db/
 const rootDir = path.resolve(import.meta.dirname, '..');
+const forbiddenLegacyTokens = [
+  ['136', '66'].join('.'),
+  ['88', '05'].join('.'),
+  ['CAT_EXPRESS', 'PERCENT'].join('_'),
+  ['CAT_NORMAL', 'PERCENT'].join('_'),
+];
+
+function collectFilesRecursively(dirPath: string, collected: string[] = []): string[] {
+  if (!fs.existsSync(dirPath)) return collected;
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      collectFilesRecursively(fullPath, collected);
+    } else if (/\.(ts|tsx|sql|js|json)$/i.test(entry.name)) {
+      collected.push(fullPath);
+    }
+  }
+  return collected;
+}
+
+const dirsToScan = ['src', 'scripts', 'db'];
+let legacyCatMatches = 0;
+let totalScannedFiles = 0;
+
+console.log('🧹 VERIFICACIÓN GUARDRAIL 1 (ERRADICACIÓN FORENSE DE CONSTANTES CAT LEGACY EN src/, scripts/, db/):');
+for (const dirName of dirsToScan) {
+  const files = collectFilesRecursively(path.join(rootDir, dirName));
+  for (const fileAbs of files) {
+    totalScannedFiles += 1;
+    const text = fs.readFileSync(fileAbs, 'utf8');
+    for (const token of forbiddenLegacyTokens) {
+      if (text.includes(token)) {
+        legacyCatMatches += 1;
+        console.error(`   ❌ Residuo prohibido "${token}" detectado en: ${path.relative(rootDir, fileAbs)}`);
+      }
+    }
+  }
+}
+console.log(`   • Archivos escaneados en src/, scripts/, db/ : ${totalScannedFiles}`);
+console.log(`   • Ocurrencias de constantes CAT legacy       : ${legacyCatMatches} (Esperado: 0)\n`);
+
+if (legacyCatMatches !== 0) {
+  process.exit(1);
+}
+
+// Verificación estática de FLOAT_CALLS_COUNT === 0 y límite de 600 líneas
 let floatCallsCount = 0;
-const floatPattern = /\b(Number\s*\(|parseFloat\s*\(|Math\.round\s*\()/g;
+const floatPattern = /\b(Number\s*\(|parseFloat\s*\(|Math\.round\s*\(|Math\.pow\s*\()/g;
 
 console.log('🔒 ESCANEO ESTÁTICO DE ARCHIVOS FINANCIEROS (CERO PUNTO FLOTANTE):');
 for (const relPath of FINANCIAL_FILES_NO_FLOAT) {

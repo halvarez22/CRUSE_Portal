@@ -174,7 +174,7 @@ export function exportAmortizationToPdf(params: AmortizationExportParams): void 
     </div>
     <div style="text-align:right; font-size:10px; color:#475569;">
       <strong>Producto:</strong> ${productName}<br/>
-      <strong>CAT Informativo:</strong> ${catPercent}% sin IVA
+      <strong>CAT Estimado (Circular 21/2009 Banxico):</strong> ${catPercent.toFixed(2)}% sin IVA
     </div>
   </div>
 

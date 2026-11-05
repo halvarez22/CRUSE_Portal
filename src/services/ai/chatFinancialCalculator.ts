@@ -148,7 +148,7 @@ export function evaluateDeterministicFinancialQuery(
   );
   const tableRows = analysis.options.map(
     (opt) =>
-      `| **${opt.productLabel}** | ${opt.termFortnights} quincenas | **${fmtMxn(opt.maxPrincipal)}** | **${fmtMxn(opt.fortnightlyPayment)}** | ${opt.catPercent}% |`
+      `| **${opt.productLabel}** | ${opt.termFortnights} quincenas | **${fmtMxn(opt.maxPrincipal)}** | **${fmtMxn(opt.fortnightlyPayment)}** | ${opt.catPercent.toFixed(2)}% |`
   );
 
   const fallbackMd = [

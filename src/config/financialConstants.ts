@@ -36,10 +36,6 @@ export const FINANCIAL_CONSTANTS = {
   INVESTOR_ISR_RETENTION_RATE_05: 0.005,      // 0.5% Retención ISR
   INVESTOR_ISR_RETENTION_RATE_09: 0.009,      // 0.9% Retención ISR
 
-  // CAT Informativo Oficial (Publicado en cruse.com.mx y registrado ante CONDUSEF)
-  CAT_NORMAL_PERCENT: 88.05,                  // 88.05% anual sin IVA
-  CAT_EXPRESS_PERCENT: 136.66,                // 136.66% anual sin IVA
-
   // Fiscalidad y Seguros
   VAT_RATE: 0.16,                             // 16% IVA sobre intereses devengados
   LIFE_INSURANCE_FORTNIGHTLY_MXN: 22.85,      // $22.85 quincenal fijo (Crédito Normal Activos)
@@ -207,6 +203,63 @@ export function computePeriodicQuotaDecimal(
 }
 
 /**
+ * Guardrail 2 y 4 (CRUSE-APO-2026-052): Cálculo Dinámico de CAT conforme a la Circular 21/2009 del Banco de México.
+ * Resuelve la Tasa Interna de Retorno (TIR) periódica de los flujos de efectivo sin IVA (Capital + Interés sin IVA + Seguro obligatorio)
+ * utilizando el método de bisección con límite estricto MAX_ITERATIONS = 100 y 100% métodos de Decimal.js (cero punto flotante nativo).
+ * Ecuación Banxico: A_1 = sum_{k=1..N} [ (PMT_sin_IVA + Seguro_k) / (1 + i_p)^k ]  =>  CAT = ((1 + i_p)^K - 1) * 100
+ */
+export function calculateRegulatoryCatBanxico(
+  principalInput: number | string | Decimal,
+  termPeriodsInput: number | string | Decimal,
+  nominalPeriodicRateInput: number | string | Decimal,
+  insurancePerPeriodInput: number | string | Decimal,
+  frequency: PaymentFrequency = 'quincenal',
+): number {
+  const MAX_ITERATIONS = 100;
+  const dPrincipal = new Decimal(principalInput);
+  const dTerm = new Decimal(termPeriodsInput);
+  const dNominalRate = new Decimal(nominalPeriodicRateInput);
+  const dInsurance = new Decimal(insurancePerPeriodInput);
+  const nPeriods = dTerm.toNumber();
+
+  // Cuota periódica de capital + interés sin IVA conforme a Circular 21/2009 Banxico, más cargo periódico de seguro obligatorio
+  const onePlusNominal = new Decimal(1).plus(dNominalRate);
+  const discountFactorSinIva = new Decimal(1).minus(onePlusNominal.pow(dTerm.neg()));
+  const pmtWithoutVat = dPrincipal.mul(dNominalRate).div(discountFactorSinIva);
+  const periodicOutflowWithoutVat = pmtWithoutVat.plus(dInsurance);
+
+  let low = new Decimal(0);
+  let high = new Decimal(1);
+
+  for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
+    const mid = low.plus(high).div(2);
+    const onePlusMid = new Decimal(1).plus(mid);
+    let presentValue = new Decimal(0);
+
+    for (let k = 1; k <= nPeriods; k++) {
+      presentValue = presentValue.plus(periodicOutflowWithoutVat.div(onePlusMid.pow(k)));
+    }
+
+    if (presentValue.gt(dPrincipal)) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  const periodicTir = low.plus(high).div(2);
+  const periodsPerYear = frequency === 'mensual' ? new Decimal(12) : new Decimal(24);
+  const catDecimal = new Decimal(1)
+    .plus(periodicTir)
+    .pow(periodsPerYear)
+    .minus(1)
+    .mul(100)
+    .toDP(2, Decimal.ROUND_HALF_UP);
+
+  return catDecimal.toNumber();
+}
+
+/**
  * Genera el cálculo de amortización exacto libre de drift de punto flotante con Decimal.js.
  * Soporta tanto la firma (amount, term, productType, options) como (productType, amount, term, options).
  */
@@ -302,6 +355,14 @@ export function calculateSimulation(
       ? periodicPayment
       : periodicPayment.mul(2).toDP(2, Decimal.ROUND_HALF_UP);
 
+  const dynamicCatPercent = calculateRegulatoryCatBanxico(
+    dAmount,
+    dTerm,
+    nominalPeriodicRate,
+    insurancePerPeriod,
+    frequency,
+  );
+
   return {
     schedule,
     fortnightlyPayment: fortnightlyEquivalentDec.toNumber(),
@@ -313,10 +374,7 @@ export function calculateSimulation(
     totalInterest: accInterest.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
     totalVat: accVat.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
     totalInsurance: accInsurance.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
-    catPercent:
-      productType === 'normal'
-        ? FINANCIAL_CONSTANTS.CAT_NORMAL_PERCENT
-        : FINANCIAL_CONSTANTS.CAT_EXPRESS_PERCENT,
+    catPercent: dynamicCatPercent,
     requiredNetIncome: requiredNetIncome.toNumber(),
     annualNominalRatePercent: annualNominalRatePercent.toNumber(),
   };

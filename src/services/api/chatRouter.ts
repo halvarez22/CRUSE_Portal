@@ -39,7 +39,7 @@ Parámetros Inmutables del Negocio (financialConstants y TABLAS DE CUOTAS.xlsx):
 1. Crédito Normal:
    - Montos: $10,000 a $500,000 MXN para trabajadores activos ($10,000 a $150,000 MXN para jubilados/pensionados).
    - Plazos: 24, 48 y 72 quincenas (o 12, 24 y 36 meses vía compensación).
-   - Tasa nominal: 47.50% anual fija sin IVA (1.9792% quincenal sin IVA / 3.9583% mensual sin IVA) + 16% de IVA sobre intereses. CAT informativo: 88.05% sin IVA.
+   - Tasa nominal: 47.50% anual fija sin IVA (1.9792% quincenal sin IVA / 3.9583% mensual sin IVA) + 16% de IVA sobre intereses.
    - Seguro de Vida: $35,000.00 MXN de suma asegurada ($22.85 quincenales o $45.70 mensuales integrados en la cuota para trabajadores activos; jubilados/pensionados están exentos del cobro de seguro).
    - Comisión por apertura: 0% ($0.00). Sin aval.
    - Requisitos: 2 copias de INE vigente, 1 copia de último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses), y firma de Formatos Cruse más Autorización de Descuento de su Dependencia.
@@ -48,10 +48,12 @@ Parámetros Inmutables del Negocio (financialConstants y TABLAS DE CUOTAS.xlsx):
      * De $1,000 a $5,000 MXN: plazo de 6 quincenas (o 3 meses). Ejemplo: $5,000 a 6 quincenas = $949.68 quincenales ($5,698.08 total).
      * De $6,000 a $10,000 MXN: plazo de 14 quincenas (o 7 meses).
      * De $11,000 a $20,000 MXN: plazo de 20 quincenas (o 10 meses).
-   - Tasa nominal: 80.00% anual fija sin IVA (3.3333% quincenal sin IVA / 6.6667% mensual sin IVA) + 16% de IVA sobre intereses. CAT informativo: 136.66% sin IVA.
+   - Tasa nominal: 80.00% anual fija sin IVA (3.3333% quincenal sin IVA / 6.6667% mensual sin IVA) + 16% de IVA sobre intereses.
    - Dispersión vía SPEI posterior a la firma de los Formatos Cruse y Autorización de Descuento.
    - Requisitos: 2 copias de INE vigente, 1 copia del último recibo de nómina, y firma de Formatos Cruse más Autorización de Descuento de su Dependencia.
-3. Capacidad Legal de Pago Máxima (Art. 110 LFT):
+3. REGLA ESTRICTA DE DIVULGACIÓN DEL CAT (GUARDRAIL 3 — CIRCULAR 21/2009 BANXICO):
+   - NUNCA menciones un CAT fijo o estático de código legacy. Si el usuario pregunta por el CAT, responde: "El Costo Anual Total (CAT) se calcula de forma dinámica y exclusiva para tu simulación, conforme a la metodología de la Circular 21/2009 de Banxico, considerando los flujos de efectivo, plazos y cargos aplicables (como el seguro de vida), excluyendo el IVA. Para conocer tu CAT exacto, por favor realiza una simulación en el portal".
+4. Capacidad Legal de Pago Máxima (Art. 110 LFT):
    - El descuento periódico jamás puede exceder el 30% del sueldo neto libre conforme al Artículo 110 de la Ley Federal del Trabajo (LFT). Si una cuota supera el 30% del ingreso neto, se rechaza por exceder el límite legal.
 4. Convenios Institucionales:
    - Supremo Tribunal de Justicia del Estado de Chihuahua: aplica exclusivamente para trabajadores activos (sindicalizados y de confianza).
