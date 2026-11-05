@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import Decimal from 'decimal.js';
 import {
   Calculator,
   Cpu,
@@ -92,7 +93,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
             Simulador de Crédito y Evaluador de Riesgo (Bajo / Medio / Alto)
           </h3>
           <p className="text-xs text-slate-400">
-            Evalúa capacidad real de descuento quincenal (tope 35%), antigüedad laboral y convenio, generando un dictamen determinista auditable.
+            Evalúa capacidad real de descuento quincenal (tope legal 30% Art. 110 LFT), antigüedad laboral y convenio, generando un dictamen determinista auditable.
           </p>
         </div>
 
@@ -105,7 +106,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
                 : 'bg-slate-950 text-slate-400 border border-slate-800'
             }`}
           >
-            Crédito Clásico (1.97% qnal)
+            Crédito Normal (47.50% anual)
           </button>
           <button
             onClick={() => handleSwitchProduct('express')}
@@ -115,7 +116,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
                 : 'bg-slate-950 text-slate-400 border border-slate-800'
             }`}
           >
-            Crédito Express (3.33% qnal)
+            Crédito Express (80.00% anual)
           </button>
         </div>
       </div>
@@ -139,7 +140,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
               max={product.maxAmount}
               step={productType === 'express' ? 500 : 5000}
               value={requestedAmount}
-              onChange={(e) => setRequestedAmount(Number(e.target.value))}
+              onChange={(e) => setRequestedAmount(new Decimal(e.target.value || '0').toNumber())}
               className="w-full accent-emerald-500"
             />
           </div>
@@ -169,7 +170,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
               <input
                 type="number"
                 value={fortnightlyNetSalary}
-                onChange={(e) => setFortnightlyNetSalary(Number(e.target.value))}
+                onChange={(e) => setFortnightlyNetSalary(new Decimal(e.target.value || '0').toNumber())}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white"
               />
             </div>
@@ -178,7 +179,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
               <input
                 type="number"
                 value={currentPayrollDeductions}
-                onChange={(e) => setCurrentPayrollDeductions(Number(e.target.value))}
+                onChange={(e) => setCurrentPayrollDeductions(new Decimal(e.target.value || '0').toNumber())}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white"
               />
             </div>
@@ -190,7 +191,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
               <input
                 type="number"
                 value={seniorityMonths}
-                onChange={(e) => setSeniorityMonths(Number(e.target.value))}
+                onChange={(e) => setSeniorityMonths(new Decimal(e.target.value || '0').toNumber())}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white"
               />
             </div>
@@ -289,7 +290,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
                     </strong>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
-                    <span className="text-slate-400 block">Margen Disponible (35%)</span>
+                    <span className="text-slate-400 block">Margen Disponible (30% LFT)</span>
                     <strong className="text-base font-black text-[#00D1FF]">
                       ${result.availableFortnightlyCapacity.toFixed(2)}
                     </strong>

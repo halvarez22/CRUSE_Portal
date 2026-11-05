@@ -20,7 +20,7 @@ export interface RiskMatrixConfig {
     readonly occupationWeight: string;           // 0.25 (25%) — Ocupación / Giro
     readonly transactionalProfileWeight: string; // 0.25 (25%) — Perfil Transaccional Inicial (Monto / Ingreso)
     readonly geographicHubWeight: string;        // 0.15 (15%) — Zona Geográfica / Hub
-    readonly productChannelWeight: string;       // 0.15 (15%) — Producto (Clásico vs Express vs Especial)
+    readonly productChannelWeight: string;       // 0.15 (15%) — Producto (Normal vs Express vs Especial)
     readonly screeningListWeight: string;        // 0.20 (20%) — Resultado de Cruce en Listas
   };
   /** Puntajes intrínsecos por categoría (Escala 0 a 100 como strings exactos para Decimal.js) */

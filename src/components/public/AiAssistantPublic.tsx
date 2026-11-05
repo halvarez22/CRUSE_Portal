@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, User, AlertCircle, RefreshCw } from 'lucide-react';
-import { FAQ_CHAT_PROMPTS } from '../../data/cruseData';
+import { COMPANY_INFO, FAQ_CHAT_PROMPTS } from '../../data/cruseData';
 import { ChatMessage } from '../../types';
 import { ChatFormattedMessage } from './ChatFormattedMessage';
 import { evaluateDeterministicFinancialQuery } from '../../services/ai/chatFinancialCalculator';
@@ -10,7 +10,7 @@ export const AiAssistantPublic: React.FC = () => {
     {
       id: 'welcome',
       sender: 'assistant',
-      text: '¡Hola! Soy el Asistente Inteligente de Microfinanciera Cruse. Estoy aquí para resolver tus dudas sobre montos, tasas fijas, requisitos y capacidad de descuento vía nómina. ¿En qué te puedo asesorar hoy?',
+      text: `¡Hola! Soy el Asistente Inteligente de ${COMPANY_INFO.name}. Estoy aquí para resolver tus dudas sobre montos, tasas nominales, requisitos documentales, sedes de firma y capacidad legal de descuento (tope 30% Art. 110 LFT). ¿En qué te puedo asesorar hoy?`,
       timestamp: 'Ahora',
     },
   ]);
@@ -19,7 +19,6 @@ export const AiAssistantPublic: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-Scroll inteligente (CRUSE-APO-2026-016): Guardia para evitar scroll en el montaje inicial
   useEffect(() => {
     if (messages.length > 1 || isTyping) {
       messagesContainerRef.current?.scrollTo({
@@ -29,7 +28,6 @@ export const AiAssistantPublic: React.FC = () => {
     }
   }, [messages, isTyping]);
 
-  // Regex patterns to block PII (Watch Item 2 from Forensic Audit Qwen)
   const PII_PATTERNS = [
     /[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d/i, // CURP
     /[A-Z&Ñ]{3,4}\d{6}[A-V1-9][A-Z\d]{2}/i, // RFC
@@ -37,29 +35,42 @@ export const AiAssistantPublic: React.FC = () => {
     /(\+?\d{1,3}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}/, // Phone
   ];
 
-  const buildLocalFallbackReply = (query: string, historyTurns: Array<{ role: string; content: string }>): string => {
+  const buildLocalFallbackReply = (
+    query: string,
+    historyTurns: Array<{ role: string; content: string }>
+  ): string => {
     const det = evaluateDeterministicFinancialQuery(query, historyTurns);
     if (det.detected) {
       if (det.needsClarification && det.clarificationReply) return det.clarificationReply;
       if (det.fallbackMarkdownReply) return det.fallbackMarkdownReply;
     }
 
+    const lower = query.toLowerCase();
     const matchedFaq = FAQ_CHAT_PROMPTS.find(
       (faq) =>
-        query.toLowerCase().includes(faq.title.toLowerCase().slice(0, 10)) ||
-        faq.prompt.toLowerCase().includes(query.toLowerCase())
+        lower.includes(faq.title.toLowerCase().slice(0, 10)) ||
+        faq.prompt.toLowerCase().includes(lower)
     );
 
     if (matchedFaq) {
       return matchedFaq.answer;
-    } else if (query.toLowerCase().includes('tasa') || query.toLowerCase().includes('interes')) {
-      return 'En Microfinanciera Cruse manejamos dos productos principales: Crédito Clásico al 1.97% quincenal fija sin IVA (47.50% anual, CAT 88.05%) y Crédito Express al 3.33% quincenal (48.00% anual). Ambos con 0% comisión por apertura y descuento directo en nómina.';
-    } else if (query.toLowerCase().includes('requisito') || query.toLowerCase().includes('papel') || query.toLowerCase().includes('documento')) {
-      return 'Solo requieres 3 documentos: 2 copias de tu INE/IFE vigente, 1 copia de tu último recibo de nómina y 1 copia de comprobante de domicilio reciente (CFE/agua no mayor a 3 meses para el Crédito Clásico). ¡Sin aval!';
-    } else if (query.toLowerCase().includes('seguro') || query.toLowerCase().includes('35000') || query.toLowerCase().includes('muerte') || query.toLowerCase().includes('fallecimiento')) {
-      return 'El Crédito Clásico incluye una póliza institucional de Seguro de Vida por $35,000.00 MXN ($22.85 quincenales ya integrados en tu cuota). En caso de siniestro, liquida la deuda por completo y el excedente se entrega en efectivo a tus beneficiarios.';
     }
-    return 'Gracias por tu consulta. Nuestros créditos se otorgan con retención vía nómina en Chihuahua para trabajadores del Gobierno del Estado y Supremo Tribunal. Puedes calcular tu cuota exacta en nuestro Simulador o comunicarte a la oficina central al (614) 411-15-44.';
+    if (lower.includes('sindical') || lower.includes('sindicato') || lower.includes('pinos altos') || lower.includes('stsgech')) {
+      return `Si eres trabajador **Sindicalizado (STSGECH)**, debes acudir al **Departamento de Prestaciones Económicas** ubicado en el **${COMPANY_INFO.unionOfficeContact.venueName}** (${COMPANY_INFO.unionOfficeContact.address}), o comunicarte a los teléfonos **${COMPANY_INFO.unionOfficeContact.phones.join(' y ')}** (también puedes apoyarte con el delegado del sindicato en tu municipio). Ahí suscribirás tus Formatos Cruse y la Autorización de Descuento de tu Dependencia.`;
+    }
+    if (lower.includes('confianza') || lower.includes('tribunal') || lower.includes('citadela') || lower.includes('ubicacion') || lower.includes('ubicación') || lower.includes('donde')) {
+      return `La sede de atención depende de tu adscripción:\n\n1. **Trabajadores Sindicalizados (STSGECH):** Acuden al Departamento de Prestaciones Económicas en el **${COMPANY_INFO.unionOfficeContact.venueName}** (${COMPANY_INFO.unionOfficeContact.address}), Tels. **${COMPANY_INFO.unionOfficeContact.phones.join(' y ')}**.\n2. **Trabajadores de Confianza del Supremo Tribunal de Justicia:** Acuden directamente a las oficinas de **${COMPANY_INFO.name}** en **${COMPANY_INFO.address}**, Tel. **${COMPANY_INFO.officePhone}**.`;
+    }
+    if (lower.includes('tasa') || lower.includes('interes') || lower.includes('interés')) {
+      return 'En Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. manejamos dos productos principales: **Crédito Normal** al **47.50% anual nominal** (1.9792% quincenal fija sin IVA / 3.9583% mensual sin IVA, CAT 88.05% s/IVA) y **Crédito Express** al **80.00% anual nominal** (3.3333% quincenal fija sin IVA / 6.6667% mensual sin IVA, CAT 136.66% s/IVA), más 16% de IVA sobre intereses y 0% comisión por apertura.';
+    }
+    if (lower.includes('requisito') || lower.includes('papel') || lower.includes('documento') || lower.includes('formato')) {
+      return 'Los requisitos de contratación son: (1) 2 copias de tu INE/IFE vigente, (2) 1 copia de tu último recibo de nómina, (3) 1 copia de comprobante de domicilio reciente (< 3 meses, exclusivo para Crédito Normal), y (4) la **firma de los Formatos Cruse y la Autorización de Descuento de tu Dependencia**. La dispersión SPEI se realiza una vez firmados los documentos.';
+    }
+    if (lower.includes('seguro') || lower.includes('35000') || lower.includes('muerte') || lower.includes('fallecimiento')) {
+      return 'El **Crédito Normal** para trabajadores activos incluye una póliza institucional de Seguro de Vida por **$35,000.00 MXN** ($22.85 quincenales o $45.70 mensuales integrados en tu cuota). Los miembros de la Agrupación de Jubilados y Pensionados están exentos del cobro de seguro de vida.';
+    }
+    return `Gracias por tu consulta. Nuestros créditos operan bajo el límite legal máximo del **30% de descuento sobre sueldo neto (Art. 110 LFT)**. Si eres trabajador Sindicalizado te atendemos en el **Salón Pinos Altos** (Tels. ${COMPANY_INFO.unionOfficeContact.phones.join(' / ')}); si eres personal de Confianza del Supremo Tribunal te atendemos en **${COMPANY_INFO.address}** (Tel. ${COMPANY_INFO.officePhone}).`;
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -68,7 +79,6 @@ export const AiAssistantPublic: React.FC = () => {
 
     setValidationError(null);
 
-    // Barrera 1 (Cliente): Watch Item 2 - Sanitization & Zero PII Enforcement
     if (query.length > 2000) {
       setValidationError('Tu mensaje supera el límite permitido de 2,000 caracteres.');
       return;
@@ -121,7 +131,6 @@ export const AiAssistantPublic: React.FC = () => {
 
       setMessages((prev) => [...prev, botMessage]);
     } catch {
-      // Fallback resiliente (Regla 4 U-First) únicamente en caso de error de red
       const fallbackMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
@@ -137,7 +146,6 @@ export const AiAssistantPublic: React.FC = () => {
   return (
     <section id="asistente-ia" className="py-8 lg:py-12 relative">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        
         {/* Section Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-[#249E82]/15 text-[#0F766E] dark:text-[#2EBD9B] border border-[#249E82]/30 mb-3">
@@ -148,13 +156,12 @@ export const AiAssistantPublic: React.FC = () => {
             Orientación Financiera Inmediata
           </h2>
           <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-            Pregunta en lenguaje natural sobre montos, descuentos de nómina y requisitos sin compartir datos sensibles.
+            Pregunta en lenguaje natural sobre montos, tope legal del 30% (Art. 110 LFT), requisitos y sedes de firma sin compartir datos sensibles.
           </p>
         </div>
 
-        {/* Chat Window Container (Glassmorphism - Viewport optimizado CRUSE-APO-2026-016) */}
+        {/* Chat Window Container */}
         <div className="bg-white dark:bg-slate-900/60 glass-panel rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col h-[680px] lg:h-[740px] max-h-[82vh] min-h-[540px] justify-between border border-slate-200 dark:border-white/10">
-          
           {/* Chat Header */}
           <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10 mb-4">
             <div className="flex items-center gap-3">
@@ -167,13 +174,13 @@ export const AiAssistantPublic: React.FC = () => {
                 </span>
                 <span className="text-[11px] text-[#0F766E] dark:text-[#2EBD9B] flex items-center gap-1 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-[#0F766E] dark:bg-[#4CD360] animate-pulse" />
-                  Alimentado por IA LLaMA 3.3 70B
+                  Motor Determinista Decimal.js + IA
                 </span>
               </div>
             </div>
 
             <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono hidden sm:inline">
-              Filtro LFPDPPP Activo
+              Filtro LFPDPPP & Art. 110 LFT Activo
             </span>
           </div>
 
@@ -277,9 +284,7 @@ export const AiAssistantPublic: React.FC = () => {
               <Send className="w-3.5 h-3.5" />
             </button>
           </form>
-
         </div>
-
       </div>
     </section>
   );

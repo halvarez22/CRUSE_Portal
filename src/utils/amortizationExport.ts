@@ -4,6 +4,7 @@
  * Guardrail 2 (Plantilla OpenXML .xlsx con diseño institucional y formato '"$"#,##0.00')
  * y Guardrail 3 (Fila obligatoria de TOTALES al cierre de la tabla en PDF y Excel).
  */
+import Decimal from 'decimal.js';
 import { AmortizationRow } from '../types';
 import { generateStyledAmortizationXlsxBytes } from './excelStyledTemplate';
 
@@ -11,8 +12,10 @@ export interface AmortizationExportParams {
   productName: string;
   amount: number;
   selectedTerm: number;
+  frequency?: 'quincenal' | 'mensual';
   interestRateText: string;
   fortnightlyPayment: number;
+  periodicPayment?: number;
   monthlyPaymentEquivalent: number;
   totalInterest: number;
   totalVat: number;
@@ -34,9 +37,12 @@ const mxnCurrencyFormatter = new Intl.NumberFormat('es-MX', {
  * No altera los valores numéricos de cálculo (Guardrail 1).
  */
 export function formatCurrencyCell(val: string | number): string {
-  const numericVal = typeof val === 'number' ? val : Number(val);
-  if (!Number.isFinite(numericVal)) return '$0.00';
-  return mxnCurrencyFormatter.format(numericVal);
+  try {
+    const dVal = new Decimal(val);
+    return mxnCurrencyFormatter.format(dVal.toNumber());
+  } catch {
+    return '$0.00';
+  }
 }
 
 const formatMxn = (val: number): string => `${formatCurrencyCell(val)} MXN`;

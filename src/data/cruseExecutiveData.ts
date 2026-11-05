@@ -17,19 +17,19 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
   {
     id: 1,
     title: 'Cruse: El Futuro del Crédito de Nómina Humano y Tecnológico',
-    subtitle: 'Consolidación de una SOFOM E.N.R. de Alta Calidad hacia una Fintech de Expansión Nacional',
+    subtitle: 'Consolidación de Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. de Expansión Nacional',
     category: 'Visión Ejecutiva',
     investorNotes:
-      'Enfatizar los 16 años de trayectoria impecable en Chihuahua (desde 2010), membresía ASOFOM (puntaje 2.9 Alta Calidad) y la expansión a 3 Hubs Nacionales con PostgreSQL Cloud e IA.',
+      'Enfatizar los 16 años de trayectoria impecable en Chihuahua (desde 2010), solidez institucional como SOFOM E.N.R. y la expansión a 3 Hubs Nacionales con PostgreSQL Cloud e IA.',
     highlights: [
-      'Fundada en 2010 en Chihuahua, Chih., con Certificación 2.9 SOFOM Alta Calidad.',
-      'Retención directa vía nómina institucional (STSGECH, Supremo Tribunal, Poderes Judiciales).',
+      'Fundada en 2010 en Chihuahua, Chih., constituida como Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.',
+      'Retención directa vía nómina institucional (STSGECH, Supremo Tribunal, Agrupación de Jubilados y Pensionados).',
       'Core Bancario 3FN v4 en Azure PostgreSQL 16 con seguridad Zero-Trust 2FA y cifrado AES-GCM-256.',
     ],
     metrics: [
       { label: 'Trayectoria', value: '16+ Años', accent: 'emerald' },
       { label: 'Morosidad Histórica', value: '< 1.8%', accent: 'cyan' },
-      { label: 'Certificación ASOFOM', value: '2.9 / 3.0', accent: 'amber' },
+      { label: 'Supervisión Regulatoria', value: 'CONDUSEF / CNBV', accent: 'amber' },
     ],
   },
   {
@@ -72,18 +72,18 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
   {
     id: 4,
     title: 'Oferta Financiera y Productos de Crédito de Nómina',
-    subtitle: 'Crédito Clásico (1.97% quincenal) y Crédito Express (3.33% quincenal) con descuento directo',
+    subtitle: 'Crédito Normal (47.50% anual nominal) y Crédito Express (80.00% anual nominal) con descuento directo',
     category: 'Productos',
     investorNotes:
-      'Cruse ofrece tasas competitivas y transparentes con 0% comisión por apertura y póliza de seguro de vida de $35,000 MXN incluida en Crédito Clásico.',
+      'Cruse ofrece tasas competitivas y transparentes con 0% comisión por apertura y póliza de seguro de vida de $35,000 MXN incluida en Crédito Normal (activos).',
     highlights: [
-      'Crédito Clásico (Normal): $10,000 a $500,000 MXN | Plazos 24, 48 y 72 quincenas | Tasa 1.97% qnal fija.',
-      'Crédito Express: $1,000 a $20,000 MXN | Plazos 6, 14 y 20 quincenas | Dispersión SPEI < 2 horas.',
+      'Crédito Normal: $10,000 a $500,000 MXN | Plazos 24, 48 y 72 quincenas (o 12, 24 y 36 meses) | Tasa 47.50% anual nominal.',
+      'Crédito Express: $1,000 a $20,000 MXN | Plazos 6, 14 y 20 quincenas (o 3, 7 y 10 meses) | Tasa 80.00% anual nominal.',
       'Seguro de Vida Colectivo ($35,000 MXN suma asegurada, $22.85 quincenales) y hasta 4 créditos activos por cliente.',
     ],
     metrics: [
-      { label: 'Tasa Quincenal Clásico', value: '1.97%', accent: 'emerald' },
-      { label: 'Tasa Quincenal Express', value: '3.33%', accent: 'cyan' },
+      { label: 'Tasa Quincenal Normal', value: '1.9792%', accent: 'emerald' },
+      { label: 'Tasa Quincenal Express', value: '3.3333%', accent: 'cyan' },
       { label: 'Comisión por Apertura', value: '0%', accent: 'amber' },
     ],
   },
@@ -97,7 +97,7 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
     highlights: [
       'Por cada $10,000 a 24 quincenas en Cruse el trabajador paga $569.44 quincenales ($13,666.56 total).',
       'Cero cobros por apertura, investigación o disposición de efectivo.',
-      'Aprobación ágil respaldada por convenio sindical/institucional y capacidad real de pago (tope 35%).',
+      'Aprobación ágil respaldada por convenio sindical/institucional y capacidad real de pago (tope 30% Art. 110 LFT).',
     ],
     metrics: [
       { label: 'Cuota $10k (24 qnas)', value: '$569.44', accent: 'emerald' },
@@ -156,7 +156,7 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
     metrics: [
       { label: 'CAC Digital', value: '$380 MXN', accent: 'emerald' },
       { label: 'Tasa de Retención', value: '88%', accent: 'cyan' },
-      { label: 'Tope Descuento Nómina', value: '35% Neto', accent: 'amber' },
+      { label: 'Tope Descuento Nómina', value: '30% Neto', accent: 'amber' },
     ],
   },
   {
@@ -179,7 +179,7 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
   },
   {
     id: 10,
-    title: 'Visión 2026–2030: De Microfinanciera Regional a Referente Fintech Nacional',
+    title: 'Visión 2026–2030: De Microfinanciera Regional a Referente Financiero Nacional',
     subtitle: 'Plataforma lista en producción para escalar con seguridad grado bancario',
     category: 'Conclusión & ROI',
     investorNotes:
@@ -275,7 +275,7 @@ export const OPERATIONS_MANUAL_STEPS: readonly OperationsManualStep[] = [
     id: 2,
     title: '2. Simulación y Pre-Calificación del Trabajador',
     manualProcess: 'Cálculo manual en Excel sujeto a errores de fórmula o atención limitada de 8:00 a 15:00 hrs.',
-    digitalProcess: 'Simulador Público 24/7 con tabla de amortización exacta (Decimal.js) y cálculo de préstamo máximo según el tope del 35% de sueldo neto.',
+    digitalProcess: 'Simulador Público 24/7 con tabla de amortización exacta (Decimal.js) y cálculo de préstamo máximo según el tope legal del 30% de sueldo neto (Art. 110 LFT).',
     aiEnhancement: 'Asistente Inteligente 24/7 (Groq LLaMA 3.3 70B) que orienta al trabajador sin recabar datos personales sensibles (Zero-PII).',
     slaBefore: '2 a 4 horas',
     slaAfter: '< 30 segundos',

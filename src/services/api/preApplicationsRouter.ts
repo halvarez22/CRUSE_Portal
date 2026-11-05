@@ -1,14 +1,6 @@
 /**
  * ENRUTADOR Y SERVICIO DE PRE-SOLICITUDES DEL SIMULADOR PÚBLICO Y BUZÓN CIFRADO
- *
- * Implementa el expediente CRUSE-APO-2026-045:
- * 1. Rate Limiting Dual Anti-Spam (Memoria por IP + DB por source_ip / phone_blind_index: máx. 3/hora).
- * 2. Cifrado Envelope AES-GCM-256 (`encryptEnvelope` / `decryptEnvelope`) y Blind Index HMAC-SHA256.
- * 3. Transacción Atómica `db.transaction` uniendo `INSERT` y evento WORM (`PRE_APPLICATION_CREATED`).
- * 4. Buzón estilo Email (`NO_LEIDO` -> `LEIDO` automático al abrir detalle -> `ATENDIDO` manual).
- * 5. Cero Punto Flotante (`Decimal.js` exclusivamente).
- *
- * @implements CRUSE-APO-2026-045
+ * @implements CRUSE-APO-2026-045 / CRUSE-APO-2026-051 (Guardrail 2 Art. 110 LFT 30%)
  */
 
 import { Router, Request, Response } from 'express';
@@ -20,6 +12,7 @@ import { encryptEnvelope, decryptEnvelope, EnvelopeEncryptedPayload } from '../c
 import { auditEventStore } from '../audit/auditEventStore';
 import { extractClientIp, buildSourceSummary } from '../audit/auditMask';
 import { sanitizeDecimalString } from '../../config/riskMatrixWeights';
+import { validateLegalPaymentCapacityLft110 } from '../../config/financialConstants';
 import {
   PreApplicationDecryptedDetail,
   PreApplicationInboxStatus,
@@ -233,6 +226,14 @@ export async function createPreApplicationInDb(
     throw new Error('VALIDATION_ERROR: Los montos de la simulación financiera son inválidos.');
   }
 
+  if (payload.netPeriodicSalary !== undefined && String(payload.netPeriodicSalary).trim() !== '') {
+    const netSalaryDec = sanitizeDecimalString(String(payload.netPeriodicSalary), '0');
+    const lftCheck = validateLegalPaymentCapacityLft110(fortnightlyDec, netSalaryDec);
+    if (!lftCheck.isValid) {
+      throw new Error(`VALIDATION_ERROR: ${lftCheck.errorMessage}`);
+    }
+  }
+
   const kms = getServerKms();
   const encryptedEnvelope = await encryptEnvelope(
     JSON.stringify({
@@ -250,8 +251,8 @@ export async function createPreApplicationInDb(
   const maskedPhone = maskPhone10Digits(cleanPhone);
   const maskedEmail = maskEmailAddress(cleanEmail);
   const cleanProductId = (payload.productId || 'normal') as ProductId;
-  const cleanProductName = String(payload.productName || 'Crédito Clásico').trim();
-  const cleanRateText = String(payload.interestRateText || '1.97% quincenal').trim();
+  const cleanProductName = String(payload.productName || 'Crédito Normal').trim();
+  const cleanRateText = String(payload.interestRateText || '1.9792% quincenal').trim();
 
   // 3. Transacción Atómica: INSERT en credit_pre_applications + Evento WORM PRE_APPLICATION_CREATED
   await db.transaction(async (tx) => {

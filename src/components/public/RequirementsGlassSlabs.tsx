@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, Receipt, Home, CheckCircle2, Sparkles, Layers } from 'lucide-react';
+import { CreditCard, Receipt, Home, FileSignature, CheckCircle2, Sparkles, Layers } from 'lucide-react';
 
 export const RequirementsGlassSlabs: React.FC = () => {
   return (
@@ -12,21 +12,21 @@ export const RequirementsGlassSlabs: React.FC = () => {
             <span>Expediente Simplificado — Cero Complicaciones</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-3">
-            Solo 3 Documentos Fáciles de Reunir
+            Requisitos Documentales y Firma de Formatos
           </h2>
           <p className="text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
-            Eliminamos la burocracia bancaria tradicional. Sin aval, sin garantías hipotecarias y sin vueltas innecesarias.
+            Eliminamos la burocracia bancaria tradicional. Sin aval y sin garantías hipotecarias: reúne tus documentos y suscribe tus Formatos Cruse y la Autorización de Descuento de tu Dependencia.
           </p>
         </div>
 
-        {/* 3D Glass Slabs Grid (Directly inspired by Slide 4) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        {/* 4 Glass Slabs Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Slab 1: INE / Identificación */}
           <div className="relative group">
             <div className="absolute -inset-2 bg-gradient-to-r from-[#249E82] to-[#00D1FF] opacity-0 dark:opacity-15 blur-xl rounded-3xl dark:group-hover:opacity-30 transition-opacity" />
-            <div className="relative glass-slab-emerald rounded-3xl p-6 sm:p-8 flex flex-col justify-between h-full transform hover:-translate-y-1.5 transition-all shadow-md dark:shadow-xl">
+            <div className="relative glass-slab-emerald rounded-3xl p-6 flex flex-col justify-between h-full transform hover:-translate-y-1.5 transition-all shadow-md dark:shadow-xl">
               <div>
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-5">
                   <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900/90 border border-emerald-300 dark:border-[#249E82]/40 flex items-center justify-center text-emerald-700 dark:text-[#4CD360] shadow-sm">
                     <CreditCard className="w-6 h-6" />
                   </div>
@@ -35,7 +35,7 @@ export const RequirementsGlassSlabs: React.FC = () => {
                   </span>
                 </div>
 
-                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
                   Identificación Oficial
                 </h3>
                 <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
@@ -45,7 +45,7 @@ export const RequirementsGlassSlabs: React.FC = () => {
 
               <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-[#4CD360]">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Aplica para Clásico y Express</span>
+                <span>Aplica para Crédito Normal y Express</span>
               </div>
             </div>
           </div>
@@ -53,9 +53,9 @@ export const RequirementsGlassSlabs: React.FC = () => {
           {/* Slab 2: Recibo de Nómina */}
           <div className="relative group">
             <div className="absolute -inset-2 bg-gradient-to-r from-[#396CAE] to-[#249E82] opacity-0 dark:opacity-15 blur-xl rounded-3xl dark:group-hover:opacity-30 transition-opacity" />
-            <div className="relative glass-slab-emerald rounded-3xl p-6 sm:p-8 flex flex-col justify-between h-full transform hover:-translate-y-1.5 transition-all shadow-md dark:shadow-xl">
+            <div className="relative glass-slab-emerald rounded-3xl p-6 flex flex-col justify-between h-full transform hover:-translate-y-1.5 transition-all shadow-md dark:shadow-xl">
               <div>
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-5">
                   <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900/90 border border-blue-300 dark:border-[#396CAE]/40 flex items-center justify-center text-[#1E40AF] dark:text-[#00D1FF] shadow-sm">
                     <Receipt className="w-6 h-6" />
                   </div>
@@ -64,17 +64,17 @@ export const RequirementsGlassSlabs: React.FC = () => {
                   </span>
                 </div>
 
-                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
                   Recibo de Nómina
                 </h3>
                 <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
-                  Último talón o comprobante de pago quincenal donde se aprecien percepciones y deducciones emitido por la dependencia de Gobierno o Supremo Tribunal.
+                  Último talón o comprobante de pago donde se aprecien percepciones y deducciones emitido por el Gobierno del Estado, Supremo Tribunal o Agrupación de Pensionados.
                 </p>
               </div>
 
               <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-[#4CD360]">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Aplica para Clásico y Express</span>
+                <span>Aplica para Crédito Normal y Express</span>
               </div>
             </div>
           </div>
@@ -82,9 +82,9 @@ export const RequirementsGlassSlabs: React.FC = () => {
           {/* Slab 3: Comprobante de Domicilio */}
           <div className="relative group">
             <div className="absolute -inset-2 bg-gradient-to-r from-purple-500 to-[#396CAE] opacity-0 dark:opacity-15 blur-xl rounded-3xl dark:group-hover:opacity-30 transition-opacity" />
-            <div className="relative glass-slab-emerald rounded-3xl p-6 sm:p-8 flex flex-col justify-between h-full transform hover:-translate-y-1.5 transition-all shadow-md dark:shadow-xl">
+            <div className="relative glass-slab-emerald rounded-3xl p-6 flex flex-col justify-between h-full transform hover:-translate-y-1.5 transition-all shadow-md dark:shadow-xl">
               <div>
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-5">
                   <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900/90 border border-purple-300 dark:border-purple-500/40 flex items-center justify-center text-purple-800 dark:text-purple-300 shadow-sm">
                     <Home className="w-6 h-6" />
                   </div>
@@ -93,17 +93,46 @@ export const RequirementsGlassSlabs: React.FC = () => {
                   </span>
                 </div>
 
-                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
                   Comprobante de Domicilio
                 </h3>
                 <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
-                  Recibo reciente de luz (CFE), agua o predial con antigüedad menor a 3 meses.
+                  Recibo reciente de luz (CFE), agua potable o impuesto predial con antigüedad menor a 3 meses.
                 </p>
               </div>
 
               <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 text-xs font-semibold text-purple-800 dark:text-purple-300">
                 <Sparkles className="w-4 h-4 shrink-0" />
-                <span>Exclusivo para Crédito Clásico (Normal)</span>
+                <span>Exclusivo para Crédito Normal</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Slab 4: Firma de Formatos Cruse y Autorización de Descuento */}
+          <div className="relative group">
+            <div className="absolute -inset-2 bg-gradient-to-r from-[#249E82] to-amber-500 opacity-0 dark:opacity-15 blur-xl rounded-3xl dark:group-hover:opacity-30 transition-opacity" />
+            <div className="relative glass-slab-emerald rounded-3xl p-6 flex flex-col justify-between h-full transform hover:-translate-y-1.5 transition-all shadow-md dark:shadow-xl">
+              <div>
+                <div className="flex justify-between items-center mb-5">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900/90 border border-amber-300 dark:border-amber-500/40 flex items-center justify-center text-amber-700 dark:text-[#D4AF37] shadow-sm">
+                    <FileSignature className="w-6 h-6" />
+                  </div>
+                  <span className="px-3.5 py-1 rounded-full text-xs font-black bg-amber-600 text-white shadow-sm">
+                    Firma Autógrafa
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
+                  Formatos Cruse y Autorización
+                </h3>
+                <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
+                  Firma presencial de los <strong>Formatos Oficiales Cruse</strong> y la <strong>Autorización de Descuento de su Dependencia</strong> (en Salón Pinos Altos para sindicalizados o Vía Citadela para confianza).
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-[#4CD360]">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Requisito indispensable previo a SPEI</span>
               </div>
             </div>
           </div>

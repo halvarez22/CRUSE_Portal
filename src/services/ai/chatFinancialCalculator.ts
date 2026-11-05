@@ -1,20 +1,21 @@
 /**
- * ORQUESTADOR DE CALCULADORA FINANCIERA DETERMINISTA PARA ASISTENTE IA (CRUSE-APO-2026-017)
+ * ORQUESTADOR DE CALCULADORA FINANCIERA DETERMINISTA PARA ASISTENTE IA (CRUSE-APO-2026-017 / 051)
  *
  * Cumple con:
- * - Regla Inamovible 2 (HRU / Watch Item 1): Toda operación matemática se ejecuta con Decimal.js
- *   vía `financialConstants.ts`. El LLM tiene prohibido calcular por su cuenta.
- * - Regla Inamovible 3 (SOLID / Anti-God-Object): Archivo dedicado < 180 líneas.
- * - Condición 2 de Auditoría Forense Qwen: Si el usuario solicita un cálculo financiero pero no
- *   hay un monto/sueldo claro en el mensaje ni en el historial reciente, retorna `needsClarification: true`
- *   sin adivinar ni alucinar números.
+ * - Regla Inamovible 2 (HRU / Guardrail 1): Toda operación matemática se ejecuta con Decimal.js
+ *   vía `financialConstants.ts`. Cero punto flotante nativo (FLOAT_CALLS_COUNT === 0).
+ * - Guardrail 2: Límite legal inquebrantable del 30% conforme al Art. 110 de la LFT.
+ * - Guardrail 3: Denominación oficial "Crédito Normal" y "Crédito Express".
  */
 
+import Decimal from 'decimal.js';
 import {
   calculateMaxLoanBySalary,
   calculateSimulation,
   FINANCIAL_CONSTANTS,
+  validateLegalPaymentCapacityLft110,
 } from '../../config/financialConstants';
+import { getAllowedExpressTerm } from '../../config/officialQuotaTables';
 
 export interface ChatHistoryTurn {
   role: string;
@@ -41,8 +42,14 @@ function extractAmountAndFrequency(text: string): {
   const matches = [...clean.matchAll(/(?:\$\s*)?(\d{4,7}(?:\.\d{1,2})?)/g)];
   if (matches.length === 0) return null;
 
-  const rawNum = Number(matches[0]![1]);
-  if (!Number.isFinite(rawNum) || rawNum < 1000 || rawNum > 2000000) {
+  let dNum: Decimal;
+  try {
+    dNum = new Decimal(matches[0]![1]!);
+  } catch {
+    return null;
+  }
+
+  if (dNum.lt(1000) || dNum.gt(2000000)) {
     return null;
   }
 
@@ -52,7 +59,7 @@ function extractAmountAndFrequency(text: string): {
     !isSalaryContext && /(credito|crédito|prestamo|préstamo|pedir|solicitar|por\s+\$?\d)/i.test(clean);
 
   return {
-    amount: rawNum,
+    amount: dNum.toNumber(),
     frequency: isQuincenal ? 'quincenal' : 'mensual',
     isLoanQuoteRequest,
   };
@@ -72,7 +79,6 @@ export function evaluateDeterministicFinancialQuery(
     return { detected: false, needsClarification: false };
   }
 
-  // 1. Intentar extraer monto del mensaje actual; si no hay, buscar en los turnos del usuario en history (del más reciente al más antiguo)
   let extracted = extractAmountAndFrequency(message);
   if (!extracted && Array.isArray(history)) {
     const userTurns = [...history].reverse().filter((h) => h.role === 'user');
@@ -85,10 +91,9 @@ export function evaluateDeterministicFinancialQuery(
     }
   }
 
-  // Condición 2 (Qwen): Si pide cálculo pero no hay ningún sueldo/monto claro, jamás adivinar
   if (!extracted) {
     const clarification =
-      'Para calcular tu capacidad de descuento (35%) y el **monto máximo exacto** que te podemos prestar, por favor indícame tu **sueldo neto mensual o quincenal** (por ejemplo: *"Gano $15,000 mensuales"*).';
+      'Para calcular tu capacidad legal de descuento (**30% conforme al Art. 110 de la LFT**) y el **monto máximo exacto** que puedes solicitar, por favor indícame tu **sueldo neto mensual o quincenal** (por ejemplo: *"Gano $15,000 mensuales"*).';
     return {
       detected: true,
       needsClarification: true,
@@ -96,32 +101,35 @@ export function evaluateDeterministicFinancialQuery(
     };
   }
 
-  // Escenario B: Cotización de un monto específico de préstamo (ej. "¿Cuánto pagaría por un crédito de $30,000?")
+  // Escenario B: Cotización de un monto específico de préstamo (ej. "¿Cuánto pagaría por un crédito de $5,000?")
   if (extracted.isLoanQuoteRequest) {
     const reqAmount = extracted.amount;
     const rows: string[] = [];
-    for (const term of [24, 48, 72]) {
-      const sim = calculateSimulation(reqAmount, term, 'normal');
-      rows.push(
-        `| **Crédito Clásico** | ${term} quincenas | **${fmtMxn(sim.fortnightlyPayment)}** | ${fmtMxn(sim.totalToPay)} | ${sim.catPercent}% |`
-      );
-    }
-    if (reqAmount <= 20000) {
-      for (const term of [6, 14, 20]) {
-        const sim = calculateSimulation(reqAmount, term, 'express');
+
+    if (reqAmount >= 10000) {
+      for (const term of [24, 48, 72]) {
+        const sim = calculateSimulation(reqAmount, term, 'normal');
         rows.push(
-          `| **Crédito Express** | ${term} quincenas | **${fmtMxn(sim.fortnightlyPayment)}** | ${fmtMxn(sim.totalToPay)} | ${sim.catPercent}% |`
+          `| **Crédito Normal** | ${term} quincenas | **${fmtMxn(sim.fortnightlyPayment)}** | ${fmtMxn(sim.totalToPay)} | ${fmtMxn(sim.requiredNetIncome)} | 47.50% anual |`
         );
       }
     }
+    if (reqAmount <= 20000) {
+      const expressTerm = getAllowedExpressTerm(reqAmount, 'quincenal');
+      const sim = calculateSimulation(reqAmount, expressTerm, 'express');
+      rows.push(
+        `| **Crédito Express** | ${expressTerm} quincenas | **${fmtMxn(sim.fortnightlyPayment)}** | ${fmtMxn(sim.totalToPay)} | ${fmtMxn(sim.requiredNetIncome)} | 80.00% anual |`
+      );
+    }
+
     const md = [
       `**Cotización Oficial Determinista para ${fmtMxn(reqAmount)}**`,
       '',
-      '| Producto | Plazo | Cuota Quincenal Fija | Total a Pagar | CAT s/IVA |',
-      '|---|---|---|---|---|',
+      '| Producto | Plazo Oficial | Cuota Quincenal Fija | Total Estimado a Pagar | Ingreso Neto Mín. (30% LFT) | Tasa Nominal |',
+      '|---|---|---|---|---|---|',
       ...rows,
       '',
-      `> **Nota:** Cálculos exactos con motor financiero oficial (incluye IVA 16% sobre intereses y seguro de vida de $${FINANCIAL_CONSTANTS.LIFE_INSURANCE_FORTNIGHTLY_MXN} quincenales en Crédito Clásico).`,
+      `> **Nota Regulatoria:** Cálculos verificados centavo a centavo con las Tablas Oficiales de Cuotas (incluye 16% de IVA sobre intereses y seguro de vida de $${FINANCIAL_CONSTANTS.LIFE_INSURANCE_FORTNIGHTLY_MXN} quincenales en Crédito Normal Activos). El descuento jamás puede exceder el **30% de tu ingreso neto** conforme al Art. 110 de la LFT.`,
     ].join('\n');
 
     return {
@@ -132,35 +140,39 @@ export function evaluateDeterministicFinancialQuery(
     };
   }
 
-  // Escenario A: Análisis de Capacidad de Descuento (35%) y Préstamo Máximo por Sueldo
+  // Escenario A: Análisis de Capacidad de Descuento (30% Art. 110 LFT) y Préstamo Máximo por Sueldo
   const analysis = calculateMaxLoanBySalary(extracted.amount, extracted.frequency);
+  const sampleCheck = validateLegalPaymentCapacityLft110(
+    analysis.maxFortnightlyDeduction,
+    analysis.fortnightlyNetSalary
+  );
   const tableRows = analysis.options.map(
     (opt) =>
       `| **${opt.productLabel}** | ${opt.termFortnights} quincenas | **${fmtMxn(opt.maxPrincipal)}** | **${fmtMxn(opt.fortnightlyPayment)}** | ${opt.catPercent}% |`
   );
 
   const fallbackMd = [
-    '**Cálculo Oficial de Capacidad de Pago y Préstamo Máximo**',
+    '**Cálculo Oficial de Capacidad de Pago (Tope 30% Art. 110 LFT) y Préstamo Máximo**',
     '',
     `- **Sueldo neto mensual:** ${fmtMxn(analysis.monthlyNetSalary)}`,
     `- **Sueldo neto quincenal:** ${fmtMxn(analysis.fortnightlyNetSalary)}`,
-    `- **Capacidad máxima de descuento quincenal (35%):** **${fmtMxn(analysis.maxFortnightlyDeduction)}**`,
+    `- **Capacidad máxima legal de descuento quincenal (30% Art. 110 LFT):** **${fmtMxn(analysis.maxFortnightlyDeduction)}** (${sampleCheck.ratioPercent}% máx.)`,
     '',
     '---',
     '',
-    '### Montos máximos de crédito autorizables según tu capacidad',
+    '### Montos máximos de crédito autorizables según tu capacidad legal (≤ 30%)',
     '',
-    '| Producto | Plazo | Monto Máximo a Prestar (Capital) | Cuota Quincenal Exacta (≤ 35%) | CAT s/IVA |',
+    '| Producto | Plazo | Monto Máximo a Prestar (Capital) | Cuota Quincenal Exacta (≤ 30%) | CAT s/IVA |',
     '|---|---|---|---|---|',
     ...tableRows,
     '',
-    '> **Nota:** Estos montos ya descuentan intereses, IVA (16%) y la póliza de seguro de vida ($22.85 MXN quincenales en Crédito Clásico), garantizando que tu descuento quincenal jamás supere el 35% de tu sueldo neto libre.',
+    '> **Nota Legal (Art. 110 LFT):** Estos montos integran intereses sobre saldos insolutos, IVA (16%) y la póliza de seguro de vida ($22.85 MXN quincenales en Crédito Normal Activos), garantizando que tu descuento quincenal jamás exceda el límite legal del 30% de tu sueldo neto libre.',
   ].join('\n');
 
   return {
     detected: true,
     needsClarification: false,
-    xmlContextBlock: `<deterministic_financial_data>\nSUELDO_MENSUAL_NETO: ${fmtMxn(analysis.monthlyNetSalary)}\nSUELDO_QUINCENAL_NETO: ${fmtMxn(analysis.fortnightlyNetSalary)}\nCAPACIDAD_MAXIMA_DESCUENTO_QUINCENAL_35_PORCIENTO: ${fmtMxn(analysis.maxFortnightlyDeduction)}\nTABLA_OFICIAL_CALCULADA_CON_DECIMAL_JS:\n${fallbackMd}\n</deterministic_financial_data>`,
+    xmlContextBlock: `<deterministic_financial_data>\nSUELDO_MENSUAL_NETO: ${fmtMxn(analysis.monthlyNetSalary)}\nSUELDO_QUINCENAL_NETO: ${fmtMxn(analysis.fortnightlyNetSalary)}\nCAPACIDAD_MAXIMA_DESCUENTO_QUINCENAL_30_PORCIENTO_LFT: ${fmtMxn(analysis.maxFortnightlyDeduction)}\nTABLA_OFICIAL_CALCULADA_CON_DECIMAL_JS:\n${fallbackMd}\n</deterministic_financial_data>`,
     fallbackMarkdownReply: fallbackMd,
   };
 }

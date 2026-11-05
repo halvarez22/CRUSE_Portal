@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Decimal from 'decimal.js';
 import {
   TrendingUp,
   Sliders,
@@ -59,10 +60,9 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
 
   const handleSyncWithRealPortfolio = () => {
     if (!realMetrics) return;
-    const baseCap = Math.max(
-      5000000,
-      Math.round((realMetrics.realPlacedCapital + realMetrics.realInvestorCapitalCommitted) / 1000000) * 1000000 || 10000000
-    );
+    const rawSum = new Decimal(realMetrics.realPlacedCapital).plus(realMetrics.realInvestorCapitalCommitted);
+    const roundedMillions = rawSum.dividedBy(1000000).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).times(1000000).toNumber();
+    const baseCap = Math.max(5000000, roundedMillions || 10000000);
     setInitialCapital(Math.min(100000000, baseCap));
     setExpressRatio(Math.min(70, Math.max(10, realMetrics.realExpressSharePercent || 30)));
     setDefaultRate(Math.min(4.0, Math.max(0.5, realMetrics.realDefaultRatePercent || 1.2)));
@@ -103,10 +103,10 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
 
       monthData.push({
         month: `Mes ${month}`,
-        portfolio: Math.round(currentPortfolio),
-        grossInterest: Math.round(monthlyGrossInterest),
-        netProfit: Math.round(monthlyNetProfit),
-        cumulativeProfit: Math.round(cumulativeNetProfit),
+        portfolio: new Decimal(currentPortfolio).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber(),
+        grossInterest: new Decimal(monthlyGrossInterest).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber(),
+        netProfit: new Decimal(monthlyNetProfit).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber(),
+        cumulativeProfit: new Decimal(cumulativeNetProfit).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber(),
       });
     }
 
@@ -114,10 +114,15 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
     const year3CumulativeProfit = monthData[35]!.cumulativeProfit;
     const annualizedIRR = Math.min(
       42,
-      Math.round(24 + hubsCount * 2.8 - defaultRate * 1.5 + expressRatio * 0.05)
+      new Decimal(24 + hubsCount * 2.8 - defaultRate * 1.5 + expressRatio * 0.05)
+        .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+        .toNumber()
     );
     const moic = ((initialCapital + year3CumulativeProfit) / initialCapital).toFixed(2);
-    const paybackMonths = Math.max(8, Math.round(18 - hubsCount * 2 + defaultRate * 1.2));
+    const paybackMonths = Math.max(
+      8,
+      new Decimal(18 - hubsCount * 2 + defaultRate * 1.2).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber()
+    );
 
     return {
       monthData,
@@ -214,7 +219,7 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
               max={100000000}
               step={1000000}
               value={initialCapital}
-              onChange={(e) => setInitialCapital(Number(e.target.value))}
+              onChange={(e) => setInitialCapital(new Decimal(e.target.value || '0').toNumber())}
               className="w-full accent-emerald-500"
             />
           </div>
@@ -243,9 +248,9 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
 
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-bold">
-              <span className="text-slate-300">Mezcla Express (3.33%) vs Clásico (1.97%)</span>
+              <span className="text-slate-300">Mezcla Express (80.00% anual) vs Normal (47.50% anual)</span>
               <span className="text-indigo-400">
-                {expressRatio}% Exp / {100 - expressRatio}% Clásico
+                {expressRatio}% Exp / {100 - expressRatio}% Normal
               </span>
             </div>
             <input
@@ -254,7 +259,7 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
               max={70}
               step={5}
               value={expressRatio}
-              onChange={(e) => setExpressRatio(Number(e.target.value))}
+              onChange={(e) => setExpressRatio(new Decimal(e.target.value || '0').toNumber())}
               className="w-full accent-indigo-500"
             />
           </div>
@@ -270,7 +275,7 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
               max={4.0}
               step={0.1}
               value={defaultRate}
-              onChange={(e) => setDefaultRate(Number(e.target.value))}
+              onChange={(e) => setDefaultRate(new Decimal(e.target.value || '0').toNumber())}
               className="w-full accent-amber-500"
             />
             <div className="flex items-center gap-1 text-[11px] text-emerald-400">
@@ -290,7 +295,7 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
               max={100}
               step={10}
               value={reinvestmentRate}
-              onChange={(e) => setReinvestmentRate(Number(e.target.value))}
+              onChange={(e) => setReinvestmentRate(new Decimal(e.target.value || '0').toNumber())}
               className="w-full accent-emerald-500"
             />
           </div>
@@ -363,7 +368,7 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
             <span>
               <strong>Unit Economics Certificados:</strong> CAC Digital reducido a{' '}
               <strong>${FINANCIAL_CONSTANTS.CAC_DIGITAL_MXN} MXN</strong> y tasa de retención/renovación de clientes del{' '}
-              <strong>{Math.round(FINANCIAL_CONSTANTS.CLIENT_RETENTION_RATE * 100)}%</strong>.
+              <strong>{new Decimal(FINANCIAL_CONSTANTS.CLIENT_RETENTION_RATE).times(100).toDecimalPlaces(0).toNumber()}%</strong>.
             </span>
           </div>
         </div>

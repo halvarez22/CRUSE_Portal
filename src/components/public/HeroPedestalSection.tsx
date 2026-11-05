@@ -47,9 +47,10 @@ export const HeroPedestalSection: React.FC = () => {
 
           {/* Subtitle */}
           <p className="text-base sm:text-lg lg:text-xl text-slate-700 dark:text-slate-300 max-w-3xl leading-relaxed mb-8">
-            {COMPANY_INFO.tagline}. Créditos de nómina directos para empleados en activo, jubilados y pensionados del{' '}
+            {COMPANY_INFO.tagline}. Créditos de nómina directos para trabajadores activos sindicalizados y de confianza del{' '}
             <strong className="text-slate-900 dark:text-white font-bold">Gobierno del Estado de Chihuahua</strong> y del{' '}
-            <strong className="text-slate-900 dark:text-white font-bold">Supremo Tribunal de Justicia</strong>.
+            <strong className="text-slate-900 dark:text-white font-bold">Supremo Tribunal de Justicia</strong>, así como miembros de la{' '}
+            <strong className="text-slate-900 dark:text-white font-bold">Agrupación de los Jubilados y Pensionados</strong>.
           </p>
 
           {/* 4 Feature Cards (Pillars — Guardrail 2: Contraste WCAG AA/AAA en Modo Claro, intacto en Modo Oscuro) */}
@@ -68,13 +69,13 @@ export const HeroPedestalSection: React.FC = () => {
 
             <div className="glass-card rounded-2xl p-4 text-center border border-slate-200 dark:border-blue-500/30 shadow-sm">
               <span className="text-2xl sm:text-3xl font-black text-[#1E40AF] dark:text-[#00D1FF] font-mono block">
-                1.97%
+                47.50%
               </span>
               <span className="text-xs font-bold text-slate-900 dark:text-slate-200 block mt-0.5">
-                Tasa Quincenal Fija
+                Tasa Anual Crédito Normal
               </span>
               <span className="text-[11px] text-slate-600 dark:text-slate-400 block mt-0.5">
-                Sin variaciones ni sorpresas
+                1.9792% quincenal fija sin IVA
               </span>
             </div>
 

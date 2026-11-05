@@ -7,6 +7,10 @@ export type ThemeMode = 'light' | 'dark';
 
 export type ProductId = 'normal' | 'express' | 'especial';
 
+export type PaymentFrequency = 'quincenal' | 'mensual';
+
+export type BorrowerProfile = 'activo' | 'pensionado';
+
 export interface LoanProduct {
   id: ProductId;
   name: string;
@@ -14,7 +18,9 @@ export interface LoanProduct {
   minAmount: number;
   maxAmount: number;
   terms: number[]; // Plazos disponibles en quincenas
+  monthlyTerms?: number[]; // Plazos disponibles en meses
   interestRateText: string;
+  annualRatePercentText: string;
   nominalRateFortnightly: number;
   nominalRateMonthly: number;
   annualRate: number;
@@ -40,12 +46,17 @@ export interface AmortizationRow {
 export interface SimulationResult {
   schedule: AmortizationRow[];
   fortnightlyPayment: number;
+  periodicPayment: number;
+  frequency: PaymentFrequency;
+  borrowerProfile: BorrowerProfile;
   monthlyPaymentEquivalent: number;
   totalToPay: number;
   totalInterest: number;
   totalVat: number;
   totalInsurance: number;
   catPercent: number;
+  requiredNetIncome: number;
+  annualNominalRatePercent: number;
 }
 
 export interface ChatMessage {
@@ -71,13 +82,19 @@ export interface CompanyInfo {
   email: string;
   website: string;
   businessHours: string;
-  asofomMemberSince: number;
   qualityCertification: string;
   primaryAgreements: string[];
+  unionOfficeContact: {
+    title: string;
+    venueName: string;
+    address: string;
+    phones: string[];
+  };
   uneContact: {
     title: string;
     email: string;
     phone: string;
+    address: string;
     city: string;
   };
 }
@@ -88,7 +105,7 @@ export interface RequirementItem {
   description: string;
   copies: number;
   appliesTo: 'all' | 'normal' | 'express';
-  icon: 'id' | 'receipt' | 'home';
+  icon: 'id' | 'receipt' | 'home' | 'signature';
 }
 
 // ==============================================================================
@@ -487,39 +504,21 @@ export interface CreditBureauPreviewRow {
 }
 
 export interface CreditBureauControlTotals {
-  totalAccountsReported: number;
-  totalPfAccounts: number;
-  totalPmAccounts: number;
-  totalFrozenExtrajudicialAccounts: number;
-  totalCurrentBalance: string;
-  totalPastDueBalance: string;
-  totalNameElements: number;
-  totalAddressElements: number;
-  totalEmploymentElements: number;
+  totalAccountsReported: number; totalPfAccounts: number; totalPmAccounts: number;
+  totalFrozenExtrajudicialAccounts: number; totalCurrentBalance: string; totalPastDueBalance: string;
+  totalNameElements: number; totalAddressElements: number; totalEmploymentElements: number;
 }
 
 export interface CreditBureauReportRecord {
-  id: string;
-  reportingMonth: string;
-  manifestHash: string;
-  createdAt: string;
-  totalAccounts: number;
-  totalReportedBalance: string;
+  id: string; reportingMonth: string; manifestHash: string;
+  createdAt: string; totalAccounts: number; totalReportedBalance: string;
 }
 
 export interface CreditBureauGenerateResult {
-  reportId?: string;
-  reportingMonth: string;
-  cutoffDateIso: string;
-  cutoffDateYyyyMmDd: string;
-  officialFileNameBase: string;
-  manifestHash: string;
-  controlTotals: CreditBureauControlTotals;
-  previewRows: CreditBureauPreviewRow[];
-  validationIssues: CreditBureauValidationIssue[];
-  pfCsvContent?: string;
-  pfPipeContent?: string;
-  pmCsvContent?: string;
+  reportId?: string; reportingMonth: string; cutoffDateIso: string; cutoffDateYyyyMmDd: string;
+  officialFileNameBase: string; manifestHash: string; controlTotals: CreditBureauControlTotals;
+  previewRows: CreditBureauPreviewRow[]; validationIssues: CreditBureauValidationIssue[];
+  pfCsvContent?: string; pfPipeContent?: string; pmCsvContent?: string;
 }
 
 

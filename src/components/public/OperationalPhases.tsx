@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Smartphone, FileCheck, CheckCheck, Clock, ShieldCheck, ArrowRight, CheckCircle2, X } from 'lucide-react';
+import { COMPANY_INFO } from '../../data/cruseData';
 
 interface OperationalPhaseItem {
   step: string;
@@ -23,17 +24,17 @@ export const OperationalPhases: React.FC = () => {
     {
       step: '01',
       title: 'Promoción y Atención Omnicanal',
-      subtitle: 'Contacto directo y multicanal',
+      subtitle: 'Orientación directa y multicanal',
       description:
-        'Atención personalizada persona a persona entre Cruse, el delegado seccional y el empleado. Canales digitales activos vía WhatsApp, SMS, llamadas y visitas programadas en sedes sindicales.',
+        'Atención personalizada entre Microfinanciera Cruse, los delegados sindicales municipales y el trabajador. Canales activos vía WhatsApp, llamadas telefónicas, sede sindical en Salón Pinos Altos y oficinas en Vía Citadela.',
       icon: Smartphone,
       accentColor: 'from-[#249E82] to-[#4CD360]',
       badge: 'Fase 1',
-      slaText: 'Tiempo estimado: Atención inmediata (< 5 minutos)',
+      slaText: 'Tiempo estimado: Orientación inmediata (< 5 minutos)',
       checklist: [
-        'Asesoría sin costo con promotor certificado o delegado seccional.',
-        'Consulta de capacidad de descuento vía nómina (tope institucional del 35%).',
-        'Orientación sobre Crédito Clásico (1.97% qnal) vs. Crédito Express (3.33% qnal).',
+        'Asesoría sin costo en sede sindical (Salón Pinos Altos), delegados sindicales municipales u oficinas Cruse.',
+        'Validación de capacidad de descuento vía nómina bajo el límite legal del 30% (Art. 110 LFT).',
+        'Orientación transparente entre Crédito Normal (47.50% anual nominal) y Crédito Express (80.00% anual nominal).',
       ],
       targetSectionId: 'simulador',
       actionLabel: 'Ir al Simulador Oficial',
@@ -41,35 +42,35 @@ export const OperationalPhases: React.FC = () => {
     {
       step: '02',
       title: 'Simulación y Expediente Simplificado',
-      subtitle: 'Resolución ágil en nómina',
+      subtitle: 'Revisión documental normativa',
       description:
-        'El trabajador envía su último recibo de nómina, simula su crédito y elige el plazo idóneo. Con solo 3 documentos, el análisis financiero se realiza en minutos sin alterar su jornada.',
+        'El trabajador presenta su último recibo de nómina, elige el monto y plazo conforme a las tablas oficiales de cuotas y reúne sus documentos básicos sin requerir aval.',
       icon: FileCheck,
       accentColor: 'from-[#396CAE] to-[#00D1FF]',
       badge: 'Fase 2',
       slaText: 'Tiempo estimado: Validación documental en 15 a 30 minutos',
       checklist: [
-        'Identificación Oficial Vigente (INE por ambos lados o Pasaporte).',
-        'Últimos 2 talones de pago de nómina gubernamental o sindical.',
-        'Comprobante de domicilio reciente y Estado de Cuenta con CLABE.',
+        '2 copias de Identificación Oficial vigente (INE por ambos lados o Pasaporte).',
+        '1 copia del último recibo de nómina gubernamental, judicial o de pensión.',
+        '1 copia de comprobante de domicilio reciente (exclusivo para Crédito Normal).',
       ],
       targetSectionId: 'requisitos',
       actionLabel: 'Revisar Requisitos Documentales',
     },
     {
       step: '03',
-      title: 'Formalización y Entrega Cero-Fricción',
-      subtitle: 'Dispersión directa sin salir del trabajo',
+      title: 'Firma de Formatos Cruse y Dispersión SPEI',
+      subtitle: 'Suscripción en sede correspondiente y transferencia',
       description:
-        'El promotor acude directamente al centro de trabajo o formaliza vía digital para que el trabajador no abandone sus funciones. Firma de contrato, anexo de descuento y depósito SPEI inmediato.',
+        'El trabajador acude a su sede correspondiente (Salón Pinos Altos para sindicalizados o Vía Citadela #5710 Int. #401 para personal de confianza del Supremo Tribunal) para firmar los Formatos Cruse y la Autorización de Descuento de su Dependencia. Una vez firmados los documentos, se ejecuta la dispersión vía SPEI.',
       icon: CheckCheck,
       accentColor: 'from-purple-500 to-[#249E82]',
       badge: 'Fase 3',
-      slaText: 'Tiempo estimado: Dispersión SPEI en menos de 2 a 24 horas',
+      slaText: 'Tiempo estimado: Dispersión SPEI posterior a la firma de documentos Cruse',
       checklist: [
-        'Firma de contrato e instrucción de retención quincenal transparente.',
-        'Activación de Póliza de Seguro de Vida Institucional (en Crédito Clásico).',
-        'Transferencia electrónica directa vía SPEI a la cuenta de nómina del trabajador.',
+        `Sindicalizados: Firma en Depto. de Prestaciones Económicas, ${COMPANY_INFO.unionOfficeContact.venueName} (${COMPANY_INFO.unionOfficeContact.address}).`,
+        `Confianza Supremo Tribunal: Firma en Oficinas Cruse (${COMPANY_INFO.address}).`,
+        'Transferencia electrónica vía SPEI una vez suscritos los Formatos Cruse y la Autorización de Descuento.',
       ],
       targetSectionId: 'asistente-ia',
       actionLabel: 'Consultar con Asistente IA 24/7',
@@ -114,10 +115,10 @@ export const OperationalPhases: React.FC = () => {
             <span>Flujo Operativo de Atención</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-3">
-            Un Modelo Diseñado para Evitar la Fricción
+            Proceso Transparente en 3 Etapas
           </h2>
           <p className="text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
-            Asumimos la carga operativa y tecnológica para que el trabajador y la institución mantengan su ritmo laboral normal.
+            Desde la simulación financiera y validación del límite legal del 30% hasta la firma presencial de tus Formatos Cruse y dispersión por SPEI.
           </p>
         </div>
 

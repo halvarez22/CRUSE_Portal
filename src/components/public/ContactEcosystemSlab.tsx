@@ -1,25 +1,22 @@
 import React from 'react';
-import { MapPin, Phone, Mail, Clock, ShieldCheck } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, ShieldCheck, Building2 } from 'lucide-react';
 import { COMPANY_INFO } from '../../data/cruseData';
 
 export const ContactEcosystemSlab: React.FC = () => {
   return (
     <section id="contacto" className="py-12 lg:py-20 relative">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Floating Emerald Glass Slab (Directly inspired by Slide 9) */}
         <div className="relative group">
-          {/* Neon ambient rim (Solo en Modo Oscuro conforme a Guardrail 3) */}
           <div className="absolute -inset-3 bg-gradient-to-r from-[#249E82] via-[#00D1FF] to-[#396CAE] opacity-0 dark:opacity-25 blur-2xl rounded-3xl dark:group-hover:opacity-40 transition-opacity" />
 
-          {/* The Slab */}
           <div className="relative glass-slab-emerald rounded-3xl p-8 sm:p-12 shadow-lg dark:shadow-2xl border border-slate-200 dark:border-[#249E82]/50 transform hover:-translate-y-1 transition-all">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-200 dark:border-white/10 mb-8">
               <div>
                 <span className="text-xs uppercase tracking-widest font-black text-emerald-800 dark:text-[#4CD360] block mb-1">
-                  Atención Institucional y Sucursal Central
+                  Sedes de Atención y Contacto Institucional
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                  Conecte con nuestro ecosistema
+                  Conecte con {COMPANY_INFO.shortName}
                 </h2>
               </div>
 
@@ -29,6 +26,41 @@ export const ContactEcosystemSlab: React.FC = () => {
                   alt="Cruse Microfinanciera"
                   className="h-8 w-auto object-contain"
                 />
+              </div>
+            </div>
+
+            {/* Dual Routing Banner: Sindicalizados vs Confianza */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div className="p-4 rounded-2xl bg-white/90 dark:bg-black/30 border border-emerald-500/40">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-emerald-800 dark:text-[#4CD360] mb-1.5">
+                  <Building2 className="w-4 h-4 shrink-0" />
+                  <span>Trabajadores Sindicalizados (STSGECH)</span>
+                </div>
+                <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed mb-1.5">
+                  <strong>{COMPANY_INFO.unionOfficeContact.title}</strong> — {COMPANY_INFO.unionOfficeContact.venueName}:
+                </p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 mb-1.5">
+                  {COMPANY_INFO.unionOfficeContact.address}
+                </p>
+                <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                  Teléfonos: {COMPANY_INFO.unionOfficeContact.phones.join(' / ')}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/90 dark:bg-black/30 border border-[#396CAE]/40">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1E40AF] dark:text-[#00D1FF] mb-1.5">
+                  <MapPin className="w-4 h-4 shrink-0" />
+                  <span>Personal de Confianza (Supremo Tribunal) y Oficinas Cruse</span>
+                </div>
+                <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed mb-1.5">
+                  <strong>Oficinas Centrales de {COMPANY_INFO.name}:</strong>
+                </p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 mb-1.5">
+                  {COMPANY_INFO.address}
+                </p>
+                <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                  Oficina: {COMPANY_INFO.officePhone} | Cel. {COMPANY_INFO.cellPhone}
+                </p>
               </div>
             </div>
 
@@ -52,20 +84,6 @@ export const ContactEcosystemSlab: React.FC = () => {
 
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl bg-white dark:bg-black/30 border border-slate-200 dark:border-[#249E82]/40 flex items-center justify-center text-emerald-700 dark:text-[#4CD360] shrink-0 shadow-xs">
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-slate-600 dark:text-slate-400 text-xs block font-bold">
-                      Domicilio Corporativo:
-                    </span>
-                    <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
-                      {COMPANY_INFO.address}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-white dark:bg-black/30 border border-slate-200 dark:border-[#249E82]/40 flex items-center justify-center text-emerald-700 dark:text-[#4CD360] shrink-0 shadow-xs">
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
@@ -74,23 +92,6 @@ export const ContactEcosystemSlab: React.FC = () => {
                     </span>
                     <p className="text-slate-900 dark:text-white font-semibold">
                       {COMPANY_INFO.businessHours}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Phones, Digital & UNE Contact */}
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-white dark:bg-black/30 border border-slate-200 dark:border-[#249E82]/40 flex items-center justify-center text-[#1E40AF] dark:text-[#00D1FF] shrink-0 shadow-xs">
-                    <Phone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-slate-600 dark:text-slate-400 text-xs block font-bold">
-                      Teléfonos de Oficina y Atención Celular:
-                    </span>
-                    <p className="text-slate-900 dark:text-white font-mono font-bold text-sm">
-                      Oficina: {COMPANY_INFO.officePhone} | Cel. {COMPANY_INFO.cellPhone}
                     </p>
                   </div>
                 </div>
@@ -111,18 +112,27 @@ export const ContactEcosystemSlab: React.FC = () => {
                     </a>
                   </div>
                 </div>
+              </div>
 
-                {/* Unidad Especializada UNE */}
-                <div className="p-3.5 glass-card rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/30">
-                  <span className="text-[11px] font-black uppercase text-[#1E40AF] dark:text-[#00D1FF] block mb-0.5">
+              {/* UNE Contact with Explicit Physical Address */}
+              <div className="space-y-4">
+                <div className="p-4 glass-card rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/30">
+                  <span className="text-[11px] font-black uppercase text-[#1E40AF] dark:text-[#00D1FF] block mb-1">
                     Unidad Especializada de Atención a Usuarios (UNE)
                   </span>
-                  <p className="text-xs text-slate-700 dark:text-slate-300">
+                  <p className="text-xs text-slate-800 dark:text-slate-200 font-semibold mb-1">
                     {COMPANY_INFO.uneContact.title}
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-1.5">
+                    <strong>Domicilio Físico UNE:</strong> {COMPANY_INFO.uneContact.address}
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-mono mb-1">
+                    <Phone className="w-3.5 h-3.5 inline mr-1" />
+                    {COMPANY_INFO.uneContact.phone}
                   </p>
                   <a
                     href={`mailto:${COMPANY_INFO.uneContact.email}`}
-                    className="text-xs text-emerald-800 dark:text-[#4CD360] font-mono underline block mt-1"
+                    className="text-xs text-emerald-800 dark:text-[#4CD360] font-mono underline block"
                   >
                     {COMPANY_INFO.uneContact.email}
                   </a>

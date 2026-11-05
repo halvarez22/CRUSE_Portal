@@ -25,6 +25,9 @@ export interface PreApplicationPublicSubmitPayload {
   totalToPay: string;
   catPercent: string;
   interestRateText: string;
+  netPeriodicSalary?: string;
+  paymentFrequency?: 'quincenal' | 'mensual';
+  borrowerProfile?: 'activo' | 'pensionado';
 }
 
 export interface PreApplicationSummaryItem {

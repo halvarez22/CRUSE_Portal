@@ -1,6 +1,6 @@
 /**
- * Fuente de Verdad Institucional de Microfinanciera Cruse SOFOM E.N.R.
- * Conforme a la Regla 2 (HRU) — Cero textos o catálogos quemados inline en componentes.
+ * Fuente de Verdad Institucional de Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
+ * Conforme a la Regla 2 (HRU) y Guardrails 2, 3 y 4 (CRUSE-APO-2026-051)
  */
 import { CompanyInfo, LoanProduct, RequirementItem, PrivacyNoticeData } from '../types';
 
@@ -19,16 +19,23 @@ export const COMPANY_INFO: CompanyInfo = {
   email: "contacto@cruse.com.mx",
   website: "https://cruse.com.mx",
   businessHours: "Lunes a Viernes de 8:00 a 15:00 hrs",
-  asofomMemberSince: 2012,
-  qualityCertification: "Certificación 2.9 SOFOM Alta Calidad",
+  qualityCertification: "Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.",
   primaryAgreements: [
-    "El Supremo Tribunal de Justicia del Estado de Chihuahua",
-    "Sindicato de Trabajadores al Servicio del Gobierno del Estado (STSGECH)",
+    "Supremo Tribunal de Justicia del Estado de Chihuahua (Trabajadores Activos Sindicalizados y de Confianza)",
+    "Sindicato de Trabajadores al Servicio del Gobierno del Estado (STSGECH) y Delegados Sindicales Municipales",
+    "Agrupación de los Jubilados y Pensionados al Servicio de Gobierno del Estado de Chihuahua",
   ],
+  unionOfficeContact: {
+    title: "Atención a Trabajadores Sindicalizados — Departamento de Prestaciones Económicas",
+    venueName: "Salón Pinos Altos (Sede Sindical STSGECH)",
+    address: "Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Chihuahua, Chih.",
+    phones: ["614 607 7301", "614 141 2503"],
+  },
   uneContact: {
     title: "Titular de la Unidad Especializada de Atención a Usuarios (UNE) / Oficial de Cumplimiento",
     email: "gerardo.olvera@cruse.com.mx",
     phone: "(614) 411-15-44 / (614) 184-58-49",
+    address: "Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih.",
     city: "Chihuahua, Chihuahua",
   },
 };
@@ -36,14 +43,16 @@ export const COMPANY_INFO: CompanyInfo = {
 export const LOAN_PRODUCTS: LoanProduct[] = [
   {
     id: "normal",
-    name: "Crédito Clásico",
+    name: "Crédito Normal",
     tagline: "Financiamiento consolidado de mediano plazo para proyectos y patrimonio familiar",
     minAmount: 10000,
     maxAmount: 500000,
     terms: [24, 48, 72],
-    interestRateText: "1.97% quincenal fija sin IVA (47.50% anual)",
-    nominalRateFortnightly: 0.0197,
-    nominalRateMonthly: 0.0395,
+    monthlyTerms: [12, 24, 36],
+    interestRateText: "1.9792% quincenal fija sin IVA (47.50% anual nominal)",
+    annualRatePercentText: "47.50%",
+    nominalRateFortnightly: 0.0197916667,
+    nominalRateMonthly: 0.0395833333,
     annualRate: 0.475,
     catInformativePercent: 88.05,
     lifeInsuranceFortnightly: 22.85,
@@ -51,26 +60,28 @@ export const LOAN_PRODUCTS: LoanProduct[] = [
     openingCommissionPercent: 0,
     requiresProofOfAddress: true,
     requiresCreditBureau: false,
-    disbursementTime: "< 24 horas",
+    disbursementTime: "< 24 horas posteriores a la firma de documentos Cruse",
   },
   {
     id: "express",
     name: "Crédito Express",
-    tagline: "Liquidez inmediata descontada por nómina en menos de 2 horas sin aval",
+    tagline: "Liquidez inmediata descontada por nómina sin aval, con dispersión SPEI posterior a la firma de formatos",
     minAmount: 1000,
     maxAmount: 20000,
     terms: [6, 14, 20],
-    interestRateText: "3.33% quincenal fija sin IVA (48.00% anual)",
-    nominalRateFortnightly: 0.0333,
-    nominalRateMonthly: 0.0666,
-    annualRate: 0.48,
+    monthlyTerms: [3, 7, 10],
+    interestRateText: "3.3333% quincenal fija sin IVA (80.00% anual nominal)",
+    annualRatePercentText: "80.00%",
+    nominalRateFortnightly: 0.0333333333,
+    nominalRateMonthly: 0.0666666667,
+    annualRate: 0.80,
     catInformativePercent: 136.66,
     lifeInsuranceFortnightly: 0,
     lifeInsuranceCoverageMxn: 0,
     openingCommissionPercent: 0,
     requiresProofOfAddress: false,
     requiresCreditBureau: false,
-    disbursementTime: "< 2 horas vía SPEI",
+    disbursementTime: "< 2 horas vía SPEI posteriores a la firma de documentos Cruse",
   },
 ];
 
@@ -86,7 +97,7 @@ export const REQUIREMENTS_DATA: RequirementItem[] = [
   {
     id: "req-receipt",
     title: "1 Copia de Recibo de Nómina",
-    description: "Último talón de pago quincenal donde se aprecie claramente el desglose de percepciones y deducciones.",
+    description: "Último talón de pago donde se aprecie claramente el desglose de percepciones y deducciones.",
     copies: 1,
     appliesTo: "all",
     icon: "receipt",
@@ -99,36 +110,44 @@ export const REQUIREMENTS_DATA: RequirementItem[] = [
     appliesTo: "normal",
     icon: "home",
   },
+  {
+    id: "req-formats",
+    title: "Firma de Formatos Cruse y Autorización de Descuento",
+    description: "Suscripción presencial de los Formatos Oficiales Cruse y la Carta de Autorización de Descuento de su Dependencia.",
+    copies: 1,
+    appliesTo: "all",
+    icon: "signature",
+  },
 ];
 
 export const FAQ_CHAT_PROMPTS = [
   {
     title: "¿Cuánto es lo máximo que me pueden descontar?",
     prompt: "¿Si gano $12,000 quincenales, cuánto es lo máximo que me pueden descontar por nómina?",
-    answer: "Por política institucional de protección salarial y los lineamientos del Supremo Tribunal y Sindicato, el descuento quincenal máximo no excede el 35% de tu sueldo neto libre ($4,200 quincenales), garantizando siempre la solvencia de tu familia.",
+    answer: "En estricto apego al Artículo 110 de la Ley Federal del Trabajo (LFT) y la política de protección salarial, el descuento periódico máximo jamás excede el 30% de tu sueldo neto libre ($3,600.00 quincenales para un ingreso neto de $12,000.00).",
   },
   {
-    title: "¿Cuáles son los requisitos de contratación?",
-    prompt: "¿Qué documentos necesito para solicitar un crédito de nómina?",
-    answer: "El trámite es simplificado y sin complicaciones: sólo requieres 2 copias de tu Identificación Oficial (INE), 1 copia de tu último recibo de nómina, y para el Crédito Clásico (Normal), 1 comprobante de domicilio reciente. ¡Cero aval y cero buró tradicional!",
+    title: "¿Cuáles son los requisitos y dónde firmo?",
+    prompt: "¿Qué documentos necesito y a dónde acudo a firmar mi solicitud?",
+    answer: "Requieres 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio (para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia. Si eres trabajador Sindicalizado acudes al Departamento de Prestaciones Económicas en el Salón Pinos Altos (Tels. 614 607 7301 y 614 141 2503); si eres trabajador de Confianza del Supremo Tribunal acudes a las oficinas de Microfinanciera Cruse en Vía Citadela #5710 Int. #401, Edificio Quorum.",
   },
   {
     title: "¿Cómo opera el seguro de vida incluido?",
     prompt: "¿Qué cobertura tiene el seguro de vida de mi crédito?",
-    answer: "Tu Crédito Clásico incluye una póliza institucional de Seguro de Vida por $35,000.00 MXN ($22.85 quincenales ya integrados en tu cuota). En caso de siniestro, liquida en su totalidad el saldo deudor del préstamo y entrega el remanente en efectivo a tus beneficiarios designados.",
+    answer: "Tu Crédito Normal (trabajadores activos) incluye una póliza institucional de Seguro de Vida por $35,000.00 MXN ($22.85 quincenales o $45.70 mensuales integrados en tu cuota). En caso de fallecimiento, liquida el saldo deudor del préstamo y entrega el remanente a tus beneficiarios designados.",
   },
   {
-    title: "¿Tienen comisión por apertura?",
-    prompt: "¿Cobran comisión por apertura o gastos de investigación?",
-    answer: "¡Cero comisión por apertura! En Microfinanciera Cruse recibes el 100% del monto solicitado sin deducciones ocultas ni comisiones administrativas.",
+    title: "¿Cuándo se deposita mi crédito vía SPEI?",
+    prompt: "¿En cuánto tiempo recibo mi transferencia y cobran comisión por apertura?",
+    answer: "¡Cero comisión por apertura! Recibes el 100% del monto autorizado vía transferencia SPEI una vez recabadas las firmas autógrafas de tus Formatos Cruse y la Autorización de Descuento de tu Dependencia.",
   },
 ];
 
 export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
-  documentId: "CRUSE-LFPDPPP-2026-V4",
+  documentId: "CRUSE-LFPDPPP-2026-V5",
   title: "Aviso de Privacidad Integral",
   subtitle: "Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)",
-  lastUpdated: "Octubre 2026",
+  lastUpdated: "Noviembre 2026",
   legalFramework:
     "Artículos 15, 16, 17, 22, 28 y 36 de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP), su Reglamento, Lineamientos del INAI y disposiciones aplicables de la CONDUSEF y CNBV (Art. 95 Bis LGOAAC).",
   responsibleEntity: COMPANY_INFO.name,
@@ -143,7 +162,7 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
       content: `${COMPANY_INFO.name}, constituida conforme a las leyes mexicanas como Sociedad Financiera de Objeto Múltiple, Entidad No Regulada, con domicilio convencional para oír y recibir notificaciones en ${COMPANY_INFO.address}, es el Responsable del tratamiento, uso, almacenamiento y protección de sus datos personales, patrimoniales y financieros.`,
       highlights: [
         `Razón Social: ${COMPANY_INFO.name}`,
-        `Domicilio Fiscal y Operativo: ${COMPANY_INFO.address}`,
+        `Domicilio Fiscal y Operativo (y Domicilio de la UNE): ${COMPANY_INFO.address}`,
         `Teléfono Institucional: ${COMPANY_INFO.officePhone} / Cel. ${COMPANY_INFO.cellPhone}`,
       ],
     },
@@ -152,14 +171,14 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
       number: "II",
       title: "Datos Personales y Patrimoniales Sometidos a Tratamiento",
       content:
-        "Para el otorgamiento, originación y administración de créditos con descuento vía nómina gubernamental, recabamos: (1) Datos de identificación oficial (nombre completo, CURP, RFC, clave de elector INE/IFE, firma autógrafa); (2) Datos de contacto (domicilio particular, teléfono móvil para autenticación de doble factor 2FA vía SMS y correo electrónico); y (3) Datos laborales y patrimoniales (dependencia o convenio de adscripción, número de empleado, recibos de nómina quincenal, percepciones, deducciones y CLABE interbancaria para dispersión SPEI). No recabamos datos personales sensibles de salud, ideología o afiliación política.",
+        "Para el otorgamiento, originación y administración de créditos con descuento vía nómina gubernamental, recabamos: (1) Datos de identificación oficial (nombre completo, CURP, RFC, clave de elector INE/IFE, firma autógrafa en Formatos Cruse y Autorización de Descuento); (2) Datos de contacto (domicilio particular, teléfono móvil para autenticación de doble factor 2FA vía SMS y correo electrónico); y (3) Datos laborales y patrimoniales (dependencia o convenio de adscripción, número de empleado, recibos de nómina, percepciones, deducciones y CLABE interbancaria para dispersión SPEI posterior a la firma contractual). No recabamos datos personales sensibles de salud, ideología o afiliación política.",
     },
     {
       id: "finalidades",
       number: "III",
       title: "Finalidades Primarias y Secundarias del Tratamiento",
       content:
-        "Finalidades Primarias (necesarias para la relación jurídica): Verificar y confirmar su identidad; evaluar su capacidad real de pago bajo el tope institucional de protección salarial (máximo 35% del sueldo neto libre); formalizar el contrato de crédito de nómina y la póliza de seguro de vida asociada; ejecutar la dispersión de fondos vía SPEI; realizar la conciliación quincenal de retenciones ante la dependencia conveniada; y dar cumplimiento a las obligaciones de Prevención de Lavado de Dinero y Financiamiento al Terrorismo (PLD/FT) ante la CNBV conforme al Artículo 95 Bis de la LGOAAC. Finalidades Secundarias: Envío de notificaciones informativas sobre renovación o liquidación anticipada sin penalización.",
+        "Finalidades Primarias (necesarias para la relación jurídica): Verificar y confirmar su identidad; evaluar su capacidad real de pago bajo el límite legal de protección salarial (máximo 30% del sueldo neto libre conforme al Art. 110 de la Ley Federal del Trabajo); formalizar los formatos de crédito de nómina, la autorización de descuento de su dependencia y la póliza de seguro de vida asociada; ejecutar la dispersión de fondos vía SPEI posterior a la firma de documentos; realizar la conciliación periódica de retenciones ante la dependencia conveniada; y dar cumplimiento a las obligaciones de Prevención de Lavado de Dinero y Financiamiento al Terrorismo (PLD/FT) ante la CNBV conforme al Artículo 95 Bis de la LGOAAC. Finalidades Secundarias: Envío de notificaciones informativas sobre renovación o liquidación anticipada sin penalización.",
     },
     {
       id: "seguridad-cifrado",
@@ -176,11 +195,12 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
     {
       id: "derechos-arco-une",
       number: "V",
-      title: "Ejercicio de Derechos ARCO y Contacto de la Unidad Especializada (UNE)",
+      title: "Ejercicio de Derechos ARCO y Domicilio de la Unidad Especializada (UNE)",
       content:
-        "Usted tiene derecho a conocer qué datos personales tenemos de usted, para qué los utilizamos y las condiciones del uso que les damos (Acceso); solicitar la corrección de su información (Rectificación); que la eliminemos de nuestros registros cuando considere que no está siendo utilizada adecuadamente (Cancelación); así como oponerse al uso de sus datos para fines específicos (Oposición), o revocar su consentimiento. Para ejercer sus Derechos ARCO, deberá presentar su solicitud por escrito o vía electrónica ante nuestra Unidad Especializada de Atención a Usuarios (UNE) y Oficial de Cumplimiento, quien dará respuesta en un plazo máximo de 20 días hábiles conforme al artículo 32 de la LFPDPPP.",
+        `Usted tiene derecho a conocer qué datos personales tenemos de usted, para qué los utilizamos y las condiciones del uso que les damos (Acceso); solicitar la corrección de su información (Rectificación); que la eliminemos de nuestros registros cuando considere que no está siendo utilizada adecuadamente (Cancelación); así como oponerse al uso de sus datos para fines específicos (Oposición), o revocar su consentimiento. Para ejercer sus Derechos ARCO o presentar consultas y reclamaciones, deberá acudir o dirigir su solicitud a nuestra Unidad Especializada de Atención a Usuarios (UNE) ubicada físicamente en ${COMPANY_INFO.uneContact.address}, o vía electrónica, recibiendo respuesta en un plazo máximo de 20 días hábiles conforme al artículo 32 de la LFPDPPP.`,
       highlights: [
         `Atención UNE / Oficial de Cumplimiento: ${COMPANY_INFO.uneContact.title}`,
+        `Domicilio Físico UNE: ${COMPANY_INFO.uneContact.address}`,
         `Correo Electrónico Oficial ARCO / UNE: ${COMPANY_INFO.uneContact.email}`,
         `Teléfonos UNE: ${COMPANY_INFO.uneContact.phone} (${COMPANY_INFO.businessHours})`,
       ],
@@ -190,7 +210,7 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
       number: "VI",
       title: "Transferencias Legales, Supervisión CONDUSEF y Autoridad Garante",
       content:
-        "Sus datos personales únicamente podrán ser transferidos sin requerir su consentimiento en los supuestos previstos por el artículo 37 de la LFPDPPP: a la dependencia o sindicato retenedor de nómina para la aplicación de descuentos autorizados, a la institución aseguradora para la cobertura del seguro de vida del crédito, y a las autoridades competentes (CNBV, SHCP/UIF y autoridades judiciales). Microfinanciera Cruse se encuentra debidamente registrada y supervisada ante la Comisión Nacional para la Protección y Defensa de los Usuarios de Servicios Financieros (CONDUSEF — Sistema SIPRES, www.condusef.gob.mx). En caso de considerar vulnerado su derecho a la protección de datos personales, puede acudir ante la autoridad garante nacional en materia de protección de datos.",
+        "Sus datos personales únicamente podrán ser transferidos sin requerir su consentimiento en los supuestos previstos por el artículo 37 de la LFPDPPP: a la dependencia, sindicato o agrupación retenedora de nómina para la aplicación de descuentos autorizados, a la institución aseguradora para la cobertura del seguro de vida del crédito, y a las autoridades competentes (CNBV, SHCP/UIF y autoridades judiciales). Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. se encuentra debidamente registrada y supervisada ante la Comisión Nacional para la Protección y Defensa de los Usuarios de Servicios Financieros (CONDUSEF — Sistema SIPRES, www.condusef.gob.mx). En caso de considerar vulnerado su derecho a la protección de datos personales, puede acudir ante la autoridad garante nacional en materia de protección de datos.",
     },
   ],
 };

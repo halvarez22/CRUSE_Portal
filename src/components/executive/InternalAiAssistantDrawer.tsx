@@ -295,7 +295,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
           ))}
           {loading && (
             <div className="text-xs text-teal-400 font-semibold animate-pulse">
-              Ejecutando consulta parametrizada en PostgreSQL 16 (`cruse_fintech_v4`) y sintetizando respuesta con Alma Virtual...
+              Ejecutando consulta parametrizada en PostgreSQL 16 (`cruse_core_v4`) y sintetizando respuesta con Alma Virtual...
             </div>
           )}
         </div>

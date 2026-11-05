@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Award, FileCheck2, ExternalLink } from 'lucide-react';
+import { ShieldCheck, FileCheck2, ExternalLink, Scale } from 'lucide-react';
 import { COMPANY_INFO } from '../../data/cruseData';
 import { PrivacyNoticeModal } from './PrivacyNoticeModal';
 
@@ -9,10 +9,8 @@ export const FooterPublic: React.FC = () => {
   return (
     <footer className="border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 glass-panel py-12 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Regulatory & Affiliation Badges */}
+        {/* Regulatory & Compliance Badges (Guardrail 3: Cero menciones a ASOFOM o Fintech) */}
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pb-8 border-b border-slate-200 dark:border-white/10 mb-8">
-          
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl glass-card border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-950 dark:text-slate-200">
             <ShieldCheck className="w-4 h-4 text-[#0F766E] dark:text-[#2EBD9B]" />
             <span>CONDUSEF (Registro SIPRES Activo)</span>
@@ -20,19 +18,18 @@ export const FooterPublic: React.FC = () => {
 
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl glass-card border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-950 dark:text-slate-200">
             <ShieldCheck className="w-4 h-4 text-[#396CAE]" />
-            <span>CNBV (Supervisión PLD/FT Art. 95 Bis)</span>
+            <span>CNBV (Supervisión PLD/FT Art. 95 Bis LGOAAC)</span>
           </div>
 
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl glass-card border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-950 dark:text-slate-200">
-            <Award className="w-4 h-4 text-amber-600 dark:text-[#D4AF37]" />
-            <span>Miembro ASOFOM desde {COMPANY_INFO.asofomMemberSince}</span>
+            <Scale className="w-4 h-4 text-amber-600 dark:text-[#D4AF37]" />
+            <span>Cumplimiento Art. 110 LFT (Tope Máximo 30%)</span>
           </div>
 
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl glass-card border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-950 dark:text-slate-200">
             <FileCheck2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            <span>{COMPANY_INFO.qualityCertification}</span>
+            <span>{COMPANY_INFO.name}</span>
           </div>
-
         </div>
 
         {/* Corporate Legal Text (Mandatory SOFOM E.N.R. Regulatory Legend) */}
@@ -42,7 +39,7 @@ export const FooterPublic: React.FC = () => {
           </p>
 
           <p>
-            Supervisada y registrada ante la Comisión Nacional para la Protección y Defensa de los Usuarios de Servicios Financieros (CONDUSEF) a través del Sistema de Registro de Prestadores de Servicios Financieros (SIPRES).
+            Unidad Especializada de Atención a Usuarios (UNE) con domicilio en {COMPANY_INFO.uneContact.address}, Teléfonos: {COMPANY_INFO.uneContact.phone}, Correo: {COMPANY_INFO.uneContact.email}. Supervisada y registrada ante la Comisión Nacional para la Protección y Defensa de los Usuarios de Servicios Financieros (CONDUSEF — Sistema SIPRES).
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-400 font-medium">
@@ -66,7 +63,6 @@ export const FooterPublic: React.FC = () => {
             </a>
           </div>
         </div>
-
       </div>
 
       <PrivacyNoticeModal

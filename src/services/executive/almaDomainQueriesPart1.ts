@@ -1,10 +1,12 @@
 /**
  * ALMA VIRTUAL — MOTOR DE CONSULTAS PARAMETRIZADAS: DOMINIOS 1 Y 2 (PREGUNTAS 1–10)
- * Expediente: CRUSE-APO-2026-033
+ * Expediente: CRUSE-APO-2026-033 / CRUSE-APO-2026-051
  * Guardrail 1: 100% SQL Parametrizado ($1, $2). Cero interpolación de cadenas.
  * Guardrail 2: Cero exposición de PII en claro (uso exclusivo de folios, convenios y máscaras).
+ * Guardrail 3: Tope estricto del 30% conforme al Art. 110 LFT con Decimal.js.
  */
 
+import Decimal from 'decimal.js';
 import { db } from '../db/connectionPool';
 import {
   AlmaVirtualDomainExecutionResult,
@@ -12,13 +14,11 @@ import {
 } from '../../types/executive';
 
 function fmtMxn(val: number | string | null | undefined): string {
-  const num = Number(val ?? 0);
+  const num = new Decimal(val ?? 0).toNumber();
   return `$${num.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
 }
 
-/**
- * Q1: Empleados del convenio que realizaron pagos parciales o incompletos en la quincena.
- */
+/** Q1: Empleados del convenio que realizaron pagos parciales o incompletos en la quincena. */
 export async function resolveQ01PartialPaymentsByConvenio(
   entities: AlmaVirtualValidatedEntities
 ): Promise<AlmaVirtualDomainExecutionResult> {
@@ -36,16 +36,8 @@ export async function resolveQ01PartialPaymentsByConvenio(
     status: string;
     audit_notes: string | null;
   }>(
-    `SELECT
-       rb.agreement_name,
-       rb.fortnight_period,
-       ri.curp_masked,
-       la.contract_number,
-       ri.expected_payment,
-       ri.actual_payment,
-       ri.difference,
-       ri.status,
-       ri.audit_notes
+    `SELECT rb.agreement_name, rb.fortnight_period, ri.curp_masked, la.contract_number,
+            ri.expected_payment, ri.actual_payment, ri.difference, ri.status, ri.audit_notes
      FROM reconciliation_items ri
      JOIN reconciliation_batches rb ON rb.id = ri.batch_id
      LEFT JOIN loan_payment_applications lpa ON lpa.reconciliation_item_id = ri.id
@@ -75,9 +67,9 @@ export async function resolveQ01PartialPaymentsByConvenio(
         fortnight_period: r.fortnight_period,
         folio: r.contract_number ?? 'N/A',
         curp_masked: r.curp_masked,
-        expected_payment_mxn: Number(r.expected_payment),
-        actual_payment_mxn: Number(r.actual_payment),
-        difference_mxn: Number(r.difference),
+        expected_payment_mxn: new Decimal(r.expected_payment).toNumber(),
+        actual_payment_mxn: new Decimal(r.actual_payment).toNumber(),
+        difference_mxn: new Decimal(r.difference).toNumber(),
         status: r.status,
       })),
     },
@@ -88,9 +80,7 @@ export async function resolveQ01PartialPaymentsByConvenio(
   };
 }
 
-/**
- * Q2: Prelación de pago parcial (Seguro -> Interés -> IVA -> Capital) para un folio.
- */
+/** Q2: Prelación de pago parcial (Seguro -> Interés -> IVA -> Capital) para un folio. */
 export async function resolveQ02PaymentWaterfallAllocation(
   entities: AlmaVirtualValidatedEntities
 ): Promise<AlmaVirtualDomainExecutionResult> {
@@ -109,18 +99,9 @@ export async function resolveQ02PaymentWaterfallAllocation(
     allocation_mode: string;
     authorized_by: string | null;
   }>(
-    `SELECT
-       la.contract_number,
-       lpa.fortnight_period,
-       lpa.amount_received,
-       lpa.applied_insurance,
-       lpa.applied_interest,
-       lpa.applied_vat,
-       lpa.applied_capital,
-       lpa.balance_before,
-       lpa.balance_after,
-       lpa.allocation_mode,
-       lpa.authorized_by
+    `SELECT la.contract_number, lpa.fortnight_period, lpa.amount_received, lpa.applied_insurance,
+            lpa.applied_interest, lpa.applied_vat, lpa.applied_capital, lpa.balance_before,
+            lpa.balance_after, lpa.allocation_mode, lpa.authorized_by
      FROM loan_payment_applications lpa
      JOIN loan_accounts la ON la.id = lpa.loan_account_id
      WHERE ($1 = 'ALL' OR la.contract_number = $1)
@@ -143,13 +124,13 @@ export async function resolveQ02PaymentWaterfallAllocation(
       applications: res.rows.map((r) => ({
         folio: r.contract_number,
         fortnight_period: r.fortnight_period,
-        amount_received_mxn: Number(r.amount_received),
-        applied_insurance_mxn: Number(r.applied_insurance),
-        applied_interest_mxn: Number(r.applied_interest),
-        applied_vat_mxn: Number(r.applied_vat),
-        applied_capital_mxn: Number(r.applied_capital),
-        balance_before_mxn: Number(r.balance_before),
-        balance_after_mxn: Number(r.balance_after),
+        amount_received_mxn: new Decimal(r.amount_received).toNumber(),
+        applied_insurance_mxn: new Decimal(r.applied_insurance).toNumber(),
+        applied_interest_mxn: new Decimal(r.applied_interest).toNumber(),
+        applied_vat_mxn: new Decimal(r.applied_vat).toNumber(),
+        applied_capital_mxn: new Decimal(r.applied_capital).toNumber(),
+        balance_before_mxn: new Decimal(r.balance_before).toNumber(),
+        balance_after_mxn: new Decimal(r.balance_after).toNumber(),
         allocation_mode: r.allocation_mode,
         authorized_by: r.authorized_by ?? 'SISTEMA_WORM',
       })),
@@ -161,9 +142,7 @@ export async function resolveQ02PaymentWaterfallAllocation(
   };
 }
 
-/**
- * Q3: Acumulado total esperado de retención por dependencia para la próxima quincena.
- */
+/** Q3: Acumulado total esperado de retención por dependencia para la próxima quincena. */
 export async function resolveQ03ExpectedRetentionByConvenio(
   entities: AlmaVirtualValidatedEntities
 ): Promise<AlmaVirtualDomainExecutionResult> {
@@ -176,23 +155,21 @@ export async function resolveQ03ExpectedRetentionByConvenio(
     expected_fortnightly_retention: number;
     total_active_balance: number;
   }>(
-    `SELECT
-       e.convenio,
-       c.display_name,
-       COUNT(la.id) AS active_loans,
-       COALESCE(SUM(la.fortnightly_payment), 0) AS expected_fortnightly_retention,
-       COALESCE(SUM(la.current_principal_balance), 0) AS total_active_balance
+    `SELECT e.convenio, c.display_name, COUNT(la.id) AS active_loans,
+            COALESCE(SUM(la.fortnightly_payment), 0) AS expected_fortnightly_retention,
+            COALESCE(SUM(la.current_principal_balance), 0) AS total_active_balance
      FROM loan_accounts la
      JOIN expedientes e ON e.id = la.expediente_id
      JOIN convenios c ON c.code = e.convenio
-     WHERE la.status = $1
-       AND ($2 = 'ALL' OR e.convenio = $2)
+     WHERE la.status = $1 AND ($2 = 'ALL' OR e.convenio = $2)
      GROUP BY e.convenio, c.display_name
      ORDER BY expected_fortnightly_retention DESC`,
     ['ACTIVE', convenioParam]
   );
 
-  const grandTotal = res.rows.reduce((acc, r) => acc + Number(r.expected_fortnightly_retention), 0);
+  const grandTotal = res.rows
+    .reduce((acc, r) => acc.plus(new Decimal(r.expected_fortnightly_retention)), new Decimal(0))
+    .toNumber();
   const lines = res.rows.map(
     (r) =>
       `• **${r.convenio}** (${r.display_name}): **${r.active_loans} créditos activos** · Retención Quincenal Esperada: **${fmtMxn(r.expected_fortnightly_retention)}** (Saldo insoluto: ${fmtMxn(r.total_active_balance)})`
@@ -208,9 +185,9 @@ export async function resolveQ03ExpectedRetentionByConvenio(
       convenios: res.rows.map((r) => ({
         convenio: r.convenio,
         display_name: r.display_name,
-        active_loans: Number(r.active_loans),
-        expected_fortnightly_retention_mxn: Number(r.expected_fortnightly_retention),
-        total_active_balance_mxn: Number(r.total_active_balance),
+        active_loans: new Decimal(r.active_loans).toNumber(),
+        expected_fortnightly_retention_mxn: new Decimal(r.expected_fortnightly_retention).toNumber(),
+        total_active_balance_mxn: new Decimal(r.total_active_balance).toNumber(),
       })),
     },
     deterministicMarkdown: [
@@ -220,9 +197,7 @@ export async function resolveQ03ExpectedRetentionByConvenio(
   };
 }
 
-/**
- * Q4: Créditos Express con saldo insoluto menor a $1,000 pesos por liquidarse.
- */
+/** Q4: Créditos Express con saldo insoluto menor a $1,000 pesos por liquidarse. */
 export async function resolveQ04ExpressNearPayoff(): Promise<AlmaVirtualDomainExecutionResult> {
   const res = await db.query<{
     contract_number: string;
@@ -232,18 +207,11 @@ export async function resolveQ04ExpressNearPayoff(): Promise<AlmaVirtualDomainEx
     fortnightly_payment: number;
     status: string;
   }>(
-    `SELECT
-       la.contract_number,
-       e.convenio,
-       e.curp_masked,
-       la.current_principal_balance,
-       la.fortnightly_payment,
-       la.status
+    `SELECT la.contract_number, e.convenio, e.curp_masked, la.current_principal_balance,
+            la.fortnightly_payment, la.status
      FROM loan_accounts la
      JOIN expedientes e ON e.id = la.expediente_id
-     WHERE la.product_type = $1
-       AND la.current_principal_balance > 0
-       AND la.current_principal_balance < $2
+     WHERE la.product_type = $1 AND la.current_principal_balance > 0 AND la.current_principal_balance < $2
      ORDER BY la.current_principal_balance ASC`,
     ['EXPRESS', 1000.0]
   );
@@ -264,8 +232,8 @@ export async function resolveQ04ExpressNearPayoff(): Promise<AlmaVirtualDomainEx
         folio: r.contract_number,
         convenio: r.convenio,
         curp_masked: r.curp_masked,
-        current_principal_balance_mxn: Number(r.current_principal_balance),
-        fortnightly_payment_mxn: Number(r.fortnightly_payment),
+        current_principal_balance_mxn: new Decimal(r.current_principal_balance).toNumber(),
+        fortnightly_payment_mxn: new Decimal(r.fortnightly_payment).toNumber(),
         status: r.status,
       })),
     },
@@ -276,9 +244,7 @@ export async function resolveQ04ExpressNearPayoff(): Promise<AlmaVirtualDomainEx
   };
 }
 
-/**
- * Q5: Créditos Quincenales donde el descuento esperado no coincidió con lo depositado.
- */
+/** Q5: Créditos Quincenales donde el descuento esperado no coincidió con lo depositado. */
 export async function resolveQ05PayrollDiscrepanciesLastCut(): Promise<AlmaVirtualDomainExecutionResult> {
   const res = await db.query<{
     contract_number: string | null;
@@ -290,21 +256,13 @@ export async function resolveQ05PayrollDiscrepanciesLastCut(): Promise<AlmaVirtu
     difference: number;
     status: string;
   }>(
-    `SELECT
-       la.contract_number,
-       rb.agreement_name,
-       rb.fortnight_period,
-       ri.curp_masked,
-       ri.expected_payment,
-       ri.actual_payment,
-       ri.difference,
-       ri.status
+    `SELECT la.contract_number, rb.agreement_name, rb.fortnight_period, ri.curp_masked,
+            ri.expected_payment, ri.actual_payment, ri.difference, ri.status
      FROM reconciliation_items ri
      JOIN reconciliation_batches rb ON rb.id = ri.batch_id
      LEFT JOIN loan_payment_applications lpa ON lpa.reconciliation_item_id = ri.id
      LEFT JOIN loan_accounts la ON la.id = lpa.loan_account_id
-     WHERE ri.difference <> $1
-       AND COALESCE(la.payment_frequency, $2) = $2
+     WHERE ri.difference <> $1 AND COALESCE(la.payment_frequency, $2) = $2
      ORDER BY rb.fortnight_period DESC, ABS(ri.difference) DESC`,
     [0, 'QUINCENAL']
   );
@@ -325,9 +283,9 @@ export async function resolveQ05PayrollDiscrepanciesLastCut(): Promise<AlmaVirtu
         convenio: r.agreement_name,
         fortnight_period: r.fortnight_period,
         curp_masked: r.curp_masked,
-        expected_payment_mxn: Number(r.expected_payment),
-        actual_payment_mxn: Number(r.actual_payment),
-        difference_mxn: Number(r.difference),
+        expected_payment_mxn: new Decimal(r.expected_payment).toNumber(),
+        actual_payment_mxn: new Decimal(r.actual_payment).toNumber(),
+        difference_mxn: new Decimal(r.difference).toNumber(),
         status: r.status,
       })),
     },
@@ -338,9 +296,7 @@ export async function resolveQ05PayrollDiscrepanciesLastCut(): Promise<AlmaVirtu
   };
 }
 
-/**
- * Q6: Créditos normales activos simultáneos por empleado (CURP) y sumatoria de cuotas (RN-01).
- */
+/** Q6: Créditos normales activos simultáneos por empleado (CURP) y sumatoria de cuotas (RN-01). */
 export async function resolveQ06SimultaneousNormalLoansByCurp(
   entities: AlmaVirtualValidatedEntities
 ): Promise<AlmaVirtualDomainExecutionResult> {
@@ -354,18 +310,13 @@ export async function resolveQ06SimultaneousNormalLoansByCurp(
     sum_principal_balance: number;
     folios: string;
   }>(
-    `SELECT
-       e.curp_masked,
-       e.convenio,
-       COUNT(la.id) AS active_normal_loans,
-       COALESCE(SUM(la.fortnightly_payment), 0) AS sum_fortnightly_payment,
-       COALESCE(SUM(la.current_principal_balance), 0) AS sum_principal_balance,
-       STRING_AGG(la.contract_number, ', ' ORDER BY la.contract_number) AS folios
+    `SELECT e.curp_masked, e.convenio, COUNT(la.id) AS active_normal_loans,
+            COALESCE(SUM(la.fortnightly_payment), 0) AS sum_fortnightly_payment,
+            COALESCE(SUM(la.current_principal_balance), 0) AS sum_principal_balance,
+            STRING_AGG(la.contract_number, ', ' ORDER BY la.contract_number) AS folios
      FROM loan_accounts la
      JOIN expedientes e ON e.id = la.expediente_id
-     WHERE la.product_type = $1
-       AND la.status = $2
-       AND (e.curp_masked LIKE $3 OR $3 = 'MORA%')
+     WHERE la.product_type = $1 AND la.status = $2 AND (e.curp_masked LIKE $3 OR $3 = 'MORA%')
      GROUP BY e.id, e.curp_masked, e.convenio
      HAVING COUNT(la.id) >= 1
      ORDER BY COUNT(la.id) DESC, sum_fortnightly_payment DESC
@@ -388,9 +339,9 @@ export async function resolveQ06SimultaneousNormalLoansByCurp(
       borrowers: res.rows.map((r) => ({
         curp_masked: r.curp_masked,
         convenio: r.convenio,
-        active_normal_loans: Number(r.active_normal_loans),
-        sum_fortnightly_payment_mxn: Number(r.sum_fortnightly_payment),
-        sum_principal_balance_mxn: Number(r.sum_principal_balance),
+        active_normal_loans: new Decimal(r.active_normal_loans).toNumber(),
+        sum_fortnightly_payment_mxn: new Decimal(r.sum_fortnightly_payment).toNumber(),
+        sum_principal_balance_mxn: new Decimal(r.sum_principal_balance).toNumber(),
         folios: r.folios,
       })),
     },
@@ -401,9 +352,7 @@ export async function resolveQ06SimultaneousNormalLoansByCurp(
   };
 }
 
-/**
- * Q7: Trazabilidad de Reestructuras N-a-1 (Nuevo Folio -> Folio Original Liquidado).
- */
+/** Q7: Trazabilidad de Reestructuras N-a-1 (Nuevo Folio -> Folio Original Liquidado). */
 export async function resolveQ07RestructureTraceability(
   entities: AlmaVirtualValidatedEntities
 ): Promise<AlmaVirtualDomainExecutionResult> {
@@ -418,14 +367,9 @@ export async function resolveQ07RestructureTraceability(
     authorized_by: string;
     restructured_at: string;
   }>(
-    `SELECT
-       la_new.contract_number AS new_folio,
-       la_prev.contract_number AS previous_folio,
-       e.convenio,
-       e.curp_masked,
-       lr.absorbed_payoff_amount,
-       lr.authorized_by,
-       CAST(lr.restructured_at AS TEXT) AS restructured_at
+    `SELECT la_new.contract_number AS new_folio, la_prev.contract_number AS previous_folio,
+            e.convenio, e.curp_masked, lr.absorbed_payoff_amount, lr.authorized_by,
+            CAST(lr.restructured_at AS TEXT) AS restructured_at
      FROM loan_restructures lr
      JOIN loan_accounts la_new ON la_new.id = lr.new_loan_id
      JOIN loan_accounts la_prev ON la_prev.id = lr.previous_loan_id
@@ -451,7 +395,7 @@ export async function resolveQ07RestructureTraceability(
         previous_folio: r.previous_folio,
         convenio: r.convenio,
         curp_masked: r.curp_masked,
-        absorbed_payoff_amount_mxn: Number(r.absorbed_payoff_amount),
+        absorbed_payoff_amount_mxn: new Decimal(r.absorbed_payoff_amount).toNumber(),
         authorized_by: r.authorized_by,
         restructured_at: r.restructured_at,
       })),
@@ -463,9 +407,7 @@ export async function resolveQ07RestructureTraceability(
   };
 }
 
-/**
- * Q8: Créditos desembolsados mediante cheque físico en los últimos 30 días.
- */
+/** Q8: Créditos desembolsados mediante cheque físico en los últimos 30 días. */
 export async function resolveQ08CheckDisbursementsLast30Days(): Promise<AlmaVirtualDomainExecutionResult> {
   const res = await db.query<{
     contract_number: string;
@@ -476,14 +418,8 @@ export async function resolveQ08CheckDisbursementsLast30Days(): Promise<AlmaVirt
     disbursement_reference: string | null;
     activated_at: string;
   }>(
-    `SELECT
-       la.contract_number,
-       e.convenio,
-       e.curp_masked,
-       la.principal_original,
-       la.disbursement_method,
-       la.disbursement_reference,
-       CAST(la.activated_at AS TEXT) AS activated_at
+    `SELECT la.contract_number, e.convenio, e.curp_masked, la.principal_original,
+            la.disbursement_method, la.disbursement_reference, CAST(la.activated_at AS TEXT) AS activated_at
      FROM loan_accounts la
      JOIN expedientes e ON e.id = la.expediente_id
      WHERE la.disbursement_method = $1
@@ -507,7 +443,7 @@ export async function resolveQ08CheckDisbursementsLast30Days(): Promise<AlmaVirt
         folio: r.contract_number,
         convenio: r.convenio,
         curp_masked: r.curp_masked,
-        principal_original_mxn: Number(r.principal_original),
+        principal_original_mxn: new Decimal(r.principal_original).toNumber(),
         check_reference: r.disbursement_reference,
         activated_at: r.activated_at,
       })),
@@ -519,9 +455,7 @@ export async function resolveQ08CheckDisbursementsLast30Days(): Promise<AlmaVirt
   };
 }
 
-/**
- * Q9: Verificación de documento 'Oficio de 1er Pago' cargado en el expediente.
- */
+/** Q9: Verificación de documento 'Oficio de 1er Pago' cargado en el expediente. */
 export async function resolveQ09FirstPaymentOfficialLetterDoc(
   entities: AlmaVirtualValidatedEntities
 ): Promise<AlmaVirtualDomainExecutionResult> {
@@ -536,19 +470,12 @@ export async function resolveQ09FirstPaymentOfficialLetterDoc(
     upload_date: string;
     union_official_letter_no: string | null;
   }>(
-    `SELECT
-       la.contract_number,
-       e.convenio,
-       e.curp_masked,
-       d.type AS doc_type,
-       d.encrypted_s3_key,
-       CAST(d.upload_date AS TEXT) AS upload_date,
-       la.union_official_letter_no
+    `SELECT la.contract_number, e.convenio, e.curp_masked, d.type AS doc_type,
+            d.encrypted_s3_key, CAST(d.upload_date AS TEXT) AS upload_date, la.union_official_letter_no
      FROM documents d
      JOIN expedientes e ON e.id = d.expediente_id
      LEFT JOIN loan_accounts la ON la.id = d.loan_account_id
-     WHERE d.type = $1
-       AND ($2 = 'ALL' OR la.contract_number = $2)
+     WHERE d.type = $1 AND ($2 = 'ALL' OR la.contract_number = $2)
      ORDER BY d.upload_date DESC`,
     ['OFICIO_PRIMER_PAGO', folioParam]
   );
@@ -581,9 +508,7 @@ export async function resolveQ09FirstPaymentOfficialLetterDoc(
   };
 }
 
-/**
- * Q10: Límite máximo de descuento permitido (Regla del 30% / 35%) sobre sueldo reportado.
- */
+/** Q10: Límite máximo de descuento permitido (Regla del 30% Art. 110 LFT) sobre sueldo reportado. */
 export async function resolveQ10MaxPayrollDiscountRule30(
   entities: AlmaVirtualValidatedEntities
 ): Promise<AlmaVirtualDomainExecutionResult> {
@@ -597,28 +522,22 @@ export async function resolveQ10MaxPayrollDiscountRule30(
     payroll_deductions: number;
     fortnightly_payment: number;
   }>(
-    `SELECT
-       la.contract_number,
-       e.convenio,
-       e.curp_masked,
-       e.gross_income,
-       COALESCE(e.payroll_deductions, 0) AS payroll_deductions,
-       la.fortnightly_payment
+    `SELECT la.contract_number, e.convenio, e.curp_masked, e.gross_income,
+            COALESCE(e.payroll_deductions, 0) AS payroll_deductions, la.fortnightly_payment
      FROM loan_accounts la
      JOIN expedientes e ON e.id = la.expediente_id
-     WHERE e.gross_income IS NOT NULL
-       AND ($1 = 'ALL' OR la.contract_number = $1)
+     WHERE e.gross_income IS NOT NULL AND ($1 = 'ALL' OR la.contract_number = $1)
      ORDER BY la.contract_number ASC`,
     [folioParam]
   );
 
   const lines = res.rows.map((r) => {
-    const gross = Number(r.gross_income);
-    const ded = Number(r.payroll_deductions);
-    const netSalary = Math.max(gross - ded, 0);
-    const limit30Gross = Number((gross * 0.3).toFixed(2));
-    const limit35Net = Number((netSalary * 0.35).toFixed(2));
-    return `• **Folio ${r.contract_number}** (${r.convenio} · \`${r.curp_masked}\`): Sueldo Reportado **${fmtMxn(gross)}** (Deducciones previas: ${fmtMxn(ded)}) → **Tope Regla 30%: ${fmtMxn(limit30Gross)}** | Tope 35% Neto: **${fmtMxn(limit35Net)}** | Cuota Actual: **${fmtMxn(r.fortnightly_payment)}**`;
+    const gross = new Decimal(r.gross_income);
+    const ded = new Decimal(r.payroll_deductions);
+    const netSalary = Decimal.max(gross.minus(ded), 0);
+    const limit30Gross = gross.times('0.30').toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+    const limit30Net = netSalary.times('0.30').toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+    return `• **Folio ${r.contract_number}** (${r.convenio} · \`${r.curp_masked}\`): Sueldo Reportado **${fmtMxn(gross.toNumber())}** (Deducciones previas: ${fmtMxn(ded.toNumber())}) → **Tope Bruto 30% (Art. 110 LFT): ${fmtMxn(limit30Gross)}** | **Tope Neto 30% (Art. 110 LFT): ${fmtMxn(limit30Net)}** | Cuota Actual: **${fmtMxn(r.fortnightly_payment)}**`;
   });
 
   return {
@@ -628,22 +547,23 @@ export async function resolveQ10MaxPayrollDiscountRule30(
     structuredData: {
       queried_folio: folioParam,
       calculations: res.rows.map((r) => {
-        const gross = Number(r.gross_income);
-        const ded = Number(r.payroll_deductions);
+        const gross = new Decimal(r.gross_income);
+        const ded = new Decimal(r.payroll_deductions);
+        const netSalary = Decimal.max(gross.minus(ded), 0);
         return {
           folio: r.contract_number,
           convenio: r.convenio,
           curp_masked: r.curp_masked,
-          gross_income_mxn: gross,
-          payroll_deductions_mxn: ded,
-          max_discount_rule_30_mxn: Number((gross * 0.3).toFixed(2)),
-          max_discount_rule_35_net_mxn: Number(((gross - ded) * 0.35).toFixed(2)),
-          current_fortnightly_payment_mxn: Number(r.fortnightly_payment),
+          gross_income_mxn: gross.toNumber(),
+          payroll_deductions_mxn: ded.toNumber(),
+          max_discount_rule_30_mxn: gross.times('0.30').toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+          max_discount_rule_30_net_mxn: netSalary.times('0.30').toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+          current_fortnightly_payment_mxn: new Decimal(r.fortnightly_payment).toNumber(),
         };
       }),
     },
     deterministicMarkdown: [
-      `🧮 **Cálculo de Capacidad de Pago y Tope de Descuento (Regla del 30% / 35%):**`,
+      `🧮 **Cálculo de Capacidad de Pago y Tope de Descuento (Regla del 30% Art. 110 LFT):**`,
       ...lines,
     ].join('\n'),
   };

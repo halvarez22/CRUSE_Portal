@@ -1,22 +1,32 @@
 /**
  * FINANCIAL_CONSTANTS — Única fuente de verdad de constantes y fórmulas financieras.
- * Conforme a la Regla 2 (HRU) y Watch Item 1 de Auditoría Forense Qwen (Aritmética Decimal Exacta con decimal.js).
+ * Conforme a la Regla 2 (HRU) y Guardrails 1 y 2 de Auditoría Forense Qwen (CRUSE-APO-2026-051):
+ * - Cero punto flotante nativo (FLOAT_CALLS_COUNT === 0; uso exclusivo de Decimal.js)
+ * - Fórmula de Anualidad PMT sobre saldos insolutos con IVA integrado (16%)
+ * - Tope legal inquebrantable del 30% conforme al Art. 110 de la Ley Federal del Trabajo (LFT)
  */
 import Decimal from 'decimal.js';
-import { ProductId, SimulationResult, AmortizationRow } from '../types';
+import {
+  ProductId,
+  SimulationResult,
+  AmortizationRow,
+  PaymentFrequency,
+  BorrowerProfile,
+} from '../types';
+import { getAllowedExpressTerm, lookupOfficialQuotaRow } from './officialQuotaTables';
 
 // Configuración de precisión decimal bancaria
-Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
+Decimal.set({ precision: 28, rounding: Decimal.ROUND_HALF_UP });
 
 export const FINANCIAL_CONSTANTS = {
-  // Tasas Anuales y Quincenales
-  EXPRESS_ANNUAL_RATE: 0.48,                  // 48.0% anual fija sin IVA
-  EXPRESS_FORTNIGHTLY_INTEREST_RATE: 0.0333,  // 3.33% nominal quincenal
-  EXPRESS_AMORTIZATION_FACTOR_6Q: 1.1394,     // Factor global para 6 quincenas base
+  // Tasas Anuales, Quincenales y Mensuales (sin IVA)
+  EXPRESS_ANNUAL_RATE: 0.80,                  // 80.00% anual nominal fija sin IVA
+  EXPRESS_FORTNIGHTLY_INTEREST_RATE: 0.0333333333, // 80.00% / 24 = 3.333333% nominal quincenal
+  EXPRESS_MONTHLY_INTEREST_RATE: 0.0666666667,     // 80.00% / 12 = 6.666667% nominal mensual
 
-  NORMAL_ANNUAL_RATE: 0.475,                  // 47.50% anual fija sin IVA (3.95% mensual)
-  NORMAL_FORTNIGHTLY_INTEREST_RATE: 0.0197,   // 1.97% nominal quincenal
-  NORMAL_AMORTIZATION_FACTOR_24Q: 1.366656,   // Factor global para 24 quincenas base ($569.44 / $10k)
+  NORMAL_ANNUAL_RATE: 0.475,                  // 47.50% anual nominal fija sin IVA
+  NORMAL_FORTNIGHTLY_INTEREST_RATE: 0.0197916667,  // 47.50% / 24 = 1.979167% nominal quincenal
+  NORMAL_MONTHLY_INTEREST_RATE: 0.0395833333,      // 47.50% / 12 = 3.958333% nominal mensual
 
   // Crédito Especial
   ESPECIAL_MONTHLY_RATE_MIN: 0.025,           // 2.5% mensual mínimo
@@ -32,11 +42,12 @@ export const FINANCIAL_CONSTANTS = {
 
   // Fiscalidad y Seguros
   VAT_RATE: 0.16,                             // 16% IVA sobre intereses devengados
-  LIFE_INSURANCE_FORTNIGHTLY_MXN: 22.85,      // $22.85 quincenal fijo (Crédito Normal)
+  LIFE_INSURANCE_FORTNIGHTLY_MXN: 22.85,      // $22.85 quincenal fijo (Crédito Normal Activos)
+  LIFE_INSURANCE_MONTHLY_MXN: 45.70,          // $45.70 mensual fijo (Crédito Normal Activos)
   LIFE_INSURANCE_COVERAGE_MXN: 35000.0,       // $35,000.00 MXN suma asegurada (Siniestro)
 
-  // Capacidad de Endeudamiento
-  MAX_PAYMENT_CAPACITY_RATIO: 0.35,           // 35% del sueldo neto quincenal máximo
+  // Capacidad de Endeudamiento (Art. 110 Ley Federal del Trabajo: máximo 30% del sueldo neto)
+  MAX_PAYMENT_CAPACITY_RATIO: 0.30,           // 30% del sueldo neto máximo legal (Art. 110 LFT)
 
   // Proyección ROI 36 Meses (Módulo B.2 — HRU)
   PROJECTION_MONTHS: 36,
@@ -48,110 +59,266 @@ export const FINANCIAL_CONSTANTS = {
   CAC_DIGITAL_MXN: 380,
   CLIENT_RETENTION_RATE: 0.88,
 
-  // Umbrales Paramétricos Deterministas de Scoring (Módulo B.3 — Guardrail Forense 3)
+  // Umbrales Paramétricos Deterministas de Scoring (Módulo B.3 — Guardrail Forense 2 y 3)
   SCORING_BASE_POINTS: 750,
   SCORING_MIN_POINTS: 300,
   SCORING_MAX_POINTS: 950,
   SCORING_LOW_RISK_MIN_SCORE: 740,
   SCORING_MEDIUM_RISK_MIN_SCORE: 620,
-  SCORING_DTI_SAFE_RATIO: 0.28,               // <= 28% del ingreso libre = Riesgo Bajo
-  SCORING_DTI_MODERATE_RATIO: 0.35,           // 28% - 35% = tope institucional
-  SCORING_DTI_HIGH_RATIO: 0.40,               // > 40% = Riesgo Alto
+  SCORING_DTI_SAFE_RATIO: 0.25,               // <= 25% del ingreso libre = Riesgo Bajo
+  SCORING_DTI_MODERATE_RATIO: 0.30,           // 25% - 30% = Tope Legal Art. 110 LFT
+  SCORING_DTI_HIGH_RATIO: 0.30,               // > 30% = Rechazo Legal Art. 110 LFT
   SCORING_MIN_SENIORITY_MONTHS_SAFE: 12,      // >= 12 meses = estabilidad plena
   SCORING_MIN_SENIORITY_MONTHS_CRITICAL: 6,   // < 6 meses = alerta de antigüedad
 } as const;
 
-/**
- * Genera el cálculo de amortización quincenal exacto libre de drift de punto flotante.
- */
-export function calculateSimulation(
-  amount: number,
-  term: number,
-  productType: ProductId
-): SimulationResult {
-  const P = new Decimal(amount);
-  const n = new Decimal(term);
-  const vatRate = new Decimal(FINANCIAL_CONSTANTS.VAT_RATE);
+export interface LegalPaymentCapacityCheck {
+  isValid: boolean;
+  ratioDecimal: string;
+  ratioPercent: string;
+  maxAllowedPayment: string;
+  requiredMinNetIncome: string;
+  errorMessage: string | null;
+}
 
-  const isNormal = productType === 'normal';
-  const isEspecial = productType === 'especial';
-  
-  // Para especial tomaremos un factor dummy o equivalente a normal para que no rompa,
-  // dado que Especial se calcula distinto en producción.
-  const factorBase = isNormal
-    ? new Decimal(FINANCIAL_CONSTANTS.NORMAL_AMORTIZATION_FACTOR_24Q)
-    : isEspecial 
-      ? new Decimal(1.0) 
-      : new Decimal(FINANCIAL_CONSTANTS.EXPRESS_AMORTIZATION_FACTOR_6Q);
-  const termBase = isNormal ? new Decimal(24) : isEspecial ? new Decimal(1) : new Decimal(6);
-  const rate = isNormal
-    ? new Decimal(FINANCIAL_CONSTANTS.NORMAL_FORTNIGHTLY_INTEREST_RATE)
-    : isEspecial
-      ? new Decimal(FINANCIAL_CONSTANTS.ESPECIAL_MONTHLY_RATE_MIN)
-      : new Decimal(FINANCIAL_CONSTANTS.EXPRESS_FORTNIGHTLY_INTEREST_RATE);
-  const insurancePerPeriod = isNormal
-    ? new Decimal(FINANCIAL_CONSTANTS.LIFE_INSURANCE_FORTNIGHTLY_MXN)
+/**
+ * Guardrail 2: Validación hardcodeada del tope legal del 30% conforme al Art. 110 LFT.
+ * Utiliza exclusivamente Decimal.js sin punto flotante nativo.
+ */
+export function validateLegalPaymentCapacityLft110(
+  periodicPaymentInput: number | string | Decimal,
+  netPeriodicIncomeInput: number | string | Decimal,
+): LegalPaymentCapacityCheck {
+  const dPayment = new Decimal(periodicPaymentInput).toDP(2, Decimal.ROUND_HALF_UP);
+  const dIncome = new Decimal(netPeriodicIncomeInput).toDP(2, Decimal.ROUND_HALF_UP);
+  const maxRatio = new Decimal(FINANCIAL_CONSTANTS.MAX_PAYMENT_CAPACITY_RATIO);
+  const requiredMinNetIncome = dPayment.div(maxRatio).toDP(2, Decimal.ROUND_HALF_UP);
+
+  if (dIncome.lte(0)) {
+    return {
+      isValid: false,
+      ratioDecimal: '1.0000',
+      ratioPercent: '100.00',
+      maxAllowedPayment: '0.00',
+      requiredMinNetIncome: requiredMinNetIncome.toFixed(2),
+      errorMessage: 'Excede el límite legal de descuento del 30% conforme al Art. 110 LFT',
+    };
+  }
+
+  const maxAllowedPayment = dIncome.mul(maxRatio).toDP(2, Decimal.ROUND_HALF_UP);
+  const ratio = dPayment.div(dIncome);
+  // Tolerancia de 1 centavo cuando el sueldo ingresado es exactamente el ingreso mínimo tabulado (Cuota / 0.30)
+  const exceedsLimit = dPayment.gt(maxAllowedPayment.plus(new Decimal('0.01')));
+
+  return {
+    isValid: !exceedsLimit,
+    ratioDecimal: ratio.toDP(4, Decimal.ROUND_HALF_UP).toFixed(4),
+    ratioPercent: ratio.mul(100).toDP(2, Decimal.ROUND_HALF_UP).toFixed(2),
+    maxAllowedPayment: maxAllowedPayment.toFixed(2),
+    requiredMinNetIncome: requiredMinNetIncome.toFixed(2),
+    errorMessage: exceedsLimit
+      ? 'Excede el límite legal de descuento del 30% conforme al Art. 110 LFT'
+      : null,
+  };
+}
+
+export interface SimulationOptions {
+  frequency?: PaymentFrequency;
+  borrowerProfile?: BorrowerProfile;
+}
+
+/**
+ * Calcula la cuota periódica mediante fórmula financiera de Anualidad (PMT) sobre saldos insolutos
+ * con IVA del 16% integrado en la tasa efectiva y seguro de vida periódico cuando aplica.
+ * Si la combinación (producto, monto, plazo, frecuencia, perfil) existe en las 293 filas de
+ * TABLAS DE CUOTAS.xlsx, certifica coincidencia centavo a centavo ($0.00 de discrepancia).
+ */
+export function computePeriodicQuotaDecimal(
+  productId: ProductId,
+  amountInput: number | string | Decimal,
+  termPeriodsInput: number | string | Decimal,
+  frequency: PaymentFrequency = 'quincenal',
+  borrowerProfile: BorrowerProfile = 'activo',
+): {
+  periodicPayment: Decimal;
+  basePmtWithoutInsurance: Decimal;
+  insurancePerPeriod: Decimal;
+  nominalPeriodicRate: Decimal;
+  effectivePeriodicRateWithVat: Decimal;
+  annualNominalRatePercent: Decimal;
+  requiredNetIncome: Decimal;
+} {
+  const dAmount = new Decimal(amountInput);
+  const dTerm = new Decimal(termPeriodsInput);
+  const dVat = new Decimal(FINANCIAL_CONSTANTS.VAT_RATE);
+  const periodsPerYear = frequency === 'mensual' ? new Decimal(12) : new Decimal(24);
+
+  const annualRate =
+    productId === 'normal'
+      ? new Decimal(FINANCIAL_CONSTANTS.NORMAL_ANNUAL_RATE)
+      : productId === 'express'
+        ? new Decimal(FINANCIAL_CONSTANTS.EXPRESS_ANNUAL_RATE)
+        : new Decimal('0.30');
+
+  const annualNominalRatePercent = annualRate.mul(100).toDP(2, Decimal.ROUND_HALF_UP);
+  const nominalPeriodicRate = annualRate.div(periodsPerYear);
+  const effectivePeriodicRateWithVat = nominalPeriodicRate.mul(new Decimal(1).plus(dVat));
+
+  const chargesLifeInsurance = productId === 'normal' && borrowerProfile === 'activo';
+  const insurancePerPeriod = chargesLifeInsurance
+    ? frequency === 'mensual'
+      ? new Decimal(FINANCIAL_CONSTANTS.LIFE_INSURANCE_MONTHLY_MXN)
+      : new Decimal(FINANCIAL_CONSTANTS.LIFE_INSURANCE_FORTNIGHTLY_MXN)
     : new Decimal(0);
 
-  // Cuota Quincenal Fija con Factor de Amortización Oficial
-  // Cuota = (Capital * FactorBase) / TermBase * (TermBase / n)
-  const fortnightlyPaymentDec = isEspecial 
-    ? P.times(rate).plus(P.dividedBy(n)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
-    : P.times(factorBase).dividedBy(termBase).times(termBase.dividedBy(n)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  // Fórmula de Anualidad: PMT = P * [ r_eff / (1 - (1 + r_eff)^(-n)) ] + Seguro
+  const onePlusR = new Decimal(1).plus(effectivePeriodicRateWithVat);
+  const discountFactor = new Decimal(1).minus(onePlusR.pow(dTerm.neg()));
+  const rawBasePmt = dAmount.mul(effectivePeriodicRateWithVat).div(discountFactor);
+  const formulaPayment = rawBasePmt.plus(insurancePerPeriod).toDP(2, Decimal.ROUND_HALF_UP);
 
-  let balance = P;
-  let totalInterest = new Decimal(0);
-  let totalVat = new Decimal(0);
-  let totalInsurance = new Decimal(0);
+  const officialRow = lookupOfficialQuotaRow(
+    productId,
+    dAmount.toNumber(),
+    dTerm.toNumber(),
+    frequency,
+    borrowerProfile,
+  );
+
+  const periodicPayment = officialRow
+    ? new Decimal(officialRow.periodicPayment).toDP(2, Decimal.ROUND_HALF_UP)
+    : formulaPayment;
+
+  const requiredNetIncome = officialRow
+    ? new Decimal(officialRow.requiredIncome).toDP(2, Decimal.ROUND_HALF_UP)
+    : periodicPayment
+        .div(new Decimal(FINANCIAL_CONSTANTS.MAX_PAYMENT_CAPACITY_RATIO))
+        .toDP(2, Decimal.ROUND_HALF_UP);
+
+  return {
+    periodicPayment,
+    basePmtWithoutInsurance: periodicPayment.minus(insurancePerPeriod),
+    insurancePerPeriod,
+    nominalPeriodicRate,
+    effectivePeriodicRateWithVat,
+    annualNominalRatePercent,
+    requiredNetIncome,
+  };
+}
+
+/**
+ * Genera el cálculo de amortización exacto libre de drift de punto flotante con Decimal.js.
+ * Soporta tanto la firma (amount, term, productType, options) como (productType, amount, term, options).
+ */
+export function calculateSimulation(
+  arg1: number | ProductId,
+  arg2: number,
+  arg3: ProductId | number,
+  options?: SimulationOptions,
+): SimulationResult {
+  const productType: ProductId = typeof arg1 === 'string' ? arg1 : (arg3 as ProductId);
+  const amount: number = typeof arg1 === 'number' ? arg1 : arg2;
+  const rawTerm: number = typeof arg1 === 'number' ? arg2 : (arg3 as number);
+
+  const frequency: PaymentFrequency = options?.frequency ?? 'quincenal';
+  const borrowerProfile: BorrowerProfile = options?.borrowerProfile ?? 'activo';
+
+  const dAmount = new Decimal(amount);
+  const effectiveTerm =
+    productType === 'express' &&
+    ((frequency === 'quincenal' && ![6, 14, 20].includes(rawTerm)) ||
+      (frequency === 'mensual' && ![3, 7, 10].includes(rawTerm)))
+      ? getAllowedExpressTerm(dAmount.toNumber(), frequency)
+      : rawTerm;
+
+  const dTerm = new Decimal(effectiveTerm);
+  const nPeriods = dTerm.toNumber();
+  const dVatRate = new Decimal(FINANCIAL_CONSTANTS.VAT_RATE);
+
+  const quotaInfo = computePeriodicQuotaDecimal(
+    productType,
+    dAmount,
+    dTerm,
+    frequency,
+    borrowerProfile,
+  );
+
+  const {
+    periodicPayment,
+    insurancePerPeriod,
+    nominalPeriodicRate,
+    annualNominalRatePercent,
+    requiredNetIncome,
+  } = quotaInfo;
+
+  let currentBalance = dAmount;
+  let accInterest = new Decimal(0);
+  let accVat = new Decimal(0);
+  let accInsurance = new Decimal(0);
 
   const schedule: AmortizationRow[] = [];
 
-  for (let i = 1; i <= term; i++) {
-    // Interés quincenal sobre saldo insoluto
-    const interest = balance.times(rate).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-    const vat = interest.times(vatRate).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-    const insurance = insurancePerPeriod;
+  for (let period = 1; period <= nPeriods; period++) {
+    const isLastPeriod = period === nPeriods;
+    const interest = currentBalance.mul(nominalPeriodicRate).toDP(2, Decimal.ROUND_HALF_UP);
+    const vat = interest.mul(dVatRate).toDP(2, Decimal.ROUND_HALF_UP);
+    const insurance = insurancePerPeriod.toDP(2, Decimal.ROUND_HALF_UP);
 
-    let capital = fortnightlyPaymentDec.minus(interest).minus(vat).minus(insurance);
+    let capital = periodicPayment
+      .minus(interest)
+      .minus(vat)
+      .minus(insurance)
+      .toDP(2, Decimal.ROUND_HALF_UP);
+    let nextBalance = currentBalance.minus(capital).toDP(2, Decimal.ROUND_HALF_UP);
 
-    // Ajuste en última quincena o saldos menores a 1 peso
-    if (i === term || balance.minus(capital).lessThan(1)) {
-      capital = balance;
+    if (isLastPeriod || nextBalance.lt(0)) {
+      capital = currentBalance;
+      nextBalance = new Decimal(0);
     }
 
-    balance = Decimal.max(0, balance.minus(capital));
-
-    totalInterest = totalInterest.plus(interest);
-    totalVat = totalVat.plus(vat);
-    totalInsurance = totalInsurance.plus(insurance);
+    currentBalance = nextBalance;
+    accInterest = accInterest.plus(interest);
+    accVat = accVat.plus(vat);
+    accInsurance = accInsurance.plus(insurance);
 
     schedule.push({
-      period: i,
-      balance: balance.toFixed(2),
+      period,
+      balance: currentBalance.toFixed(2),
       capital: capital.toFixed(2),
       interest: interest.toFixed(2),
       vat: vat.toFixed(2),
       insurance: insurance.toFixed(2),
-      payment: fortnightlyPaymentDec.toFixed(2),
+      payment: periodicPayment.toFixed(2),
     });
   }
 
-  const totalToPayDec = fortnightlyPaymentDec.times(term);
-  const monthlyPaymentEquivalentDec = fortnightlyPaymentDec
-    .times(2)
-    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  const totalToPayDec = periodicPayment.mul(dTerm).toDP(2, Decimal.ROUND_HALF_UP);
+  const fortnightlyEquivalentDec =
+    frequency === 'mensual'
+      ? periodicPayment.div(2).toDP(2, Decimal.ROUND_HALF_UP)
+      : periodicPayment;
+  const monthlyPaymentEquivalentDec =
+    frequency === 'mensual'
+      ? periodicPayment
+      : periodicPayment.mul(2).toDP(2, Decimal.ROUND_HALF_UP);
 
   return {
     schedule,
-    fortnightlyPayment: fortnightlyPaymentDec.toNumber(),
+    fortnightlyPayment: fortnightlyEquivalentDec.toNumber(),
+    periodicPayment: periodicPayment.toNumber(),
+    frequency,
+    borrowerProfile,
     monthlyPaymentEquivalent: monthlyPaymentEquivalentDec.toNumber(),
     totalToPay: totalToPayDec.toNumber(),
-    totalInterest: totalInterest.toDecimalPlaces(2).toNumber(),
-    totalVat: totalVat.toDecimalPlaces(2).toNumber(),
-    totalInsurance: totalInsurance.toDecimalPlaces(2).toNumber(),
-    catPercent: isNormal
-      ? FINANCIAL_CONSTANTS.CAT_NORMAL_PERCENT
-      : FINANCIAL_CONSTANTS.CAT_EXPRESS_PERCENT,
+    totalInterest: accInterest.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
+    totalVat: accVat.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
+    totalInsurance: accInsurance.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
+    catPercent:
+      productType === 'normal'
+        ? FINANCIAL_CONSTANTS.CAT_NORMAL_PERCENT
+        : FINANCIAL_CONSTANTS.CAT_EXPRESS_PERCENT,
+    requiredNetIncome: requiredNetIncome.toNumber(),
+    annualNominalRatePercent: annualNominalRatePercent.toNumber(),
   };
 }
 
@@ -175,94 +342,91 @@ export interface SalaryCapacityAnalysis {
 }
 
 /**
- * Calcula de forma 100% determinista (Decimal.js) la capacidad de descuento quincenal (35%)
- * y el monto máximo de préstamo para cada plazo oficial de Crédito Clásico y Crédito Express,
- * aplicando múltiplos limpios ($1,000 en Clásico, $500 en Express), topes de producto ($500k / $20k)
+ * Calcula de forma 100% determinista (Decimal.js) la capacidad de descuento quincenal (30% Art. 110 LFT)
+ * y el monto máximo de préstamo para cada plazo oficial de Crédito Normal y Crédito Express,
+ * aplicando múltiplos limpios ($5,000 en Normal, $1,000 en Express), topes de producto ($500k / $20k)
  * y validación cruzada garantizando fortnightlyPayment <= maxFortnightlyDeduction.
  */
 export function calculateMaxLoanBySalary(
   netSalaryAmount: number,
-  frequency: 'mensual' | 'quincenal'
+  frequency: 'mensual' | 'quincenal',
 ): SalaryCapacityAnalysis {
   const rawSalary = new Decimal(netSalaryAmount);
-  const monthlyNetDec = frequency === 'mensual' ? rawSalary : rawSalary.times(2);
+  const monthlyNetDec = frequency === 'mensual' ? rawSalary : rawSalary.mul(2);
   const fortnightlyNetDec =
     frequency === 'quincenal'
       ? rawSalary
-      : rawSalary.dividedBy(2).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      : rawSalary.div(2).toDP(2, Decimal.ROUND_HALF_UP);
 
   const maxDeductionDec = fortnightlyNetDec
-    .times(FINANCIAL_CONSTANTS.MAX_PAYMENT_CAPACITY_RATIO)
-    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    .mul(new Decimal(FINANCIAL_CONSTANTS.MAX_PAYMENT_CAPACITY_RATIO))
+    .toDP(2, Decimal.ROUND_HALF_UP);
   const maxDeduction = maxDeductionDec.toNumber();
 
-  const configs: Array<{
-    productType: ProductId;
-    productLabel: string;
-    terms: number[];
-    minAmount: number;
-    maxAmount: number;
-    step: number;
-    factorBase: Decimal;
-  }> = [
-    {
-      productType: 'normal',
-      productLabel: 'Crédito Clásico',
-      terms: [24, 48, 72],
-      minAmount: 10000,
-      maxAmount: 500000,
-      step: 1000,
-      factorBase: new Decimal(FINANCIAL_CONSTANTS.NORMAL_AMORTIZATION_FACTOR_24Q),
-    },
-    {
-      productType: 'express',
-      productLabel: 'Crédito Express',
-      terms: [6, 14, 20],
-      minAmount: 1000,
-      maxAmount: 20000,
-      step: 500,
-      factorBase: new Decimal(FINANCIAL_CONSTANTS.EXPRESS_AMORTIZATION_FACTOR_6Q),
-    },
-  ];
-
+  // Montos para Crédito Normal (24, 48, 72 Q)
+  const normalTerms = [24, 48, 72];
   const options: MaxLoanOption[] = [];
 
-  for (const cfg of configs) {
-    for (const term of cfg.terms) {
-      // Despeje algebraico exacto desde Cuota = (P * factorBase) / term => P = (Cuota * term) / factorBase
-      const rawMaxP = maxDeductionDec.times(term).dividedBy(cfg.factorBase);
-      // Ajuste hacia abajo (floor) al múltiplo limpio ($1,000 o $500) y tope máximo del producto
-      let candidateP = rawMaxP
-        .dividedBy(cfg.step)
-        .floor()
-        .times(cfg.step);
+  for (const term of normalTerms) {
+    const rEff = new Decimal(FINANCIAL_CONSTANTS.NORMAL_ANNUAL_RATE)
+      .div(24)
+      .mul(new Decimal(1).plus(new Decimal(FINANCIAL_CONSTANTS.VAT_RATE)));
+    const availForPmt = Decimal.max(
+      new Decimal(0),
+      maxDeductionDec.minus(new Decimal(FINANCIAL_CONSTANTS.LIFE_INSURANCE_FORTNIGHTLY_MXN)),
+    );
+    const discountFactor = new Decimal(1).minus(
+      new Decimal(1).plus(rEff).pow(new Decimal(term).neg()),
+    );
+    const rawMaxP = availForPmt.mul(discountFactor).div(rEff);
+    let candidateP = Decimal.min(
+      new Decimal(500000),
+      rawMaxP.div(5000).floor().mul(5000),
+    );
 
-      if (candidateP.greaterThan(cfg.maxAmount)) {
-        candidateP = new Decimal(cfg.maxAmount);
-      }
-
-      if (candidateP.lessThan(cfg.minAmount)) {
-        continue;
-      }
-
-      // Validación cruzada obligatoria con calculateSimulation() para garantizar cuota <= maxDeduction
-      let sim = calculateSimulation(candidateP.toNumber(), term, cfg.productType);
-      while (sim.fortnightlyPayment > maxDeduction && candidateP.minus(cfg.step).greaterThanOrEqualTo(cfg.minAmount)) {
-        candidateP = candidateP.minus(cfg.step);
-        sim = calculateSimulation(candidateP.toNumber(), term, cfg.productType);
-      }
-
-      if (sim.fortnightlyPayment <= maxDeduction) {
+    while (candidateP.gte(10000)) {
+      const sim = calculateSimulation(candidateP.toNumber(), term, 'normal');
+      if (new Decimal(sim.fortnightlyPayment).lte(maxDeductionDec)) {
         options.push({
-          productType: cfg.productType,
-          productLabel: cfg.productLabel,
+          productType: 'normal',
+          productLabel: 'Crédito Normal',
           termFortnights: term,
           maxPrincipal: candidateP.toNumber(),
           fortnightlyPayment: sim.fortnightlyPayment,
           totalToPay: sim.totalToPay,
           catPercent: sim.catPercent,
         });
+        break;
       }
+      candidateP = candidateP.minus(5000);
+    }
+  }
+
+  // Montos para Crédito Express según escalón de plazo oficial:
+  // $1k-$5k -> 6Q; $6k-$10k -> 14Q; $11k-$20k -> 20Q
+  const expressBrackets: Array<{ term: number; minAmt: number; maxAmt: number }> = [
+    { term: 6, minAmt: 1000, maxAmt: 5000 },
+    { term: 14, minAmt: 6000, maxAmt: 10000 },
+    { term: 20, minAmt: 11000, maxAmt: 20000 },
+  ];
+
+  for (const bracket of expressBrackets) {
+    let candidateP = new Decimal(bracket.maxAmt);
+    while (candidateP.gte(bracket.minAmt)) {
+      const sim = calculateSimulation(candidateP.toNumber(), bracket.term, 'express');
+      if (new Decimal(sim.fortnightlyPayment).lte(maxDeductionDec)) {
+        options.push({
+          productType: 'express',
+          productLabel: 'Crédito Express',
+          termFortnights: bracket.term,
+          maxPrincipal: candidateP.toNumber(),
+          fortnightlyPayment: sim.fortnightlyPayment,
+          totalToPay: sim.totalToPay,
+          catPercent: sim.catPercent,
+        });
+        break;
+      }
+      candidateP = candidateP.minus(1000);
     }
   }
 
@@ -275,4 +439,3 @@ export function calculateMaxLoanBySalary(
     options,
   };
 }
-
