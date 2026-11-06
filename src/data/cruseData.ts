@@ -214,3 +214,8 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
     },
   ],
 };
+
+// Saludo Inicial Oficial del Asistente IA (CRUSE-APO-2026-054 — Opción 3: Breve y ejecutiva)
+export const AI_ASSISTANT_WELCOME_MESSAGE =
+  "¡Bienvenido a Microfinanciera Cruse! Soy Alma, tu asistente inteligente. Para canalizar tu consulta al área correcta, por favor confírmame tu dependencia y tipo de plaza (sindicalizado, de confianza, jubilado o pensionado).";
+

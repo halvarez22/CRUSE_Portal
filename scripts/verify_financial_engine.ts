@@ -19,9 +19,14 @@ import {
   calculateSimulation,
   validateLegalPaymentCapacityLft110,
 } from '../src/config/financialConstants';
-import { evaluateTriageAndChannelRouting } from '../src/services/ai/chatFinancialCalculator';
+import {
+  evaluateTriageAndChannelRouting,
+  OUT_OF_SCOPE_ELIGIBILITY_MESSAGE,
+  validateAndSanitizeExtractedEntities,
+} from '../src/services/ai/chatFinancialCalculator';
 import { buildDeterministicLocalFallbackReply } from '../src/components/public/AiAssistantPublic';
 import { SYSTEM_INSTRUCTION } from '../src/services/api/chatRouter';
+import { AI_ASSISTANT_WELCOME_MESSAGE } from '../src/data/cruseData';
 import { BorrowerProfile, PaymentFrequency } from '../src/types';
 
 interface SheetAuditConfig {
@@ -269,8 +274,8 @@ if (legacyCatMatches !== 0) {
   process.exit(1);
 }
 
-// Verificación Guardrails 1, 2 y 4 (CRUSE-APO-2026-053): Prueba Forense de Triaje y No-Fuga para Perfil Sindicalizado
-console.log('🛡️  VERIFICACIÓN GUARDRAILS 1, 2 Y 4 (TRIAJE INICIAL Y SILO HERMÉTICO SINDICATO VS CRUSE — APO-053):');
+// Verificación Guardrails 1, 2, 3 y 4 (CRUSE-APO-2026-053 / 054): Máquina Multi-Turno 2D, Caso Gerardo Ornelas y Silo Hermético
+console.log('🛡️  VERIFICACIÓN GUARDRAILS 1, 2, 3 Y 4 (MÁQUINA MULTI-TURNO 2D, CASO GERARDO ORNELAS Y SILO HERMÉTICO — APO-053/054):');
 
 const hasStrictNegativeClause = SYSTEM_INSTRUCTION.includes(
   "SI el usuario es Sindicalizado o Jubilado/Pensionado, está TERMINANTEMENTE PROHIBIDO mencionar las oficinas de Microfinanciera Cruse, la dirección 'Vía Citadela' o los teléfonos de Cruse. Solo debes proporcionar los datos del Departamento de Prestaciones Económicas del Sindicato (Salón Pinos Altos) o su delegado municipal."
@@ -281,49 +286,115 @@ if (!hasStrictNegativeClause) {
   process.exit(1);
 }
 
-// Simulación 1: Primer contacto sin identificarse
+// Simulación 0: Validación de Enum Estricto (Guardrail 1 APO-054) ante posible alucinación de LLM
+const sanitizedEnumTest = validateAndSanitizeExtractedEntities(
+  { dependency: 'instituto_inventado_por_llm', plazaType: 'plaza_alucinada' },
+  { dependency: 'tribunal_poder_judicial', plazaType: 'unknown' }
+);
+const enumGuardrailValid =
+  sanitizedEnumTest.dependency === 'tribunal_poder_judicial' && sanitizedEnumTest.plazaType === 'unknown';
+console.log(
+  `   • Guardrail 1 APO-054 (Sanitización contra Enums)       : ${enumGuardrailValid ? 'BLOQUEA ALUCINACIÓN Y PRESERVA ENUM ✅' : 'FALLO ❌'}`
+);
+
+// Simulación 1: Primer contacto sin identificarse -> Saludo Oficial de Alma (Opción 3)
 const unidentifiedReply = buildDeterministicLocalFallbackReply('Hola, quiero informes de un préstamo y dónde firmo', []);
 const unidentifiedAsksTriage =
-  unidentifiedReply.includes('¿En qué dependencia trabajas y eres trabajador sindicalizado') &&
+  unidentifiedReply === AI_ASSISTANT_WELCOME_MESSAGE &&
+  unidentifiedReply.includes('¡Bienvenido a Microfinanciera Cruse! Soy Alma, tu asistente inteligente.') &&
   !unidentifiedReply.includes('Vía Citadela') &&
   !unidentifiedReply.includes('Salón Pinos Altos');
-console.log(`   • Triaje Primer Contacto (Sin Identificar)              : ${unidentifiedAsksTriage ? 'PREGUNTA TRIAJE EXCLUSIVA ✅' : 'FALLO ❌'}`);
+console.log(`   • Saludo Inicial Opción 3 ("Soy Alma" — Sin Identificar): ${unidentifiedAsksTriage ? 'EXACTO Y SIN DIRECCIONES ✅' : 'FALLO ❌'}`);
 
-// Simulación 2 (Guardrail 4): Consulta de usuario "Sindicalizado"
-const unionQuery = 'Soy trabajador sindicalizado del Gobierno del Estado, ¿con quién me comunico y dónde firmo?';
-const unionTriage = evaluateTriageAndChannelRouting(unionQuery, []);
-const unionFallbackReply = buildDeterministicLocalFallbackReply(unionQuery, []);
-const unionContainsSindicato =
-  (unionFallbackReply.includes('Salón Pinos Altos') || unionFallbackReply.includes('614 607 7301')) &&
-  (unionTriage.siloedRoutingReply.includes('Salón Pinos Altos') || unionTriage.siloedRoutingReply.includes('614 607 7301'));
-const unionLeaksCruse =
-  unionFallbackReply.includes('Vía Citadela') ||
-  unionFallbackReply.includes('411-15-44') ||
-  unionTriage.siloedRoutingReply.includes('Vía Citadela') ||
-  unionTriage.siloedRoutingReply.includes('411-15-44');
+// Simulación 2 (CASO GERARDO ORNELAS — Multi-Turno sin bucles):
+// Turno 1: "Trabajo en el poder judicial de Chihuahua"
+const gerardoTurn1Msg = 'Trabajo en el poder judicial de Chihuahua';
+const gerardoTurn1Triage = evaluateTriageAndChannelRouting(gerardoTurn1Msg, []);
+const gerardoTurn1Reply = buildDeterministicLocalFallbackReply(gerardoTurn1Msg, []);
+const gerardoTurn1Valid =
+  gerardoTurn1Triage.profile === 'partial_tribunal_missing_plaza' &&
+  gerardoTurn1Triage.dependency === 'tribunal_poder_judicial' &&
+  gerardoTurn1Triage.plazaType === 'unknown' &&
+  gerardoTurn1Reply.includes('Poder Judicial / Supremo Tribunal de Justicia') &&
+  gerardoTurn1Reply.includes('¿tu plaza es sindicalizada o eres personal de confianza?') &&
+  !gerardoTurn1Reply.includes('confírmame tu dependencia y tipo de plaza');
 
 console.log(
-  `   • Guardrail 4 (Consulta Sindicalizado — Contiene Sindicato): ${unionContainsSindicato ? 'SÍ (Salón Pinos Altos / 614 607 7301) ✅' : 'NO ❌'}`
+  `   • Caso Gerardo Ornelas [Turno 1: "Trabajo en el poder judicial de Chihuahua"]:`
 );
 console.log(
-  `   • Guardrail 4 (Consulta Sindicalizado — Fuga Vía Citadela) : ${unionLeaksCruse ? 'FUGA DETECTADA ❌' : '0 FUGAS (SIN Vía Citadela / 411-15-44) ✅'}`
+  `     -> Estado: ${gerardoTurn1Triage.profile} | Reconoce Dependencia y pide SOLO plaza: ${gerardoTurn1Valid ? 'SÍ (CERO BUCLE) ✅' : 'FALLO ❌'}`
 );
 
-// Simulación 3: Consulta de usuario "Personal de Confianza del Supremo Tribunal"
-const confianzaReply = buildDeterministicLocalFallbackReply(
-  'Trabajo en el Supremo Tribunal de Justicia y soy personal de confianza, ¿dónde firmo?',
-  []
-);
-const confianzaValid =
-  confianzaReply.includes('Vía Citadela') &&
-  confianzaReply.includes('411-15-44') &&
-  !confianzaReply.includes('Salón Pinos Altos');
+// Turno 2: "Soy sindicalizado" (con el Turno 1 en el historial)
+const historyAfterTurn1 = [
+  { role: 'user', content: gerardoTurn1Msg },
+  { role: 'assistant', content: gerardoTurn1Reply },
+];
+const gerardoTurn2Msg = 'Soy sindicalizado';
+const gerardoTurn2Triage = evaluateTriageAndChannelRouting(gerardoTurn2Msg, historyAfterTurn1);
+const gerardoTurn2Reply = buildDeterministicLocalFallbackReply(gerardoTurn2Msg, historyAfterTurn1);
+const gerardoTurn2Valid =
+  gerardoTurn2Triage.profile === 'resolved_sindicalizado_or_jubilado' &&
+  gerardoTurn2Triage.dependency === 'tribunal_poder_judicial' &&
+  gerardoTurn2Triage.plazaType === 'sindicalizado' &&
+  gerardoTurn2Reply.includes('Salón Pinos Altos') &&
+  gerardoTurn2Reply.includes('614 607 7301') &&
+  !gerardoTurn2Reply.includes('Vía Citadela') &&
+  !gerardoTurn2Reply.includes('411-15-44');
+
 console.log(
-  `   • Canalización Personal de Confianza (Supremo Tribunal) : ${confianzaValid ? 'OFICINAS CRUSE EXCLUSIVO ✅' : 'FALLO ❌'}\n`
+  `   • Caso Gerardo Ornelas [Turno 2: "Soy sindicalizado" + Historial Turno 1]:`
+);
+console.log(
+  `     -> Estado: ${gerardoTurn2Triage.profile} | Canaliza a Salón Pinos Altos (0 fugas Vía Citadela): ${gerardoTurn2Valid ? 'SÍ (SILO HERMÉTICO) ✅' : 'FALLO ❌'}`
 );
 
-if (!unidentifiedAsksTriage || !unionContainsSindicato || unionLeaksCruse || !confianzaValid) {
-  console.error('❌ FALLO CRÍTICO GUARDRAIL 4: Fuga de información o error en aislamiento de canales.');
+// Simulación 3 (Guardrail 3 APO-054): Corrección en Turno 3 ("Perdón, soy de confianza")
+const historyAfterTurn2 = [
+  ...historyAfterTurn1,
+  { role: 'user', content: gerardoTurn2Msg },
+  { role: 'assistant', content: gerardoTurn2Reply },
+];
+const correctionTurn3Msg = 'Perdón, me equivoqué, soy personal de confianza';
+const correctionTurn3Triage = evaluateTriageAndChannelRouting(correctionTurn3Msg, historyAfterTurn2);
+const correctionTurn3Reply = buildDeterministicLocalFallbackReply(correctionTurn3Msg, historyAfterTurn2);
+const correctionTurn3Valid =
+  correctionTurn3Triage.profile === 'resolved_confianza_tribunal' &&
+  correctionTurn3Triage.dependency === 'tribunal_poder_judicial' &&
+  correctionTurn3Triage.plazaType === 'confianza' &&
+  correctionTurn3Reply.includes('Vía Citadela') &&
+  correctionTurn3Reply.includes('411-15-44') &&
+  !correctionTurn3Reply.includes('Salón Pinos Altos');
+
+console.log(
+  `   • Guardrail 3 APO-054 [Turno 3 Corrección: "Perdón, soy de confianza"]:`
+);
+console.log(
+  `     -> Actualiza estado a ${correctionTurn3Triage.profile} (Vía Citadela exclusivo): ${correctionTurn3Valid ? 'ACTUALIZACIÓN LIMPIA ✅' : 'FALLO ❌'}`
+);
+
+// Simulación 4 (Guardrail 2 APO-054): Dependencia fuera de alcance ("Trabajo en la CFE")
+const outOfScopeTriage = evaluateTriageAndChannelRouting('Hola, trabajo en la CFE, ¿puedo pedir un préstamo?', []);
+const outOfScopeValid =
+  outOfScopeTriage.profile === 'out_of_scope' &&
+  outOfScopeTriage.triageQuestionReply === OUT_OF_SCOPE_ELIGIBILITY_MESSAGE &&
+  !outOfScopeTriage.triageQuestionReply.includes('Vía Citadela') &&
+  !outOfScopeTriage.triageQuestionReply.includes('Salón Pinos Altos');
+
+console.log(
+  `   • Guardrail 2 APO-054 [Fuera de Alcance: "Trabajo en la CFE"] : ${outOfScopeValid ? 'MENSAJE ELEGIBILIDAD OFICIAL ✅' : 'FALLO ❌'}\n`
+);
+
+if (
+  !enumGuardrailValid ||
+  !unidentifiedAsksTriage ||
+  !gerardoTurn1Valid ||
+  !gerardoTurn2Valid ||
+  !correctionTurn3Valid ||
+  !outOfScopeValid
+) {
+  console.error('❌ FALLO CRÍTICO EN MÁQUINA DE ESTADOS MULTI-TURNO O AISLAMIENTO DE CANALES (APO-054).');
   process.exit(1);
 }
 

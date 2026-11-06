@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, User, AlertCircle, RefreshCw } from 'lucide-react';
-import { COMPANY_INFO, FAQ_CHAT_PROMPTS } from '../../data/cruseData';
+import { AI_ASSISTANT_WELCOME_MESSAGE, COMPANY_INFO, FAQ_CHAT_PROMPTS } from '../../data/cruseData';
 import { ChatMessage } from '../../types';
 import { ChatFormattedMessage } from './ChatFormattedMessage';
 import {
@@ -27,8 +27,8 @@ const QUICK_TRIAGE_BUTTONS = [
 ] as const;
 
 /**
- * Guardrail 2 (CRUSE-APO-2026-053): Fallback determinista sincronizado en el frontend.
- * Mantiene el estado del triaje sin mezclar jamás ambas sedes.
+ * Guardrail 2 y 3 (CRUSE-APO-2026-053 / 054): Fallback determinista multi-turno sincronizado en el frontend.
+ * Soporta los 8 estados de la máquina 2D (Dependencia × Tipo de Plaza) sin ciclarse ni mezclar sedes.
  */
 export function buildDeterministicLocalFallbackReply(
   query: string,
@@ -37,8 +37,8 @@ export function buildDeterministicLocalFallbackReply(
   const triage = evaluateTriageAndChannelRouting(query, historyTurns);
   const det = evaluateDeterministicFinancialQuery(query, historyTurns);
 
-  // Si aún no se ha identificado (ni en el mensaje actual ni en el historial), priorizar la pregunta de triaje (Guardrail 2)
-  if (triage.profile === 'unidentified') {
+  // Si aún no está completamente resuelto (unidentified, out_of_scope o estado parcial), devolver el mensaje contextual de seguimiento
+  if (!triage.isFullyResolved) {
     if (det.detected && det.fallbackMarkdownReply) {
       return `${det.fallbackMarkdownReply}\n\n---\n\n${triage.triageQuestionReply}`;
     }
@@ -73,7 +73,7 @@ export const AiAssistantPublic: React.FC = () => {
     {
       id: 'welcome',
       sender: 'assistant',
-      text: `¡Hola! Soy el Asistente Inteligente de **${COMPANY_INFO.name}**. Para brindarte la información exacta y canalizarte con el área correspondiente, por favor dime primero:\n\n**¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?**`,
+      text: AI_ASSISTANT_WELCOME_MESSAGE,
       timestamp: 'Ahora',
     },
   ]);
@@ -200,7 +200,7 @@ export const AiAssistantPublic: React.FC = () => {
               </div>
               <div>
                 <span className="text-sm font-black text-slate-950 dark:text-white block">
-                  Cruse Virtual Advisor
+                  Alma — Asistente Inteligente Cruse
                 </span>
                 <span className="text-[11px] text-[#0F766E] dark:text-[#2EBD9B] flex items-center gap-1 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-[#0F766E] dark:bg-[#4CD360] animate-pulse" />
@@ -258,7 +258,7 @@ export const AiAssistantPublic: React.FC = () => {
             {isTyping && (
               <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 italic">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0F766E] dark:text-[#249E82]" />
-                <span>Cruse Virtual Advisor está escribiendo...</span>
+                <span>Alma está escribiendo...</span>
               </div>
             )}
           </div>

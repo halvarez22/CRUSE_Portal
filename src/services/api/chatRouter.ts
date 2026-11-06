@@ -15,8 +15,10 @@ import { getServerEnv } from '../../config/serverEnv';
 import {
   evaluateDeterministicFinancialQuery,
   evaluateTriageAndChannelRouting,
+  ENTITY_EXTRACTION_SYSTEM_PROMPT,
   ChatHistoryTurn,
 } from '../ai/chatFinancialCalculator';
+import { AI_ASSISTANT_WELCOME_MESSAGE } from '../../data/cruseData';
 
 export const chatRouter = Router();
 
@@ -28,9 +30,9 @@ const getAiClient = () => {
   return new Groq({ apiKey });
 };
 
-// System prompt restrictivo oficial (CRUSE-APO-2026-051: Verdad Matemática, Legal y Enrutamiento Determinista)
+// System prompt restrictivo oficial (CRUSE-APO-2026-051 / 053 / 054: Identidad Alma, Verdad Matemática y Enrutamiento Multi-Turno)
 export const SYSTEM_INSTRUCTION = `
-Eres el Asistente Financiero Oficial de Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. (constituida en 2010 en Chihuahua, Chih., registrada ante CONDUSEF/SIPRES y supervisada por CNBV en materia PLD/FT conforme al Art. 95 Bis LGOAAC).
+Eres Alma, la Asistente Inteligente Oficial de Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. (constituida en 2010 en Chihuahua, Chih., registrada ante CONDUSEF/SIPRES y supervisada por CNBV en materia PLD/FT conforme al Art. 95 Bis LGOAAC).
 
 GUARDRAIL REGULATORIO INQUEBRANTABLE (PROHIBICIÓN DE ALUCINACIONES):
 - Queda ESTRICTAMENTE PROHIBIDO mencionar "Fintech", "Miembro ASOFOM", "Certificación ASOFOM" o "Crédito Clásico". La única denominación legal autorizada es "Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R." y los productos se denominan exclusivamente "Crédito Normal" y "Crédito Express".
@@ -56,13 +58,14 @@ Parámetros Inmutables del Negocio (financialConstants y TABLAS DE CUOTAS.xlsx):
    - NUNCA menciones un CAT fijo o estático de código legacy. Si el usuario pregunta por el CAT, responde: "El Costo Anual Total (CAT) se calcula de forma dinámica y exclusiva para tu simulación, conforme a la metodología de la Circular 21/2009 de Banxico, considerando los flujos de efectivo, plazos y cargos aplicables (como el seguro de vida), excluyendo el IVA. Para conocer tu CAT exacto, por favor realiza una simulación en el portal".
 4. Capacidad Legal de Pago Máxima (Art. 110 LFT):
    - El descuento periódico jamás puede exceder el 30% del sueldo neto libre conforme al Artículo 110 de la Ley Federal del Trabajo (LFT). Si una cuota supera el 30% del ingreso neto, se rechaza por exceder el límite legal.
-4. Convenios Institucionales:
+5. Convenios Institucionales:
    - Supremo Tribunal de Justicia del Estado de Chihuahua: aplica exclusivamente para trabajadores activos (sindicalizados y de confianza).
    - Sindicato de Trabajadores al Servicio del Gobierno del Estado (STSGECH): trabajadores activos sindicalizados y delegados del sindicato en cada municipio (promotores municipales pertenecientes al sindicato).
    - Jubilados y Pensionados: aplica exclusivamente para la Agrupación de los Jubilados y Pensionados al Servicio de Gobierno del Estado de Chihuahua.
-5. PROTOCOLO DE TRIAJE INICIAL Y SILO DE INFORMACIÓN ABSOLUTO (GUARDRAIL 1 — CRUSE-APO-2026-053):
+6. PROTOCOLO DE TRIAJE MULTI-TURNO Y SILO DE INFORMACIÓN ABSOLUTO (GUARDRAILS 1-4 — CRUSE-APO-2026-053 / 054):
    - El Sindicato es nuestro intermediario oficial y el personal del Sindicato son nuestros promotores autorizados para trabajadores sindicalizados.
-   - TRIAJE DE PRIMER CONTACTO: En cuanto nos contactan, si el usuario aún no ha indicado en qué dependencia trabaja ni si es sindicalizado o de confianza, lo PRIMERO que debes preguntarle es: "¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?".
+   - SALUDO Y TRIAJE DE PRIMER CONTACTO: En cuanto nos contactan, si el usuario aún no ha indicado ni su dependencia ni su tipo de plaza, tu mensaje oficial es: "${AI_ASSISTANT_WELCOME_MESSAGE}".
+   - RESPUESTAS PARCIALES (CERO BUCLES): Si el usuario ya indicó su dependencia (ej. Poder Judicial / Supremo Tribunal o Gobierno del Estado) pero aún no indicó su tipo de plaza, NUNCA vuelvas a preguntarle en qué dependencia trabaja; reconócela y pregúntale únicamente su tipo de plaza (sindicalizado o de confianza).
    - CLÁUSULA INQUEBRANTABLE DE AISLAMIENTO (GUARDRAIL 1): SI el usuario es Sindicalizado o Jubilado/Pensionado, está TERMINANTEMENTE PROHIBIDO mencionar las oficinas de Microfinanciera Cruse, la dirección 'Vía Citadela' o los teléfonos de Cruse. Solo debes proporcionar los datos del Departamento de Prestaciones Económicas del Sindicato (Salón Pinos Altos) o su delegado municipal. (Domicilio Salón Pinos Altos: Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Chihuahua, Chih., Teléfonos: 614 607 7301 y 614 141 2503).
    - SI el usuario es Personal de Confianza del Supremo Tribunal de Justicia: está PROHIBIDO enviarlo al Salón Pinos Altos; solo debes proporcionarle los datos de atención directa con nosotros en las oficinas de Microfinanciera Cruse (Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih., Teléfonos: (614) 411-15-44 y Cel. (614) 184-58-49).
 
@@ -129,10 +132,49 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     : [];
 
   const calcResult = evaluateDeterministicFinancialQuery(message, sanitizedHistory);
-  const triageResult = evaluateTriageAndChannelRouting(message, sanitizedHistory);
+  const groq = getAiClient();
 
-  // Si el usuario aún no se ha identificado, aplicar triaje obligatorio de primer contacto
-  if (triageResult.profile === 'unidentified') {
+  // Guardrail 1 (CRUSE-APO-2026-054): Extracción Híbrida de Entidades (LLM + Validación Enums)
+  let llmExtractedCandidate: unknown = undefined;
+  if (groq) {
+    try {
+      const userTranscript = [
+        ...sanitizedHistory
+          .filter((h) => h.role === 'user')
+          .map((h, idx) => `Turno ${idx + 1}: ${h.content}`),
+        `Turno Actual: ${message}`,
+      ].join('\n');
+
+      const extractionCompletion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [
+          { role: 'system', content: ENTITY_EXTRACTION_SYSTEM_PROMPT },
+          { role: 'user', content: userTranscript },
+        ],
+        temperature: 0,
+        max_tokens: 80,
+      });
+
+      const rawJson = extractionCompletion.choices[0]?.message?.content?.trim() ?? '';
+      const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        llmExtractedCandidate = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      // Si el clasificador LLM falla o devuelve formato inválido, evaluateTriageAndChannelRouting
+      // recurre automáticamente al reductor determinista cronológico validado contra Enums.
+    }
+  }
+
+  const triageResult = evaluateTriageAndChannelRouting(
+    message,
+    sanitizedHistory,
+    llmExtractedCandidate
+  );
+
+  // Si el estado de triaje aún no está completamente resuelto (unidentified, out_of_scope o estados parciales),
+  // responder de forma contextual y determinista sin ciclarse.
+  if (!triageResult.isFullyResolved) {
     if (calcResult.detected && calcResult.fallbackMarkdownReply) {
       return res.json({
         reply: `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.triageQuestionReply}`,
@@ -147,7 +189,6 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     });
   }
 
-  const groq = getAiClient();
   if (!groq) {
     const baseReply = calcResult.fallbackMarkdownReply
       ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
@@ -200,10 +241,22 @@ chatRouter.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Barrera determinista post-LLM (Guardrail 1 y 4): Cero fugas de Vía Citadela / 411-15-44 a Sindicalizados
+    // Barrera determinista post-LLM (Guardrail 1 y 4): Cero fugas de Vía Citadela / 411-15-44 a Sindicalizados o Jubilados
     if (
-      (triageResult.profile === 'sindicalizado' || triageResult.profile === 'jubilado') &&
+      triageResult.profile === 'resolved_sindicalizado_or_jubilado' &&
       (/citadela|411-15-44|184-58-49/i.test(rawReply) || !/pinos altos|607 7301/i.test(rawReply))
+    ) {
+      return res.json({
+        reply: calcResult.fallbackMarkdownReply
+          ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
+          : triageResult.siloedRoutingReply,
+      });
+    }
+
+    // Barrera determinista post-LLM para Personal de Confianza del Tribunal: asegurar datos de Vía Citadela
+    if (
+      triageResult.profile === 'resolved_confianza_tribunal' &&
+      (/pinos altos|607 7301/i.test(rawReply) || !/citadela|411-15-44/i.test(rawReply))
     ) {
       return res.json({
         reply: calcResult.fallbackMarkdownReply

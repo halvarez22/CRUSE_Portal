@@ -16,6 +16,7 @@ import {
   validateLegalPaymentCapacityLft110,
 } from '../../config/financialConstants';
 import { getAllowedExpressTerm } from '../../config/officialQuotaTables';
+import { AI_ASSISTANT_WELCOME_MESSAGE } from '../../data/cruseData';
 
 export interface ChatHistoryTurn {
   role: string;
@@ -177,95 +178,373 @@ export function evaluateDeterministicFinancialQuery(
   };
 }
 
-export type TriageProfile = 'unidentified' | 'sindicalizado' | 'jubilado' | 'confianza_tribunal';
+export const ALLOWED_DEPENDENCIES = [
+  'tribunal_poder_judicial',
+  'gobierno_estado',
+  'agrupacion_jubilados',
+  'out_of_scope',
+  'unknown',
+] as const;
+
+export const ALLOWED_PLAZA_TYPES = [
+  'sindicalizado',
+  'confianza',
+  'jubilado_pensionado',
+  'unknown',
+] as const;
+
+export type DependencyKind = (typeof ALLOWED_DEPENDENCIES)[number];
+export type PlazaTypeKind = (typeof ALLOWED_PLAZA_TYPES)[number];
+
+export interface ExtractedTriageEntities {
+  dependency: DependencyKind;
+  plazaType: PlazaTypeKind;
+}
+
+export type TriageProfile =
+  | 'unidentified'
+  | 'out_of_scope'
+  | 'partial_tribunal_missing_plaza'
+  | 'partial_gob_missing_plaza'
+  | 'partial_confianza_missing_dep'
+  | 'resolved_confianza_no_convenio'
+  | 'resolved_sindicalizado_or_jubilado'
+  | 'resolved_confianza_tribunal';
 
 export interface TriageEvaluationResult {
   profile: TriageProfile;
+  dependency: DependencyKind;
+  plazaType: PlazaTypeKind;
+  isFullyResolved: boolean;
   triageQuestionReply: string;
   siloedRoutingReply: string;
   xmlTriageDirective: string;
 }
 
-function detectTriageProfileFromTurn(text: string): TriageProfile | null {
-  const lower = text.toLowerCase();
-  if (lower.includes('confianza')) {
-    return 'confianza_tribunal';
-  }
-  if (
-    lower.includes('jubilad') ||
-    lower.includes('pensionad') ||
-    lower.includes('agrupacion') ||
-    lower.includes('agrupación')
-  ) {
-    return 'jubilado';
-  }
-  if (
-    lower.includes('sindical') ||
-    lower.includes('sindicato') ||
-    lower.includes('stsgech') ||
-    lower.includes('pinos altos') ||
-    lower.includes('delegado')
-  ) {
-    return 'sindicalizado';
-  }
-  return null;
-}
+export const OUT_OF_SCOPE_ELIGIBILITY_MESSAGE =
+  'Actualmente, nuestros convenios de descuento vía nómina aplican exclusivamente para trabajadores del Poder Judicial / Supremo Tribunal de Justicia, Gobierno del Estado de Chihuahua (STSGECH) y la Agrupación de Jubilados y Pensionados. ¿Laboras en alguna de estas instituciones?';
 
 /**
- * Guardrails 1, 2 y 4 (CRUSE-APO-2026-053):
- * Resuelve de forma 100% determinista el estado del triaje de dependencia/estatus laboral
- * y genera la respuesta de canalización con aislamiento hermético (Cero Fugas de Vía Citadela a Sindicalizados).
+ * Guardrail 1 (CRUSE-APO-2026-054): Prompt de extracción semántica de entidades para el LLM
+ * restringido estrictamente a los enums autorizados.
  */
-export function evaluateTriageAndChannelRouting(
-  message: string,
-  history: ChatHistoryTurn[] = []
-): TriageEvaluationResult {
-  let detectedProfile = detectTriageProfileFromTurn(message);
+export const ENTITY_EXTRACTION_SYSTEM_PROMPT = `
+Eres un clasificador determinista de entidades para Microfinanciera Cruse en Chihuahua.
+Analiza el historial de conversación (dando máxima prioridad al mensaje más reciente si el usuario corrige su información) y devuelve ÚNICAMENTE un objeto JSON válido con dos propiedades:
+- "dependency": uno de ["tribunal_poder_judicial", "gobierno_estado", "agrupacion_jubilados", "out_of_scope", "unknown"]
+- "plazaType": uno de ["sindicalizado", "confianza", "jubilado_pensionado", "unknown"]
 
-  if (!detectedProfile && Array.isArray(history)) {
-    const userTurns = [...history].reverse().filter((h) => h.role === 'user');
-    for (const turn of userTurns) {
-      const candidate = detectTriageProfileFromTurn(String(turn.content || ''));
-      if (candidate) {
-        detectedProfile = candidate;
-        break;
-      }
+Reglas de mapeo semántico:
+1. "tribunal_poder_judicial": Poder Judicial, Supremo Tribunal de Justicia (STJ / TSJ), juzgados del estado, magistrados/jueces/tribunales estatales.
+2. "gobierno_estado": Gobierno del Estado de Chihuahua, STSGECH, secretarías estatales (Hacienda, Educación estatal, Salud estatal, Fiscalía estatal, Registro Civil, Recaudación de Rentas).
+3. "agrupacion_jubilados": Agrupación de Jubilados y Pensionados al Servicio de Gobierno del Estado de Chihuahua, Pensiones Civiles (jubilados/pensionados).
+4. "out_of_scope": Cualquier otra institución o empresa sin convenio (ej. CFE, IMSS, ISSSTE, PEMEX, Presidencia Municipal / Municipio, UACH, Gobierno Federal, empresa privada, maquiladora, banco).
+5. "plazaType":
+   - "sindicalizado": trabajador de base, sindicalizado, agremiado al sindicato / STSGECH / delegado sindical.
+   - "confianza": personal de confianza, plaza de confianza, contrato de confianza.
+   - "jubilado_pensionado": jubilado, pensionado.
+   - "unknown": si aún no lo ha mencionado.
+Responde SOLO con el JSON: {"dependency":"...","plazaType":"..."}
+`.trim();
+
+/**
+ * Guardrail 1 (CRUSE-APO-2026-054): Validación determinista contra Enums estrictos.
+ * Si el LLM devuelve un valor fuera de ALLOWED_DEPENDENCIES o ALLOWED_PLAZA_TYPES,
+ * se descarta y se utiliza el valor determinista seguro ('unknown' o fallback).
+ */
+export function validateAndSanitizeExtractedEntities(
+  rawCandidate: unknown,
+  fallbackEntities: ExtractedTriageEntities = { dependency: 'unknown', plazaType: 'unknown' }
+): ExtractedTriageEntities {
+  if (!rawCandidate || typeof rawCandidate !== 'object') {
+    return { ...fallbackEntities };
+  }
+  const candidate = rawCandidate as Record<string, unknown>;
+  const rawDep = typeof candidate.dependency === 'string' ? candidate.dependency.trim() : '';
+  const rawPlaza = typeof candidate.plazaType === 'string' ? candidate.plazaType.trim() : '';
+
+  const isValidDep = (ALLOWED_DEPENDENCIES as readonly string[]).includes(rawDep);
+  const isValidPlaza = (ALLOWED_PLAZA_TYPES as readonly string[]).includes(rawPlaza);
+
+  const safeDep: DependencyKind = isValidDep
+    ? (rawDep as DependencyKind)
+    : fallbackEntities.dependency;
+  const safePlaza: PlazaTypeKind = isValidPlaza
+    ? (rawPlaza as PlazaTypeKind)
+    : fallbackEntities.plazaType;
+
+  return {
+    dependency: safeDep !== 'unknown' ? safeDep : fallbackEntities.dependency,
+    plazaType: safePlaza !== 'unknown' ? safePlaza : fallbackEntities.plazaType,
+  };
+}
+
+function extractEntitiesFromSingleTurn(text: string): {
+  dependency: DependencyKind | null;
+  plazaType: PlazaTypeKind | null;
+} {
+  const lower = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  let dependency: DependencyKind | null = null;
+  let plazaType: PlazaTypeKind | null = null;
+
+  // 1. Detección de Dependencia
+  if (
+    /\b(poder judicial|supremo tribunal|tribunal de justicia|\bstj\b|\btsj\b|juzgado|tribunal)\b/i.test(
+      lower
+    )
+  ) {
+    dependency = 'tribunal_poder_judicial';
+  } else if (/\b(agrupacion de jubilados|agrupacion de los jubilados)\b/i.test(lower)) {
+    dependency = 'agrupacion_jubilados';
+  } else if (
+    /\b(gobierno del estado|gob del estado|stsgech|secretaria de hacienda|secretaria de educacion|fiscalia general|recaudacion de rentas|registro civil)\b/i.test(
+      lower
+    )
+  ) {
+    dependency = 'gobierno_estado';
+  } else if (
+    /\b(cfe|comision federal|imss|issste|pemex|municipio|presidencia municipal|ayuntamiento|uach|uacj|gobierno federal|maquila|maquiladora|empresa privada|telmex|bimbo|oxxo|walmart|coppel)\b/i.test(
+      lower
+    )
+  ) {
+    dependency = 'out_of_scope';
+  }
+
+  // 2. Detección de Tipo de Plaza (con soporte para correcciones como "no soy sindicalizado, soy de confianza")
+  const negatesSindicalizado =
+    /(no soy sindicalizad|no pertenezco al sindicato|perdon.*confianza|disculpa.*confianza|error.*confianza)/i.test(
+      lower
+    );
+  const negatesConfianza =
+    /(no soy de confianza|perdon.*sindicalizad|disculpa.*sindicalizad|error.*sindicalizad)/i.test(
+      lower
+    );
+
+  if (negatesSindicalizado && /\bconfianza\b/i.test(lower)) {
+    plazaType = 'confianza';
+  } else if (negatesConfianza && /(sindicalizad|sindicato|stsgech|\bbase\b)/i.test(lower)) {
+    plazaType = 'sindicalizado';
+  } else if (/(jubilad|pensionad)/i.test(lower)) {
+    plazaType = 'jubilado_pensionado';
+    if (!dependency) {
+      dependency = 'agrupacion_jubilados';
+    }
+  } else if (/\bconfianza\b/i.test(lower)) {
+    plazaType = 'confianza';
+  } else if (/(sindicalizad|sindicato|stsgech|pinos altos|delegad|plaza de base|trabajador de base)/i.test(lower)) {
+    plazaType = 'sindicalizado';
+    if (!dependency && /\bstsgech\b/i.test(lower)) {
+      dependency = 'gobierno_estado';
     }
   }
 
-  const profile: TriageProfile = detectedProfile ?? 'unidentified';
+  return { dependency, plazaType };
+}
 
-  const triageQuestionReply =
-    'Para brindarte la información exacta y canalizarte con el área correspondiente, por favor indícame primero:\n\n**¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?**\n\n*(Puedes escribirlo aquí o seleccionar tu perfil en los botones rápidos de arriba).*';
+/**
+ * Guardrail 3 (CRUSE-APO-2026-054): Persistencia y Actualización Cronológica de Estado.
+ * Recorre los turnos del usuario desde el más antiguo hasta el mensaje actual,
+ * permitiendo acumular respuestas parciales en múltiples turnos y sobrescribir con correcciones recientes.
+ */
+export function extractEntitiesDeterministically(
+  message: string,
+  history: ChatHistoryTurn[] = []
+): ExtractedTriageEntities {
+  let accDependency: DependencyKind = 'unknown';
+  let accPlazaType: PlazaTypeKind = 'unknown';
 
-  if (profile === 'sindicalizado' || profile === 'jubilado') {
-    const siloedRoutingReply =
-      'Como trabajador **Sindicalizado / Agrupación de Jubilados y Pensionados**, te informamos que **el Sindicato es nuestro intermediario oficial y el personal del Sindicato son nuestros promotores autorizados**.\n\nPara tu trámite, debes comunicarte o acudir directamente al **Departamento de Prestaciones Económicas del Sindicato**:\n- **Sede de Atención y Firma:** Salón Pinos Altos (Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Chihuahua, Chih.), o bien con el **delegado del sindicato en tu municipio**.\n- **Teléfonos del Departamento de Prestaciones Económicas:** **614 607 7301** y **614 141 2503**.\n- **Requisitos:** 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia.';
-
-    return {
-      profile,
-      triageQuestionReply,
-      siloedRoutingReply,
-      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: ${profile.toUpperCase()}\nREGLA_SILO_ESTRICTO: El usuario es SINDICALIZADO / JUBILADO. El Sindicato es nuestro intermediario y sus integrantes son nuestros promotores. Está TERMINANTEMENTE PROHIBIDO mencionar las oficinas de Microfinanciera Cruse, la dirección 'Vía Citadela' o los teléfonos de Cruse. Solo debes proporcionar los datos del Departamento de Prestaciones Económicas del Sindicato (Salón Pinos Altos, Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Tels. 614 607 7301 y 614 141 2503) o su delegado municipal.\n</triage_channel_silo>`,
-    };
+  const chronologicalUserTexts: string[] = [];
+  if (Array.isArray(history)) {
+    for (const turn of history) {
+      if (turn.role === 'user' && turn.content) {
+        chronologicalUserTexts.push(String(turn.content));
+      }
+    }
   }
+  chronologicalUserTexts.push(message);
 
-  if (profile === 'confianza_tribunal') {
-    const siloedRoutingReply =
-      'Como **Personal de Confianza del Supremo Tribunal de Justicia del Estado de Chihuahua**, tu atención y trámite se realizan **directamente con nosotros en Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.**:\n\n- **Oficinas Centrales:** Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih.\n- **Teléfonos de Atención Directa:** **(614) 411-15-44** y Cel. **(614) 184-58-49**.\n- **Requisitos:** 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia.';
-
-    return {
-      profile,
-      triageQuestionReply,
-      siloedRoutingReply,
-      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: CONFIANZA_SUPREMO_TRIBUNAL\nREGLA_SILO_ESTRICTO: El usuario es Personal de Confianza del Supremo Tribunal de Justicia. Debe comunicarse y acudir exclusivamente con nosotros en las oficinas de Microfinanciera Cruse (Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih., Teléfonos: (614) 411-15-44 y Cel. (614) 184-58-49).\n</triage_channel_silo>`,
-    };
+  for (const text of chronologicalUserTexts) {
+    const step = extractEntitiesFromSingleTurn(text);
+    if (step.dependency !== null) {
+      accDependency = step.dependency;
+    }
+    if (step.plazaType !== null) {
+      accPlazaType = step.plazaType;
+    }
   }
 
   return {
+    dependency: accDependency,
+    plazaType: accPlazaType,
+  };
+}
+
+/**
+ * Guardrails 1, 2, 3 y 4 (CRUSE-APO-2026-053 / 054):
+ * Máquina de Estados Multi-Turno de 2 Dimensiones (Dependencia × Tipo de Plaza)
+ * con soporte para Extracción Híbrida (LLM + Validación Enums), Dependencias Fuera de Alcance,
+ * Correcciones en Tiempo Real y Silo Hermético Sindicato vs Oficinas Cruse.
+ */
+export function evaluateTriageAndChannelRouting(
+  message: string,
+  history: ChatHistoryTurn[] = [],
+  llmExtractedCandidate?: unknown
+): TriageEvaluationResult {
+  const deterministicEntities = extractEntitiesDeterministically(message, history);
+  const currentTurnStep = extractEntitiesFromSingleTurn(message);
+
+  // Fusión Híbrida (Guardrail 1 + Guardrail 3):
+  // Validamos la salida del LLM contra los Enums permitidos, pero garantizamos que cualquier
+  // corrección explícita en el último turno del usuario prevalezca de forma determinista.
+  const validatedHybrid = validateAndSanitizeExtractedEntities(
+    llmExtractedCandidate,
+    deterministicEntities
+  );
+
+  const dependency: DependencyKind =
+    currentTurnStep.dependency !== null
+      ? currentTurnStep.dependency
+      : validatedHybrid.dependency;
+
+  const plazaType: PlazaTypeKind =
+    currentTurnStep.plazaType !== null
+      ? currentTurnStep.plazaType
+      : validatedHybrid.plazaType;
+
+  const triageQuestionReply = AI_ASSISTANT_WELCOME_MESSAGE;
+
+  // Estado 2 (Guardrail 2): Dependencia fuera de alcance (CFE, IMSS, Municipio, UACH, etc.)
+  if (dependency === 'out_of_scope') {
+    return {
+      profile: 'out_of_scope',
+      dependency,
+      plazaType,
+      isFullyResolved: false,
+      triageQuestionReply: OUT_OF_SCOPE_ELIGIBILITY_MESSAGE,
+      siloedRoutingReply: OUT_OF_SCOPE_ELIGIBILITY_MESSAGE,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: DEPENDENCIA_FUERA_DE_ALCANCE\nREGLA_SILO_ESTRICTO: El usuario indicó una dependencia sin convenio activo. Responde amablemente: "${OUT_OF_SCOPE_ELIGIBILITY_MESSAGE}" NO menciones direcciones físicas.\n</triage_channel_silo>`,
+    };
+  }
+
+  // Estado 8 (Guardrail 4): Sindicalizado o Jubilado/Pensionado -> SILO SINDICATO (Salón Pinos Altos)
+  if (
+    plazaType === 'sindicalizado' ||
+    plazaType === 'jubilado_pensionado' ||
+    dependency === 'agrupacion_jubilados'
+  ) {
+    const depLabel =
+      dependency === 'tribunal_poder_judicial'
+        ? 'del **Poder Judicial / Supremo Tribunal de Justicia del Estado de Chihuahua**'
+        : dependency === 'gobierno_estado'
+          ? 'de **Gobierno del Estado de Chihuahua (STSGECH)**'
+          : 'de nuestra **Red de Convenios Institucionales (STSGECH / Poder Judicial / Agrupación de Jubilados y Pensionados)**';
+
+    const siloedRoutingReply =
+      `Como trabajador **Sindicalizado / Agrupación de Jubilados y Pensionados** ${depLabel}, te informamos que **el Sindicato es nuestro intermediario oficial y el personal del Sindicato son nuestros promotores autorizados**.\n\nPara tu trámite, debes comunicarte o acudir directamente al **Departamento de Prestaciones Económicas del Sindicato**:\n- **Sede de Atención y Firma:** Salón Pinos Altos (Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Chihuahua, Chih.), o bien con el **delegado del sindicato en tu municipio**.\n- **Teléfonos del Departamento de Prestaciones Económicas:** **614 607 7301** y **614 141 2503**.\n- **Requisitos:** 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia.`;
+
+    return {
+      profile: 'resolved_sindicalizado_or_jubilado',
+      dependency,
+      plazaType: plazaType === 'unknown' ? 'jubilado_pensionado' : plazaType,
+      isFullyResolved: true,
+      triageQuestionReply,
+      siloedRoutingReply,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: SINDICALIZADO_O_JUBILADO\nDEPENDENCIA_DETECTADA: ${dependency.toUpperCase()}\nREGLA_SILO_ESTRICTO: El usuario es SINDICALIZADO / JUBILADO. El Sindicato es nuestro intermediario y sus integrantes son nuestros promotores. Está TERMINANTEMENTE PROHIBIDO mencionar las oficinas de Microfinanciera Cruse, la dirección 'Vía Citadela' o los teléfonos de Cruse. Solo debes proporcionar los datos del Departamento de Prestaciones Económicas del Sindicato (Salón Pinos Altos, Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Tels. 614 607 7301 y 614 141 2503) o su delegado municipal.\n</triage_channel_silo>`,
+    };
+  }
+
+  // Estado 7: Personal de Confianza del Poder Judicial / Supremo Tribunal de Justicia -> SILO OFICINAS CRUSE
+  if (dependency === 'tribunal_poder_judicial' && plazaType === 'confianza') {
+    const siloedRoutingReply =
+      'Como **Personal de Confianza del Poder Judicial / Supremo Tribunal de Justicia del Estado de Chihuahua**, tu atención y trámite se realizan **directamente con nosotros en Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.**:\n\n- **Oficinas Centrales:** Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih.\n- **Teléfonos de Atención Directa:** **(614) 411-15-44** y Cel. **(614) 184-58-49**.\n- **Requisitos:** 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia.';
+
+    return {
+      profile: 'resolved_confianza_tribunal',
+      dependency,
+      plazaType,
+      isFullyResolved: true,
+      triageQuestionReply,
+      siloedRoutingReply,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: CONFIANZA_SUPREMO_TRIBUNAL\nREGLA_SILO_ESTRICTO: El usuario es Personal de Confianza del Poder Judicial / Supremo Tribunal de Justicia. Debe comunicarse y acudir exclusivamente con nosotros en las oficinas de Microfinanciera Cruse (Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih., Teléfonos: (614) 411-15-44 y Cel. (614) 184-58-49). Está PROHIBIDO enviarlo al Salón Pinos Altos.\n</triage_channel_silo>`,
+    };
+  }
+
+  // Estado 6: Personal de Confianza de Gobierno del Estado (aclaración de alcance de convenio)
+  if (dependency === 'gobierno_estado' && plazaType === 'confianza') {
+    const clarifyNoConvenio =
+      'Gracias por confirmarlo. Te informamos que en **Gobierno del Estado de Chihuahua**, nuestro convenio de descuento vía nómina opera exclusivamente para personal **Sindicalizado (STSGECH)** y para la **Agrupación de Jubilados y Pensionados** (el convenio para **Personal de Confianza** aplica únicamente en el **Poder Judicial / Supremo Tribunal de Justicia**).\n\n¿Cuentas con plaza sindicalizada (STSGECH), eres jubilado/pensionado, o laboras en el Poder Judicial?';
+
+    return {
+      profile: 'resolved_confianza_no_convenio',
+      dependency,
+      plazaType,
+      isFullyResolved: false,
+      triageQuestionReply: clarifyNoConvenio,
+      siloedRoutingReply: clarifyNoConvenio,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: CONFIANZA_GOBIERNO_ESTADO_SIN_CONVENIO\nREGLA_SILO_ESTRICTO: Explica con cortesía que en Gobierno del Estado el convenio aplica para personal Sindicalizado (STSGECH) y Jubilados/Pensionados, mientras que el convenio de Confianza es exclusivo del Poder Judicial / Supremo Tribunal de Justicia.\n</triage_channel_silo>`,
+    };
+  }
+
+  // Estado 3 (Caso Gerardo Ornelas): Indicó Poder Judicial / Supremo Tribunal, falta Tipo de Plaza
+  if (dependency === 'tribunal_poder_judicial' && plazaType === 'unknown') {
+    const partialTribunalReply =
+      '¡Excelente! Veo que laboras en el **Poder Judicial / Supremo Tribunal de Justicia del Estado de Chihuahua**. Para canalizarte al área exacta, solo confírmame por favor: **¿tu plaza es sindicalizada o eres personal de confianza?**';
+
+    return {
+      profile: 'partial_tribunal_missing_plaza',
+      dependency,
+      plazaType,
+      isFullyResolved: false,
+      triageQuestionReply: partialTribunalReply,
+      siloedRoutingReply: partialTribunalReply,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_PODER_JUDICIAL_FALTA_PLAZA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que trabaja en el Poder Judicial / Supremo Tribunal de Justicia de Chihuahua. NO vuelvas a preguntarle en qué dependencia trabaja; reconócelo y pregúntale ÚNICAMENTE si su plaza es sindicalizada o de confianza.\n</triage_channel_silo>`,
+    };
+  }
+
+  // Estado 4: Indicó Gobierno del Estado, falta Tipo de Plaza
+  if (dependency === 'gobierno_estado' && plazaType === 'unknown') {
+    const partialGobReply =
+      '¡Muchas gracias! Veo que colaboras en **Gobierno del Estado de Chihuahua**. Para canalizarte con el área indicada, solo confírmame por favor: **¿tu tipo de plaza es sindicalizada (STSGECH), jubilado/pensionado o de confianza?**';
+
+    return {
+      profile: 'partial_gob_missing_plaza',
+      dependency,
+      plazaType,
+      isFullyResolved: false,
+      triageQuestionReply: partialGobReply,
+      siloedRoutingReply: partialGobReply,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_GOBIERNO_ESTADO_FALTA_PLAZA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que trabaja en Gobierno del Estado de Chihuahua. NO vuelvas a preguntarle en qué dependencia trabaja; pregúntale ÚNICAMENTE cuál es su tipo de plaza (sindicalizado, jubilado/pensionado o de confianza).\n</triage_channel_silo>`,
+    };
+  }
+
+  // Estado 5: Indicó Personal de Confianza, falta Dependencia
+  if (dependency === 'unknown' && plazaType === 'confianza') {
+    const partialConfianzaReply =
+      'Gracias por confirmarme que eres **personal de confianza**. Para verificar el convenio aplicable y darte los datos de atención, por favor indícame: **¿en qué dependencia o institución laboras (por ejemplo, Poder Judicial / Supremo Tribunal de Justicia)?**';
+
+    return {
+      profile: 'partial_confianza_missing_dep',
+      dependency,
+      plazaType,
+      isFullyResolved: false,
+      triageQuestionReply: partialConfianzaReply,
+      siloedRoutingReply: partialConfianzaReply,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_CONFIANZA_FALTA_DEPENDENCIA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que es personal de confianza. NO vuelvas a preguntarle su tipo de plaza; pregúntale ÚNICAMENTE en qué dependencia o institución labora.\n</triage_channel_silo>`,
+    };
+  }
+
+  // Estado 1: Sin identificar ni dependencia ni tipo de plaza -> Saludo Inicial Oficial de Alma (Opción 3)
+  return {
     profile: 'unidentified',
+    dependency: 'unknown',
+    plazaType: 'unknown',
+    isFullyResolved: false,
     triageQuestionReply,
     siloedRoutingReply: triageQuestionReply,
-    xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: NO_IDENTIFICADO\nREGLA_SILO_ESTRICTO: El usuario AÚN NO ha indicado en qué dependencia trabaja ni si es sindicalizado o de confianza. Lo PRIMERO que debes preguntarle es: "¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?" NO menciones ninguna dirección física hasta que se identifique.\n</triage_channel_silo>`,
+    xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: NO_IDENTIFICADO\nREGLA_SILO_ESTRICTO: El usuario AÚN NO ha indicado su dependencia ni su tipo de plaza. Responde con el mensaje oficial de Alma: "${AI_ASSISTANT_WELCOME_MESSAGE}" NO menciones ninguna dirección física hasta que se identifique.\n</triage_channel_silo>`,
   };
 }
