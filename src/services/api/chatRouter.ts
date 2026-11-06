@@ -14,6 +14,7 @@ import Groq from 'groq-sdk';
 import { getServerEnv } from '../../config/serverEnv';
 import {
   evaluateDeterministicFinancialQuery,
+  evaluateTriageAndChannelRouting,
   ChatHistoryTurn,
 } from '../ai/chatFinancialCalculator';
 
@@ -59,10 +60,11 @@ Parámetros Inmutables del Negocio (financialConstants y TABLAS DE CUOTAS.xlsx):
    - Supremo Tribunal de Justicia del Estado de Chihuahua: aplica exclusivamente para trabajadores activos (sindicalizados y de confianza).
    - Sindicato de Trabajadores al Servicio del Gobierno del Estado (STSGECH): trabajadores activos sindicalizados y delegados del sindicato en cada municipio (promotores municipales pertenecientes al sindicato).
    - Jubilados y Pensionados: aplica exclusivamente para la Agrupación de los Jubilados y Pensionados al Servicio de Gobierno del Estado de Chihuahua.
-5. ENRUTAMIENTO DETERMINISTA DE SEDES Y CONTACTO (GUARDRAIL 4):
-   - IF Trabajador Sindicalizado (STSGECH) o Jubilado/Pensionado: Debe acudir al Departamento de Prestaciones Económicas ubicado en el Salón Pinos Altos (Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Chihuahua, Chih.), Teléfonos: 614 607 7301 y 614 141 2503 (o con su delegado sindical municipal).
-   - IF Trabajador de Confianza del Supremo Tribunal de Justicia: Debe acudir directamente a las oficinas de Microfinanciera Cruse en Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih., Teléfonos: (614) 411-15-44 y Cel. (614) 184-58-49.
-   - Domicilio de la Unidad Especializada de Atención a Usuarios (UNE): Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih. Correo UNE: gerardo.olvera@cruse.com.mx. Horario: Lunes a Viernes de 8:00 a 15:00 hrs.
+5. PROTOCOLO DE TRIAJE INICIAL Y SILO DE INFORMACIÓN ABSOLUTO (GUARDRAIL 1 — CRUSE-APO-2026-053):
+   - El Sindicato es nuestro intermediario oficial y el personal del Sindicato son nuestros promotores autorizados para trabajadores sindicalizados.
+   - TRIAJE DE PRIMER CONTACTO: En cuanto nos contactan, si el usuario aún no ha indicado en qué dependencia trabaja ni si es sindicalizado o de confianza, lo PRIMERO que debes preguntarle es: "¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?".
+   - CLÁUSULA INQUEBRANTABLE DE AISLAMIENTO (GUARDRAIL 1): SI el usuario es Sindicalizado o Jubilado/Pensionado, está TERMINANTEMENTE PROHIBIDO mencionar las oficinas de Microfinanciera Cruse, la dirección 'Vía Citadela' o los teléfonos de Cruse. Solo debes proporcionar los datos del Departamento de Prestaciones Económicas del Sindicato (Salón Pinos Altos) o su delegado municipal. (Domicilio Salón Pinos Altos: Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Chihuahua, Chih., Teléfonos: 614 607 7301 y 614 141 2503).
+   - SI el usuario es Personal de Confianza del Supremo Tribunal de Justicia: está PROHIBIDO enviarlo al Salón Pinos Altos; solo debes proporcionarle los datos de atención directa con nosotros en las oficinas de Microfinanciera Cruse (Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih., Teléfonos: (614) 411-15-44 y Cel. (614) 184-58-49).
 
 REGLA INQUEBRANTABLE DE CÁLCULO FINANCIERO DETERMINISTA (CRUSE-APO-2026-017 / 051):
 - TIENES PROHIBIDO REALIZAR CUALQUIER OPERACIÓN MATEMÁTICA POR TU CUENTA.
@@ -127,18 +129,30 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     : [];
 
   const calcResult = evaluateDeterministicFinancialQuery(message, sanitizedHistory);
+  const triageResult = evaluateTriageAndChannelRouting(message, sanitizedHistory);
+
+  // Si el usuario aún no se ha identificado, aplicar triaje obligatorio de primer contacto
+  if (triageResult.profile === 'unidentified') {
+    if (calcResult.detected && calcResult.fallbackMarkdownReply) {
+      return res.json({
+        reply: `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.triageQuestionReply}`,
+      });
+    }
+    return res.json({ reply: triageResult.triageQuestionReply });
+  }
 
   if (calcResult.detected && calcResult.needsClarification && calcResult.clarificationReply) {
-    return res.json({ reply: calcResult.clarificationReply });
+    return res.json({
+      reply: `${calcResult.clarificationReply}\n\n---\n\n${triageResult.siloedRoutingReply}`,
+    });
   }
 
   const groq = getAiClient();
   if (!groq) {
-    return res.json({
-      reply:
-        calcResult.fallbackMarkdownReply ??
-        `[Asistente Oficial Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.]: Contamos con **Crédito Normal** (tasa 47.50% anual nominal / 1.9792% quincenal sin IVA, hasta $500,000 a 24, 48 o 72 quincenas) y **Crédito Express** (tasa 80.00% anual nominal / 3.3333% quincenal sin IVA, de $1,000 a $20,000 en 6, 14 o 20 quincenas), respetando el tope legal del **30% conforme al Art. 110 de la LFT**. Si eres trabajador **Sindicalizado** acude al Departamento de Prestaciones Económicas en el **Salón Pinos Altos** (Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Tels. 614 607 7301 y 614 141 2503); si eres trabajador de **Confianza del Supremo Tribunal** acude a **Vía Citadela #5710 Int. #401, Edificio Quorum** (Tel. 614 411-15-44).`,
-    });
+    const baseReply = calcResult.fallbackMarkdownReply
+      ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
+      : triageResult.siloedRoutingReply;
+    return res.json({ reply: baseReply });
   }
 
   try {
@@ -155,9 +169,14 @@ chatRouter.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    const enrichedUserContent = calcResult.xmlContextBlock
-      ? `${message}\n\n${calcResult.xmlContextBlock}`
-      : message;
+    const contextBlocks = [
+      triageResult.xmlTriageDirective,
+      calcResult.xmlContextBlock,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const enrichedUserContent = `${message}\n\n${contextBlocks}`;
 
     chatMessages.push({ role: 'user', content: enrichedUserContent });
 
@@ -170,13 +189,26 @@ chatRouter.post('/', async (req: Request, res: Response) => {
 
     const rawReply = completion.choices[0]?.message?.content
       ?.replace(/<\/?deterministic_financial_data>/gi, '')
+      ?.replace(/<\/?triage_channel_silo>/gi, '')
       .trim();
 
     if (!rawReply) {
       return res.json({
-        reply:
-          calcResult.fallbackMarkdownReply ??
-          'Estoy a tu disposición para resolver tus dudas sobre nuestros créditos vía nómina bajo el tope legal del 30% (Art. 110 LFT). ¿Deseas conocer tu sede de firma o calcular tu cuota?',
+        reply: calcResult.fallbackMarkdownReply
+          ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
+          : triageResult.siloedRoutingReply,
+      });
+    }
+
+    // Barrera determinista post-LLM (Guardrail 1 y 4): Cero fugas de Vía Citadela / 411-15-44 a Sindicalizados
+    if (
+      (triageResult.profile === 'sindicalizado' || triageResult.profile === 'jubilado') &&
+      (/citadela|411-15-44|184-58-49/i.test(rawReply) || !/pinos altos|607 7301/i.test(rawReply))
+    ) {
+      return res.json({
+        reply: calcResult.fallbackMarkdownReply
+          ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
+          : triageResult.siloedRoutingReply,
       });
     }
 
@@ -184,11 +216,10 @@ chatRouter.post('/', async (req: Request, res: Response) => {
   } catch (err: unknown) {
     console.error('Error in /api/chat:', err);
     if (calcResult.fallbackMarkdownReply) {
-      return res.json({ reply: calcResult.fallbackMarkdownReply });
+      return res.json({
+        reply: `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`,
+      });
     }
-    return res.status(500).json({
-      error: 'Error procesando la consulta en el servidor',
-      details: err instanceof Error ? err.message : 'Error desconocido',
-    });
+    return res.json({ reply: triageResult.siloedRoutingReply });
   }
 });

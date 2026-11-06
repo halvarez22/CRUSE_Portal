@@ -176,3 +176,96 @@ export function evaluateDeterministicFinancialQuery(
     fallbackMarkdownReply: fallbackMd,
   };
 }
+
+export type TriageProfile = 'unidentified' | 'sindicalizado' | 'jubilado' | 'confianza_tribunal';
+
+export interface TriageEvaluationResult {
+  profile: TriageProfile;
+  triageQuestionReply: string;
+  siloedRoutingReply: string;
+  xmlTriageDirective: string;
+}
+
+function detectTriageProfileFromTurn(text: string): TriageProfile | null {
+  const lower = text.toLowerCase();
+  if (lower.includes('confianza')) {
+    return 'confianza_tribunal';
+  }
+  if (
+    lower.includes('jubilad') ||
+    lower.includes('pensionad') ||
+    lower.includes('agrupacion') ||
+    lower.includes('agrupación')
+  ) {
+    return 'jubilado';
+  }
+  if (
+    lower.includes('sindical') ||
+    lower.includes('sindicato') ||
+    lower.includes('stsgech') ||
+    lower.includes('pinos altos') ||
+    lower.includes('delegado')
+  ) {
+    return 'sindicalizado';
+  }
+  return null;
+}
+
+/**
+ * Guardrails 1, 2 y 4 (CRUSE-APO-2026-053):
+ * Resuelve de forma 100% determinista el estado del triaje de dependencia/estatus laboral
+ * y genera la respuesta de canalización con aislamiento hermético (Cero Fugas de Vía Citadela a Sindicalizados).
+ */
+export function evaluateTriageAndChannelRouting(
+  message: string,
+  history: ChatHistoryTurn[] = []
+): TriageEvaluationResult {
+  let detectedProfile = detectTriageProfileFromTurn(message);
+
+  if (!detectedProfile && Array.isArray(history)) {
+    const userTurns = [...history].reverse().filter((h) => h.role === 'user');
+    for (const turn of userTurns) {
+      const candidate = detectTriageProfileFromTurn(String(turn.content || ''));
+      if (candidate) {
+        detectedProfile = candidate;
+        break;
+      }
+    }
+  }
+
+  const profile: TriageProfile = detectedProfile ?? 'unidentified';
+
+  const triageQuestionReply =
+    'Para brindarte la información exacta y canalizarte con el área correspondiente, por favor indícame primero:\n\n**¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?**\n\n*(Puedes escribirlo aquí o seleccionar tu perfil en los botones rápidos de arriba).*';
+
+  if (profile === 'sindicalizado' || profile === 'jubilado') {
+    const siloedRoutingReply =
+      'Como trabajador **Sindicalizado / Agrupación de Jubilados y Pensionados**, te informamos que **el Sindicato es nuestro intermediario oficial y el personal del Sindicato son nuestros promotores autorizados**.\n\nPara tu trámite, debes comunicarte o acudir directamente al **Departamento de Prestaciones Económicas del Sindicato**:\n- **Sede de Atención y Firma:** Salón Pinos Altos (Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Chihuahua, Chih.), o bien con el **delegado del sindicato en tu municipio**.\n- **Teléfonos del Departamento de Prestaciones Económicas:** **614 607 7301** y **614 141 2503**.\n- **Requisitos:** 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia.';
+
+    return {
+      profile,
+      triageQuestionReply,
+      siloedRoutingReply,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: ${profile.toUpperCase()}\nREGLA_SILO_ESTRICTO: El usuario es SINDICALIZADO / JUBILADO. El Sindicato es nuestro intermediario y sus integrantes son nuestros promotores. Está TERMINANTEMENTE PROHIBIDO mencionar las oficinas de Microfinanciera Cruse, la dirección 'Vía Citadela' o los teléfonos de Cruse. Solo debes proporcionar los datos del Departamento de Prestaciones Económicas del Sindicato (Salón Pinos Altos, Calle Laguna de Bustillos, Quinta Etapa San Felipe, C.P. 31203, Tels. 614 607 7301 y 614 141 2503) o su delegado municipal.\n</triage_channel_silo>`,
+    };
+  }
+
+  if (profile === 'confianza_tribunal') {
+    const siloedRoutingReply =
+      'Como **Personal de Confianza del Supremo Tribunal de Justicia del Estado de Chihuahua**, tu atención y trámite se realizan **directamente con nosotros en Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.**:\n\n- **Oficinas Centrales:** Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih.\n- **Teléfonos de Atención Directa:** **(614) 411-15-44** y Cel. **(614) 184-58-49**.\n- **Requisitos:** 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia.';
+
+    return {
+      profile,
+      triageQuestionReply,
+      siloedRoutingReply,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: CONFIANZA_SUPREMO_TRIBUNAL\nREGLA_SILO_ESTRICTO: El usuario es Personal de Confianza del Supremo Tribunal de Justicia. Debe comunicarse y acudir exclusivamente con nosotros en las oficinas de Microfinanciera Cruse (Vía Citadela #5710 Interior #401, Edificio Quorum, Col. Saucito, CP 31110, Chihuahua, Chih., Teléfonos: (614) 411-15-44 y Cel. (614) 184-58-49).\n</triage_channel_silo>`,
+    };
+  }
+
+  return {
+    profile: 'unidentified',
+    triageQuestionReply,
+    siloedRoutingReply: triageQuestionReply,
+    xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: NO_IDENTIFICADO\nREGLA_SILO_ESTRICTO: El usuario AÚN NO ha indicado en qué dependencia trabaja ni si es sindicalizado o de confianza. Lo PRIMERO que debes preguntarle es: "¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?" NO menciones ninguna dirección física hasta que se identifique.\n</triage_channel_silo>`,
+  };
+}

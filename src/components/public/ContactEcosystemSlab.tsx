@@ -34,33 +34,55 @@ export const ContactEcosystemSlab: React.FC = () => {
               <div className="p-4 rounded-2xl bg-white/90 dark:bg-black/30 border border-emerald-500/40">
                 <div className="flex items-center gap-2 text-xs font-black uppercase text-emerald-800 dark:text-[#4CD360] mb-1.5">
                   <Building2 className="w-4 h-4 shrink-0" />
-                  <span>Trabajadores Sindicalizados (STSGECH)</span>
+                  <span>Trabajadores Sindicalizados y Jubilados (Vía Sindicato — Promotores)</span>
                 </div>
                 <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed mb-1.5">
-                  <strong>{COMPANY_INFO.unionOfficeContact.title}</strong> — {COMPANY_INFO.unionOfficeContact.venueName}:
+                  El Sindicato es nuestro intermediario oficial y su personal son nuestros promotores autorizados. Comunícate al <strong>{COMPANY_INFO.unionOfficeContact.title}</strong> ({COMPANY_INFO.unionOfficeContact.venueName}):
                 </p>
-                <p className="text-xs text-slate-700 dark:text-slate-300 mb-1.5">
-                  {COMPANY_INFO.unionOfficeContact.address}
+                <p className="text-xs text-slate-700 dark:text-slate-300 mb-2">
+                  {COMPANY_INFO.unionOfficeContact.address} (o con tu delegado sindical municipal).
                 </p>
-                <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                  Teléfonos: {COMPANY_INFO.unionOfficeContact.phones.join(' / ')}
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href="tel:6146077301"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#249E82]/15 hover:bg-[#249E82]/25 text-emerald-950 dark:text-[#4CD360] text-xs font-mono font-bold border border-[#249E82]/40 transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5" /> 614 607 7301
+                  </a>
+                  <a
+                    href="tel:6141412503"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#249E82]/15 hover:bg-[#249E82]/25 text-emerald-950 dark:text-[#4CD360] text-xs font-mono font-bold border border-[#249E82]/40 transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5" /> 614 141 2503
+                  </a>
+                </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-white/90 dark:bg-black/30 border border-[#396CAE]/40">
                 <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1E40AF] dark:text-[#00D1FF] mb-1.5">
                   <MapPin className="w-4 h-4 shrink-0" />
-                  <span>Personal de Confianza (Supremo Tribunal) y Oficinas Cruse</span>
+                  <span>Personal de Confianza (Supremo Tribunal de Justicia)</span>
                 </div>
                 <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed mb-1.5">
-                  <strong>Oficinas Centrales de {COMPANY_INFO.name}:</strong>
+                  Atención y trámite directo con nosotros en las <strong>Oficinas Centrales de {COMPANY_INFO.name}:</strong>
                 </p>
-                <p className="text-xs text-slate-700 dark:text-slate-300 mb-1.5">
+                <p className="text-xs text-slate-700 dark:text-slate-300 mb-2">
                   {COMPANY_INFO.address}
                 </p>
-                <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                  Oficina: {COMPANY_INFO.officePhone} | Cel. {COMPANY_INFO.cellPhone}
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href="tel:6144111544"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#396CAE]/15 hover:bg-[#396CAE]/25 text-[#1E3A8A] dark:text-[#00D1FF] text-xs font-mono font-bold border border-[#396CAE]/40 transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5" /> {COMPANY_INFO.officePhone}
+                  </a>
+                  <a
+                    href="tel:6141845849"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#396CAE]/15 hover:bg-[#396CAE]/25 text-[#1E3A8A] dark:text-[#00D1FF] text-xs font-mono font-bold border border-[#396CAE]/40 transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5" /> Cel. {COMPANY_INFO.cellPhone}
+                  </a>
+                </div>
               </div>
             </div>
 

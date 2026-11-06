@@ -129,7 +129,7 @@ export const FAQ_CHAT_PROMPTS = [
   {
     title: "¿Cuáles son los requisitos y dónde firmo?",
     prompt: "¿Qué documentos necesito y a dónde acudo a firmar mi solicitud?",
-    answer: "Requieres 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio (para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia. Si eres trabajador Sindicalizado acudes al Departamento de Prestaciones Económicas en el Salón Pinos Altos (Tels. 614 607 7301 y 614 141 2503); si eres trabajador de Confianza del Supremo Tribunal acudes a las oficinas de Microfinanciera Cruse en Vía Citadela #5710 Int. #401, Edificio Quorum.",
+    answer: "Requieres 2 copias de INE vigente, 1 copia de tu último recibo de nómina, 1 comprobante de domicilio reciente (< 3 meses para Crédito Normal), y la firma de los Formatos Cruse más la Autorización de Descuento de tu Dependencia. Para indicarte tu sede exacta de firma, por favor indícanos: ¿en qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?",
   },
   {
     title: "¿Cómo opera el seguro de vida incluido?",

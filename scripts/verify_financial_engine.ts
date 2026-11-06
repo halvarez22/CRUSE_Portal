@@ -19,6 +19,9 @@ import {
   calculateSimulation,
   validateLegalPaymentCapacityLft110,
 } from '../src/config/financialConstants';
+import { evaluateTriageAndChannelRouting } from '../src/services/ai/chatFinancialCalculator';
+import { buildDeterministicLocalFallbackReply } from '../src/components/public/AiAssistantPublic';
+import { SYSTEM_INSTRUCTION } from '../src/services/api/chatRouter';
 import { BorrowerProfile, PaymentFrequency } from '../src/types';
 
 interface SheetAuditConfig {
@@ -263,6 +266,64 @@ console.log(`   • Archivos escaneados en src/, scripts/, db/ : ${totalScannedF
 console.log(`   • Ocurrencias de constantes CAT legacy       : ${legacyCatMatches} (Esperado: 0)\n`);
 
 if (legacyCatMatches !== 0) {
+  process.exit(1);
+}
+
+// Verificación Guardrails 1, 2 y 4 (CRUSE-APO-2026-053): Prueba Forense de Triaje y No-Fuga para Perfil Sindicalizado
+console.log('🛡️  VERIFICACIÓN GUARDRAILS 1, 2 Y 4 (TRIAJE INICIAL Y SILO HERMÉTICO SINDICATO VS CRUSE — APO-053):');
+
+const hasStrictNegativeClause = SYSTEM_INSTRUCTION.includes(
+  "SI el usuario es Sindicalizado o Jubilado/Pensionado, está TERMINANTEMENTE PROHIBIDO mencionar las oficinas de Microfinanciera Cruse, la dirección 'Vía Citadela' o los teléfonos de Cruse. Solo debes proporcionar los datos del Departamento de Prestaciones Económicas del Sindicato (Salón Pinos Altos) o su delegado municipal."
+);
+console.log(`   • Guardrail 1 (Cláusula Negativa en SYSTEM_INSTRUCTION) : ${hasStrictNegativeClause ? 'PRESENTE ✅' : 'AUSENTE ❌'}`);
+if (!hasStrictNegativeClause) {
+  console.error('❌ FALLO CRÍTICO GUARDRAIL 1: Falta la restricción negativa explícita en SYSTEM_INSTRUCTION.');
+  process.exit(1);
+}
+
+// Simulación 1: Primer contacto sin identificarse
+const unidentifiedReply = buildDeterministicLocalFallbackReply('Hola, quiero informes de un préstamo y dónde firmo', []);
+const unidentifiedAsksTriage =
+  unidentifiedReply.includes('¿En qué dependencia trabajas y eres trabajador sindicalizado') &&
+  !unidentifiedReply.includes('Vía Citadela') &&
+  !unidentifiedReply.includes('Salón Pinos Altos');
+console.log(`   • Triaje Primer Contacto (Sin Identificar)              : ${unidentifiedAsksTriage ? 'PREGUNTA TRIAJE EXCLUSIVA ✅' : 'FALLO ❌'}`);
+
+// Simulación 2 (Guardrail 4): Consulta de usuario "Sindicalizado"
+const unionQuery = 'Soy trabajador sindicalizado del Gobierno del Estado, ¿con quién me comunico y dónde firmo?';
+const unionTriage = evaluateTriageAndChannelRouting(unionQuery, []);
+const unionFallbackReply = buildDeterministicLocalFallbackReply(unionQuery, []);
+const unionContainsSindicato =
+  (unionFallbackReply.includes('Salón Pinos Altos') || unionFallbackReply.includes('614 607 7301')) &&
+  (unionTriage.siloedRoutingReply.includes('Salón Pinos Altos') || unionTriage.siloedRoutingReply.includes('614 607 7301'));
+const unionLeaksCruse =
+  unionFallbackReply.includes('Vía Citadela') ||
+  unionFallbackReply.includes('411-15-44') ||
+  unionTriage.siloedRoutingReply.includes('Vía Citadela') ||
+  unionTriage.siloedRoutingReply.includes('411-15-44');
+
+console.log(
+  `   • Guardrail 4 (Consulta Sindicalizado — Contiene Sindicato): ${unionContainsSindicato ? 'SÍ (Salón Pinos Altos / 614 607 7301) ✅' : 'NO ❌'}`
+);
+console.log(
+  `   • Guardrail 4 (Consulta Sindicalizado — Fuga Vía Citadela) : ${unionLeaksCruse ? 'FUGA DETECTADA ❌' : '0 FUGAS (SIN Vía Citadela / 411-15-44) ✅'}`
+);
+
+// Simulación 3: Consulta de usuario "Personal de Confianza del Supremo Tribunal"
+const confianzaReply = buildDeterministicLocalFallbackReply(
+  'Trabajo en el Supremo Tribunal de Justicia y soy personal de confianza, ¿dónde firmo?',
+  []
+);
+const confianzaValid =
+  confianzaReply.includes('Vía Citadela') &&
+  confianzaReply.includes('411-15-44') &&
+  !confianzaReply.includes('Salón Pinos Altos');
+console.log(
+  `   • Canalización Personal de Confianza (Supremo Tribunal) : ${confianzaValid ? 'OFICINAS CRUSE EXCLUSIVO ✅' : 'FALLO ❌'}\n`
+);
+
+if (!unidentifiedAsksTriage || !unionContainsSindicato || unionLeaksCruse || !confianzaValid) {
+  console.error('❌ FALLO CRÍTICO GUARDRAIL 4: Fuga de información o error en aislamiento de canales.');
   process.exit(1);
 }
 

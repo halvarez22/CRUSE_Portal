@@ -11,6 +11,7 @@ import {
   AlertCircle,
   MapPin,
   Scale,
+  Phone,
 } from 'lucide-react';
 import { BorrowerProfile, PaymentFrequency, ProductId } from '../../types';
 import { COMPANY_INFO } from '../../data/cruseData';
@@ -90,6 +91,7 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
   const [preferredSchedule, setPreferredSchedule] = useState('');
   const [privacyAccepted, setPrivacyAccepted] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const folio = useMemo(() => {
@@ -102,6 +104,7 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     setSubmitError(null);
+    setSubmittedSuccess(false);
     const defaultIncome =
       data.requiredNetIncome ??
       new Decimal(periodicPayment).div(new Decimal('0.30')).toDP(2, Decimal.ROUND_HALF_UP).toNumber();
@@ -230,9 +233,11 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
         throw new Error(errData?.error || 'No fue posible registrar tu pre-solicitud.');
       }
 
-      const whatsappUrl = buildPromoterWhatsAppUrl();
-      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-      onClose();
+      setSubmittedSuccess(true);
+      if (isTribunalConfianza) {
+        const whatsappUrl = buildPromoterWhatsAppUrl();
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Error de conexión con el servidor.');
     } finally {
@@ -282,16 +287,10 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
             <FileCheck2 className="w-3.5 h-3.5" />
             Folio de Pre-Cotización: {folio}
           </span>
-          <h3
-            id="pre-app-modal-title"
-            className="text-lg sm:text-xl font-black text-slate-900 dark:text-white"
-          >
+          <h3 id="pre-app-modal-title" className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
             Resumen de Condiciones Financieras y Pre-Solicitud
           </h3>
-          <p
-            id="pre-app-modal-desc"
-            className="text-xs text-slate-700 dark:text-slate-300 mt-0.5 max-w-lg"
-          >
+          <p id="pre-app-modal-desc" className="text-xs text-slate-700 dark:text-slate-300 mt-0.5 max-w-lg">
             Verifica la transparencia de tu cotización y registra tus datos para formalizar tus Formatos Cruse.
           </p>
         </div>
@@ -309,9 +308,7 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs mb-2.5">
             <div className="glass-card rounded-xl p-2.5">
-              <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
-                Monto Solicitado
-              </span>
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 block">Monto Solicitado</span>
               <strong className="text-sm font-black font-mono text-slate-950 dark:text-white">
                 ${formatExactMxn(data.amount)} MXN
               </strong>
@@ -325,9 +322,7 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
               </strong>
             </div>
             <div className="glass-card rounded-xl p-2.5 col-span-2 sm:col-span-1">
-              <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
-                Total Estimado a Pagar
-              </span>
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 block">Total Estimado a Pagar</span>
               <strong className="text-sm font-black font-mono text-slate-950 dark:text-white block">
                 ${formatExactMxn(data.totalToPay)} MXN
               </strong>
@@ -335,12 +330,8 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-700 dark:text-slate-300 pt-2 border-t border-slate-200 dark:border-white/10">
-            <span>
-              Plazo: <strong>{data.selectedTerm} {periodUnitPlural}</strong>
-            </span>
-            <span>
-              IVA Aplicable: <strong>16% sobre intereses</strong>
-            </span>
+            <span>Plazo: <strong>{data.selectedTerm} {periodUnitPlural}</strong></span>
+            <span>IVA Aplicable: <strong>16% sobre intereses</strong></span>
             <span>
               Ingreso Mín. (30% LFT):{' '}
               <strong className="font-mono text-[#0F766E] dark:text-[#2EBD9B]">
@@ -471,28 +462,52 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
             </div>
           </div>
 
-          {/* Guardrail 4: Enrutamiento Determinista de Sede de Firma según Dependencia */}
+          {/* Guardrail 3 (CRUSE-APO-2026-053): Lógica Binaria Estricta de Canalización (Sindicato vs Cruse) */}
           <div className="flex items-start gap-2.5 text-[11px] text-slate-700 dark:text-slate-300 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
             <MapPin className="w-4 h-4 text-[#0F766E] dark:text-[#249E82] shrink-0 mt-0.5" />
-            <div>
-              <strong className="block text-slate-900 dark:text-white font-bold mb-0.5">
-                {isTribunalConfianza
-                  ? 'Sede de Firma — Personal de Confianza del Supremo Tribunal:'
-                  : 'Sede de Firma — Trabajadores Sindicalizados / Agrupación:'}
-              </strong>
+            <div className="w-full">
               {isTribunalConfianza ? (
-                <span>
-                  Acude a las oficinas de <strong>{COMPANY_INFO.name}</strong> en{' '}
-                  <strong>{COMPANY_INFO.address}</strong> (Tel. {COMPANY_INFO.officePhone}) para suscribir tus{' '}
-                  <strong>Formatos Cruse y Autorización de Descuento de tu Dependencia</strong>. La dispersión SPEI se realiza una vez firmados los formatos.
-                </span>
+                <div>
+                  <strong className="block text-slate-900 dark:text-white font-bold mb-0.5">
+                    Atención Directa — Personal de Confianza del Supremo Tribunal:
+                  </strong>
+                  <span>
+                    Comunícate o acude directamente con nosotros en las oficinas de <strong>{COMPANY_INFO.name}</strong> en{' '}
+                    <strong>{COMPANY_INFO.address}</strong> (Tels. {COMPANY_INFO.officePhone} / {COMPANY_INFO.cellPhone}) para suscribir tus{' '}
+                    <strong>Formatos Cruse y Autorización de Descuento de tu Dependencia</strong>.
+                  </span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <a href="tel:6144111544" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#396CAE]/20 text-[#1E3A8A] dark:text-[#00D1FF] font-bold border border-[#396CAE]/40">
+                      <Phone className="w-3 h-3" /> Llamar (614) 411-15-44
+                    </a>
+                    <a href="tel:6141845849" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#396CAE]/20 text-[#1E3A8A] dark:text-[#00D1FF] font-bold border border-[#396CAE]/40">
+                      <Phone className="w-3 h-3" /> Cel. (614) 184-58-49
+                    </a>
+                  </div>
+                </div>
               ) : (
-                <span>
-                  Acude al <strong>Departamento de Prestaciones Económicas en el {COMPANY_INFO.unionOfficeContact.venueName}</strong> ubicado en{' '}
-                  <strong>{COMPANY_INFO.unionOfficeContact.address}</strong> (Tels.{' '}
-                  {COMPANY_INFO.unionOfficeContact.phones.join(' y ')}) o con tu delegado sindical municipal para firmar tus{' '}
-                  <strong>Formatos Cruse y Autorización de Descuento</strong>. La dispersión SPEI se ejecuta posterior a la firma.
-                </span>
+                <div>
+                  <strong className="block text-slate-900 dark:text-white font-bold mb-0.5">
+                    Intermediación y Promoción vía Sindicato — Trabajadores Sindicalizados / Agrupación:
+                  </strong>
+                  <span>
+                    El Sindicato es nuestro intermediario oficial y su personal son nuestros promotores. Comunícate o acude exclusivamente al{' '}
+                    <strong>Departamento de Prestaciones Económicas en el {COMPANY_INFO.unionOfficeContact.venueName}</strong> ({COMPANY_INFO.unionOfficeContact.address}) o con tu delegado sindical municipal.
+                  </span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <a href="tel:6146077301" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#249E82]/20 text-[#0F766E] dark:text-[#4CD360] font-bold border border-[#249E82]/40">
+                      <Phone className="w-3 h-3" /> Llamar Sindicato: 614 607 7301
+                    </a>
+                    <a href="tel:6141412503" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#249E82]/20 text-[#0F766E] dark:text-[#4CD360] font-bold border border-[#249E82]/40">
+                      <Phone className="w-3 h-3" /> Llamar Sindicato: 614 141 2503
+                    </a>
+                  </div>
+                </div>
+              )}
+              {submittedSuccess && (
+                <div className="mt-2 pt-2 border-t border-emerald-500/30 font-bold text-[#0F766E] dark:text-[#4CD360]">
+                  ✅ Folio {folio} registrado exitosamente. Presenta este folio en tu canal asignado arriba.
+                </div>
               )}
             </div>
           </div>
@@ -519,28 +534,46 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
             </div>
           )}
 
-          {/* Botones de Acción */}
+          {/* Botones de Acción (Guardrail 3: Enlace WhatsApp de Cruse oculto cuando isTribunalConfianza === false) */}
           <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
             <button
               type="button"
               onClick={onClose}
               className="py-2.5 px-4 rounded-xl glass-card text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 hover:border-[#249E82]/50 transition-all"
             >
-              Modificar Simulación
+              {submittedSuccess ? 'Cerrar Ventana' : 'Modificar Simulación'}
             </button>
-            <button
-              type="submit"
-              disabled={!isFormValid || submitting}
-              className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#249E82] to-[#1E9F81] disabled:opacity-45 disabled:cursor-not-allowed text-white font-black text-xs shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-2 glow-teal"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>
-                {submitting
-                  ? 'Guardando Pre-Solicitud...'
-                  : 'Guardar Pre-Solicitud y Enlazar por WhatsApp'}
-              </span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {isTribunalConfianza ? (
+              <button
+                type="submit"
+                disabled={!isFormValid || submitting}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#249E82] to-[#1E9F81] disabled:opacity-45 disabled:cursor-not-allowed text-white font-black text-xs shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-2 glow-teal"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>
+                  {submitting
+                    ? 'Guardando Pre-Solicitud...'
+                    : 'Guardar Pre-Solicitud y Contactar Oficinas Cruse (WhatsApp)'}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!isFormValid || submitting || submittedSuccess}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#249E82] to-[#1E9F81] disabled:opacity-45 disabled:cursor-not-allowed text-white font-black text-xs shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-2 glow-teal"
+              >
+                <FileCheck2 className="w-4 h-4" />
+                <span>
+                  {submitting
+                    ? 'Guardando Folio para Sindicato...'
+                    : submittedSuccess
+                      ? 'Folio Registrado — Comunícate al Sindicato (614 607 7301)'
+                      : 'Registrar Pre-Solicitud para Trámite en Sindicato (Salón Pinos Altos)'}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           <div className="pt-1 text-center">

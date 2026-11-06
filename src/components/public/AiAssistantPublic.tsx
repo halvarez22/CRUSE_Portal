@@ -3,14 +3,77 @@ import { Bot, Send, User, AlertCircle, RefreshCw } from 'lucide-react';
 import { COMPANY_INFO, FAQ_CHAT_PROMPTS } from '../../data/cruseData';
 import { ChatMessage } from '../../types';
 import { ChatFormattedMessage } from './ChatFormattedMessage';
-import { evaluateDeterministicFinancialQuery } from '../../services/ai/chatFinancialCalculator';
+import {
+  evaluateDeterministicFinancialQuery,
+  evaluateTriageAndChannelRouting,
+} from '../../services/ai/chatFinancialCalculator';
+
+const QUICK_TRIAGE_BUTTONS = [
+  {
+    id: 'sindicalizado',
+    label: '🏛️ Soy Sindicalizado (STSGECH / Gob. del Estado o Tribunal)',
+    prompt: 'Soy trabajador sindicalizado, ¿dónde realizo mi trámite y con quién me comunico?',
+  },
+  {
+    id: 'confianza',
+    label: '⚖️ Soy de Confianza (Supremo Tribunal de Justicia)',
+    prompt: 'Trabajo en el Supremo Tribunal de Justicia y soy personal de confianza, ¿dónde realizo mi trámite?',
+  },
+  {
+    id: 'jubilado',
+    label: '🤝 Soy Jubilado o Pensionado (Agrupación Gob. del Estado)',
+    prompt: 'Soy jubilado o pensionado de Gobierno del Estado, ¿dónde realizo mi trámite?',
+  },
+] as const;
+
+/**
+ * Guardrail 2 (CRUSE-APO-2026-053): Fallback determinista sincronizado en el frontend.
+ * Mantiene el estado del triaje sin mezclar jamás ambas sedes.
+ */
+export function buildDeterministicLocalFallbackReply(
+  query: string,
+  historyTurns: Array<{ role: string; content: string }>
+): string {
+  const triage = evaluateTriageAndChannelRouting(query, historyTurns);
+  const det = evaluateDeterministicFinancialQuery(query, historyTurns);
+
+  // Si aún no se ha identificado (ni en el mensaje actual ni en el historial), priorizar la pregunta de triaje (Guardrail 2)
+  if (triage.profile === 'unidentified') {
+    if (det.detected && det.fallbackMarkdownReply) {
+      return `${det.fallbackMarkdownReply}\n\n---\n\n${triage.triageQuestionReply}`;
+    }
+    return triage.triageQuestionReply;
+  }
+
+  if (det.detected) {
+    if (det.needsClarification && det.clarificationReply) {
+      return `${det.clarificationReply}\n\n---\n\n${triage.siloedRoutingReply}`;
+    }
+    if (det.fallbackMarkdownReply) {
+      return `${det.fallbackMarkdownReply}\n\n---\n\n${triage.siloedRoutingReply}`;
+    }
+  }
+
+  const lower = query.toLowerCase();
+  if (lower.includes('cat') || lower.includes('costo anual')) {
+    return `El Costo Anual Total (CAT) se calcula de forma dinámica y exclusiva para tu simulación, conforme a la metodología de la Circular 21/2009 de Banxico, considerando los flujos de efectivo, plazos y cargos aplicables (como el seguro de vida), excluyendo el IVA. Para conocer tu CAT exacto, por favor realiza una simulación en el portal.\n\n---\n\n${triage.siloedRoutingReply}`;
+  }
+  if (lower.includes('tasa') || lower.includes('interes') || lower.includes('interés')) {
+    return `En ${COMPANY_INFO.name} manejamos dos productos principales: **Crédito Normal** al **47.50% anual nominal** (1.9792% quincenal fija sin IVA / 3.9583% mensual sin IVA) y **Crédito Express** al **80.00% anual nominal** (3.3333% quincenal fija sin IVA / 6.6667% mensual sin IVA), más 16% de IVA sobre intereses y 0% comisión por apertura.\n\n---\n\n${triage.siloedRoutingReply}`;
+  }
+  if (lower.includes('seguro') || lower.includes('35000') || lower.includes('muerte') || lower.includes('fallecimiento')) {
+    return `El **Crédito Normal** para trabajadores activos incluye una póliza institucional de Seguro de Vida por **$35,000.00 MXN** ($22.85 quincenales o $45.70 mensuales integrados en tu cuota). Los miembros de la Agrupación de Jubilados y Pensionados están exentos del cobro de seguro de vida.\n\n---\n\n${triage.siloedRoutingReply}`;
+  }
+
+  return triage.siloedRoutingReply;
+}
 
 export const AiAssistantPublic: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       sender: 'assistant',
-      text: `¡Hola! Soy el Asistente Inteligente de ${COMPANY_INFO.name}. Estoy aquí para resolver tus dudas sobre montos, tasas nominales, requisitos documentales, sedes de firma y capacidad legal de descuento (tope 30% Art. 110 LFT). ¿En qué te puedo asesorar hoy?`,
+      text: `¡Hola! Soy el Asistente Inteligente de **${COMPANY_INFO.name}**. Para brindarte la información exacta y canalizarte con el área correspondiente, por favor dime primero:\n\n**¿En qué dependencia trabajas y eres trabajador sindicalizado (o jubilado/pensionado) o personal de confianza?**`,
       timestamp: 'Ahora',
     },
   ]);
@@ -38,43 +101,7 @@ export const AiAssistantPublic: React.FC = () => {
   const buildLocalFallbackReply = (
     query: string,
     historyTurns: Array<{ role: string; content: string }>
-  ): string => {
-    const det = evaluateDeterministicFinancialQuery(query, historyTurns);
-    if (det.detected) {
-      if (det.needsClarification && det.clarificationReply) return det.clarificationReply;
-      if (det.fallbackMarkdownReply) return det.fallbackMarkdownReply;
-    }
-
-    const lower = query.toLowerCase();
-    const matchedFaq = FAQ_CHAT_PROMPTS.find(
-      (faq) =>
-        lower.includes(faq.title.toLowerCase().slice(0, 10)) ||
-        faq.prompt.toLowerCase().includes(lower)
-    );
-
-    if (matchedFaq) {
-      return matchedFaq.answer;
-    }
-    if (lower.includes('sindical') || lower.includes('sindicato') || lower.includes('pinos altos') || lower.includes('stsgech')) {
-      return `Si eres trabajador **Sindicalizado (STSGECH)**, debes acudir al **Departamento de Prestaciones Económicas** ubicado en el **${COMPANY_INFO.unionOfficeContact.venueName}** (${COMPANY_INFO.unionOfficeContact.address}), o comunicarte a los teléfonos **${COMPANY_INFO.unionOfficeContact.phones.join(' y ')}** (también puedes apoyarte con el delegado del sindicato en tu municipio). Ahí suscribirás tus Formatos Cruse y la Autorización de Descuento de tu Dependencia.`;
-    }
-    if (lower.includes('confianza') || lower.includes('tribunal') || lower.includes('citadela') || lower.includes('ubicacion') || lower.includes('ubicación') || lower.includes('donde')) {
-      return `La sede de atención depende de tu adscripción:\n\n1. **Trabajadores Sindicalizados (STSGECH):** Acuden al Departamento de Prestaciones Económicas en el **${COMPANY_INFO.unionOfficeContact.venueName}** (${COMPANY_INFO.unionOfficeContact.address}), Tels. **${COMPANY_INFO.unionOfficeContact.phones.join(' y ')}**.\n2. **Trabajadores de Confianza del Supremo Tribunal de Justicia:** Acuden directamente a las oficinas de **${COMPANY_INFO.name}** en **${COMPANY_INFO.address}**, Tel. **${COMPANY_INFO.officePhone}**.`;
-    }
-    if (lower.includes('cat') || lower.includes('costo anual')) {
-      return 'El Costo Anual Total (CAT) se calcula de forma dinámica y exclusiva para tu simulación, conforme a la metodología de la Circular 21/2009 de Banxico, considerando los flujos de efectivo, plazos y cargos aplicables (como el seguro de vida), excluyendo el IVA. Para conocer tu CAT exacto, por favor realiza una simulación en el portal.';
-    }
-    if (lower.includes('tasa') || lower.includes('interes') || lower.includes('interés')) {
-      return 'En Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. manejamos dos productos principales: **Crédito Normal** al **47.50% anual nominal** (1.9792% quincenal fija sin IVA / 3.9583% mensual sin IVA) y **Crédito Express** al **80.00% anual nominal** (3.3333% quincenal fija sin IVA / 6.6667% mensual sin IVA), más 16% de IVA sobre intereses y 0% comisión por apertura. El Costo Anual Total (CAT) se calcula de forma dinámica y exclusiva para tu simulación conforme a la Circular 21/2009 de Banxico (sin IVA).';
-    }
-    if (lower.includes('requisito') || lower.includes('papel') || lower.includes('documento') || lower.includes('formato')) {
-      return 'Los requisitos de contratación son: (1) 2 copias de tu INE/IFE vigente, (2) 1 copia de tu último recibo de nómina, (3) 1 copia de comprobante de domicilio reciente (< 3 meses, exclusivo para Crédito Normal), y (4) la **firma de los Formatos Cruse y la Autorización de Descuento de tu Dependencia**. La dispersión SPEI se realiza una vez firmados los documentos.';
-    }
-    if (lower.includes('seguro') || lower.includes('35000') || lower.includes('muerte') || lower.includes('fallecimiento')) {
-      return 'El **Crédito Normal** para trabajadores activos incluye una póliza institucional de Seguro de Vida por **$35,000.00 MXN** ($22.85 quincenales o $45.70 mensuales integrados en tu cuota). Los miembros de la Agrupación de Jubilados y Pensionados están exentos del cobro de seguro de vida.';
-    }
-    return `Gracias por tu consulta. Nuestros créditos operan bajo el límite legal máximo del **30% de descuento sobre sueldo neto (Art. 110 LFT)**. Si eres trabajador Sindicalizado te atendemos en el **Salón Pinos Altos** (Tels. ${COMPANY_INFO.unionOfficeContact.phones.join(' / ')}); si eres personal de Confianza del Supremo Tribunal te atendemos en **${COMPANY_INFO.address}** (Tel. ${COMPANY_INFO.officePhone}).`;
-  };
+  ): string => buildDeterministicLocalFallbackReply(query, historyTurns);
 
   const handleSendMessage = async (textToSend?: string) => {
     const query = (textToSend || inputText).trim();
@@ -236,22 +263,41 @@ export const AiAssistantPublic: React.FC = () => {
             )}
           </div>
 
-          {/* Quick FAQ Suggestion Pills */}
-          <div className="pb-3 border-t border-slate-200 dark:border-white/10 pt-2">
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-400 block mb-1.5">
-              Preguntas sugeridas:
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {FAQ_CHAT_PROMPTS.slice(0, 3).map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSendMessage(item.prompt)}
-                  className="px-2.5 py-1 rounded-lg text-xs glass-card text-slate-800 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-[#249E82] transition-colors font-medium"
-                >
-                  {item.title}
-                </button>
-              ))}
+          {/* Quick Triage & FAQ Suggestion Pills */}
+          <div className="pb-3 border-t border-slate-200 dark:border-white/10 pt-2 space-y-2">
+            <div>
+              <span className="text-[11px] font-bold text-[#0F766E] dark:text-[#4CD360] block mb-1">
+                1. Identifica tu Dependencia y Estatus Laboral (Triaje Rápido):
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {QUICK_TRIAGE_BUTTONS.map((btn) => (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    onClick={() => handleSendMessage(btn.prompt)}
+                    className="px-2.5 py-1 rounded-lg text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-950 dark:text-emerald-200 border border-emerald-500/40 transition-colors font-semibold"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-400 block mb-1">
+                2. Consultas financieras frecuentes:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {FAQ_CHAT_PROMPTS.slice(0, 3).map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSendMessage(item.prompt)}
+                    className="px-2.5 py-1 rounded-lg text-xs glass-card text-slate-800 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-[#249E82] transition-colors font-medium"
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
