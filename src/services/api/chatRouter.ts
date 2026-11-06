@@ -17,6 +17,7 @@ import {
   evaluateTriageAndChannelRouting,
   ENTITY_EXTRACTION_SYSTEM_PROMPT,
   ChatHistoryTurn,
+  TriageEvaluationResult,
 } from '../ai/chatFinancialCalculator';
 import { AI_ASSISTANT_WELCOME_MESSAGE } from '../../data/cruseData';
 
@@ -79,7 +80,60 @@ Directrices de Seguridad (Zero-PII / LFPDPPP) y Formato Visual:
 - PROHIBIDO emitir etiquetas HTML crudas como <br>, <br/> o <br />. Usa saltos de línea naturales (\\n), listas y tablas Markdown limpias.
 `;
 
-// Patrones de Bloqueo de PII y Sanitización (Watch Item 2 - LFPDPPP)
+// Patrones prohibidos en Pre-Triaje (!isFullyResolved) — Guardrail 2 (CRUSE-APO-2026-055)
+export const PRE_TRIAGE_FORBIDDEN_LEAK_REGEX =
+  /citadela|pinos altos|laguna de bustillos|411-15-44|607[\s-]7301|141[\s-]2503|184-58-49|departamento de prestaciones/i;
+
+/**
+ * Guardrails 1, 2 y 4 (CRUSE-APO-2026-055): Barrera Determinista Post-LLM (Defense in Depth).
+ * - Si !triageResult.isFullyResolved: bloquea cualquier filtración de direcciones, teléfonos o departamentos,
+ *   así como cualquier repetición del saludo inicial o del turno inmediato anterior, reemplazándolo por la variante rotativa.
+ * - Si isFullyResolved: aplica el aislamiento hermético Sindicato vs Oficinas Cruse (APO-053).
+ */
+export function enforcePostLlmTriageBarrier(
+  rawReply: string,
+  triageResult: TriageEvaluationResult,
+  calcFallback?: string,
+  lastAssistantReply?: string
+): string {
+  const deterministicFallback = calcFallback
+    ? `${calcFallback}\n\n---\n\n${triageResult.siloedRoutingReply}`
+    : triageResult.siloedRoutingReply;
+
+  if (!rawReply) {
+    return deterministicFallback;
+  }
+
+  if (!triageResult.isFullyResolved) {
+    const leaksSensitiveRouting = PRE_TRIAGE_FORBIDDEN_LEAK_REGEX.test(rawReply);
+    const repeatsWelcome = rawReply.includes('¡Bienvenido a Microfinanciera Cruse!');
+    const repeatsLastTurn =
+      Boolean(lastAssistantReply) && rawReply.trim() === lastAssistantReply?.trim();
+
+    if (leaksSensitiveRouting || repeatsWelcome || repeatsLastTurn) {
+      return calcFallback
+        ? `${calcFallback}\n\n---\n\n${triageResult.triageQuestionReply}`
+        : triageResult.triageQuestionReply;
+    }
+    return rawReply;
+  }
+
+  if (
+    triageResult.profile === 'resolved_sindicalizado_or_jubilado' &&
+    (/citadela|411-15-44|184-58-49/i.test(rawReply) || !/pinos altos|607[\s-]7301/i.test(rawReply))
+  ) {
+    return deterministicFallback;
+  }
+
+  if (
+    triageResult.profile === 'resolved_confianza_tribunal' &&
+    (/pinos altos|607[\s-]7301/i.test(rawReply) || !/citadela|411-15-44/i.test(rawReply))
+  ) {
+    return deterministicFallback;
+  }
+
+  return rawReply;
+}
 const PII_REGEX = [
   /[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d/i, // CURP
   /[A-Z&Ñ]{3,4}\d{6}[A-V1-9][A-Z\d]{2}/i, // RFC
@@ -172,14 +226,12 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     llmExtractedCandidate
   );
 
-  // Si el estado de triaje aún no está completamente resuelto (unidentified, out_of_scope o estados parciales),
-  // responder de forma contextual y determinista sin ciclarse.
-  if (!triageResult.isFullyResolved) {
-    if (calcResult.detected && calcResult.fallbackMarkdownReply) {
-      return res.json({
-        reply: `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.triageQuestionReply}`,
-      });
-    }
+  // Guardrail 3 (CRUSE-APO-2026-055): Si es dependencia fuera de alcance (CFE, IMSS, etc.) o sin convenio de confianza en Gob. del Estado,
+  // responder inmediatamente con el mensaje oficial de elegibilidad sin pedir más datos de triaje.
+  if (
+    triageResult.profile === 'out_of_scope' ||
+    triageResult.profile === 'resolved_confianza_no_convenio'
+  ) {
     return res.json({ reply: triageResult.triageQuestionReply });
   }
 
@@ -224,48 +276,28 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     const completion = await groq.chat.completions.create({
       model: GROQ_MODEL,
       messages: chatMessages,
-      temperature: 0.2,
+      temperature: 0.35,
       max_tokens: 2048,
     });
 
-    const rawReply = completion.choices[0]?.message?.content
-      ?.replace(/<\/?deterministic_financial_data>/gi, '')
-      ?.replace(/<\/?triage_channel_silo>/gi, '')
-      .trim();
+    const rawReply =
+      completion.choices[0]?.message?.content
+        ?.replace(/<\/?deterministic_financial_data>/gi, '')
+        ?.replace(/<\/?triage_channel_silo>/gi, '')
+        .trim() ?? '';
 
-    if (!rawReply) {
-      return res.json({
-        reply: calcResult.fallbackMarkdownReply
-          ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
-          : triageResult.siloedRoutingReply,
-      });
-    }
+    const lastAssistantTurn = [...sanitizedHistory]
+      .reverse()
+      .find((m) => m.role === 'assistant')?.content;
 
-    // Barrera determinista post-LLM (Guardrail 1 y 4): Cero fugas de Vía Citadela / 411-15-44 a Sindicalizados o Jubilados
-    if (
-      triageResult.profile === 'resolved_sindicalizado_or_jubilado' &&
-      (/citadela|411-15-44|184-58-49/i.test(rawReply) || !/pinos altos|607 7301/i.test(rawReply))
-    ) {
-      return res.json({
-        reply: calcResult.fallbackMarkdownReply
-          ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
-          : triageResult.siloedRoutingReply,
-      });
-    }
+    const safeReply = enforcePostLlmTriageBarrier(
+      rawReply,
+      triageResult,
+      calcResult.fallbackMarkdownReply,
+      lastAssistantTurn
+    );
 
-    // Barrera determinista post-LLM para Personal de Confianza del Tribunal: asegurar datos de Vía Citadela
-    if (
-      triageResult.profile === 'resolved_confianza_tribunal' &&
-      (/pinos altos|607 7301/i.test(rawReply) || !/citadela|411-15-44/i.test(rawReply))
-    ) {
-      return res.json({
-        reply: calcResult.fallbackMarkdownReply
-          ? `${calcResult.fallbackMarkdownReply}\n\n---\n\n${triageResult.siloedRoutingReply}`
-          : triageResult.siloedRoutingReply,
-      });
-    }
-
-    return res.json({ reply: rawReply });
+    return res.json({ reply: safeReply });
   } catch (err: unknown) {
     console.error('Error in /api/chat:', err);
     if (calcResult.fallbackMarkdownReply) {

@@ -16,7 +16,11 @@ import {
   validateLegalPaymentCapacityLft110,
 } from '../../config/financialConstants';
 import { getAllowedExpressTerm } from '../../config/officialQuotaTables';
-import { AI_ASSISTANT_WELCOME_MESSAGE } from '../../data/cruseData';
+import {
+  AI_ASSISTANT_WELCOME_MESSAGE,
+  PARTIAL_TRIAGE_VARIATION_POOLS,
+  TRIAGE_FOLLOWUP_VARIATION_POOL,
+} from '../../data/cruseData';
 
 export interface ChatHistoryTurn {
   role: string;
@@ -291,36 +295,36 @@ function extractEntitiesFromSingleTurn(text: string): {
   let dependency: DependencyKind | null = null;
   let plazaType: PlazaTypeKind | null = null;
 
-  // 1. Detección de Dependencia
+  // 1. Detección de Dependencia (Prioridad a fuera de alcance para Guardrail 3, luego convenios oficiales y coloquiales)
   if (
-    /\b(poder judicial|supremo tribunal|tribunal de justicia|\bstj\b|\btsj\b|juzgado|tribunal)\b/i.test(
-      lower
-    )
-  ) {
-    dependency = 'tribunal_poder_judicial';
-  } else if (/\b(agrupacion de jubilados|agrupacion de los jubilados)\b/i.test(lower)) {
-    dependency = 'agrupacion_jubilados';
-  } else if (
-    /\b(gobierno del estado|gob del estado|stsgech|secretaria de hacienda|secretaria de educacion|fiscalia general|recaudacion de rentas|registro civil)\b/i.test(
-      lower
-    )
-  ) {
-    dependency = 'gobierno_estado';
-  } else if (
-    /\b(cfe|comision federal|imss|issste|pemex|municipio|presidencia municipal|ayuntamiento|uach|uacj|gobierno federal|maquila|maquiladora|empresa privada|telmex|bimbo|oxxo|walmart|coppel)\b/i.test(
+    /\b(cfe|comision federal|imss|issste|pemex|municipio|presidencia municipal|ayuntamiento|uach|uacj|gobierno federal|maquila|maquiladora|empresa privada|telmex|bimbo|oxxo|walmart|coppel|bancomer|bbva|santander)\b/i.test(
       lower
     )
   ) {
     dependency = 'out_of_scope';
+  } else if (
+    /\b(poder judicial|supremo tribunal|tribunal de justicia|\bstj\b|\btsj\b|juzgad|tribunal|magistrad|juez|actuari|secretari[oa] de acuerdos|ciudad judicial)\b/i.test(
+      lower
+    )
+  ) {
+    dependency = 'tribunal_poder_judicial';
+  } else if (/\b(agrupacion de jubilados|agrupacion de los jubilados|pensiones civiles)\b/i.test(lower)) {
+    dependency = 'agrupacion_jubilados';
+  } else if (
+    /\b(gobierno del estado|gob del estado|gobierno estatal|trabajador del estado|emplead[oa] estatal|en gobierno|stsgech|secretaria de hacienda|secretaria de educacion|secretaria de salud|fiscalia|recaudacion de rentas|registro civil)\b/i.test(
+      lower
+    )
+  ) {
+    dependency = 'gobierno_estado';
   }
 
-  // 2. Detección de Tipo de Plaza (con soporte para correcciones como "no soy sindicalizado, soy de confianza")
+  // 2. Detección de Tipo de Plaza (con soporte para correcciones y vocabulario coloquial)
   const negatesSindicalizado =
-    /(no soy sindicalizad|no pertenezco al sindicato|perdon.*confianza|disculpa.*confianza|error.*confianza)/i.test(
+    /(no soy sindicalizad|no soy de base|no pertenezco al sindicato|perdon.*confianza|disculpa.*confianza|error.*confianza)/i.test(
       lower
     );
   const negatesConfianza =
-    /(no soy de confianza|perdon.*sindicalizad|disculpa.*sindicalizad|error.*sindicalizad)/i.test(
+    /(no soy de confianza|perdon.*(sindicalizad|base)|disculpa.*(sindicalizad|base)|error.*(sindicalizad|base))/i.test(
       lower
     );
 
@@ -335,7 +339,11 @@ function extractEntitiesFromSingleTurn(text: string): {
     }
   } else if (/\bconfianza\b/i.test(lower)) {
     plazaType = 'confianza';
-  } else if (/(sindicalizad|sindicato|stsgech|pinos altos|delegad|plaza de base|trabajador de base)/i.test(lower)) {
+  } else if (
+    /(sindicalizad|sindicato|stsgech|pinos altos|delegad|plaza de base|trabajador de base|soy de base|tengo base|plaza base|agremiad|burocrata)/i.test(
+      lower
+    )
+  ) {
     plazaType = 'sindicalizado';
     if (!dependency && /\bstsgech\b/i.test(lower)) {
       dependency = 'gobierno_estado';
@@ -343,6 +351,19 @@ function extractEntitiesFromSingleTurn(text: string): {
   }
 
   return { dependency, plazaType };
+}
+
+/**
+ * Guardrail 4 (CRUSE-APO-2026-055): Rotación Anti-Bucle basada en el conteo real de turnos del usuario.
+ */
+export function selectVariationByTurn(
+  pool: readonly string[],
+  history: ReadonlyArray<{ role?: string; sender?: string }> = []
+): string {
+  const userTurnsCount = Array.isArray(history)
+    ? history.filter((m) => m.role === 'user' || m.sender === 'user').length
+    : 0;
+  return pool[userTurnsCount % pool.length] ?? AI_ASSISTANT_WELCOME_MESSAGE;
 }
 
 /**
@@ -415,7 +436,7 @@ export function evaluateTriageAndChannelRouting(
       ? currentTurnStep.plazaType
       : validatedHybrid.plazaType;
 
-  const triageQuestionReply = AI_ASSISTANT_WELCOME_MESSAGE;
+  const triageQuestionReply = selectVariationByTurn(TRIAGE_FOLLOWUP_VARIATION_POOL, history);
 
   // Estado 2 (Guardrail 2): Dependencia fuera de alcance (CFE, IMSS, Municipio, UACH, etc.)
   if (dependency === 'out_of_scope') {
@@ -491,8 +512,10 @@ export function evaluateTriageAndChannelRouting(
 
   // Estado 3 (Caso Gerardo Ornelas): Indicó Poder Judicial / Supremo Tribunal, falta Tipo de Plaza
   if (dependency === 'tribunal_poder_judicial' && plazaType === 'unknown') {
-    const partialTribunalReply =
-      '¡Excelente! Veo que laboras en el **Poder Judicial / Supremo Tribunal de Justicia del Estado de Chihuahua**. Para canalizarte al área exacta, solo confírmame por favor: **¿tu plaza es sindicalizada o eres personal de confianza?**';
+    const partialTribunalReply = selectVariationByTurn(
+      PARTIAL_TRIAGE_VARIATION_POOLS.tribunalMissingPlaza,
+      history
+    );
 
     return {
       profile: 'partial_tribunal_missing_plaza',
@@ -501,14 +524,16 @@ export function evaluateTriageAndChannelRouting(
       isFullyResolved: false,
       triageQuestionReply: partialTribunalReply,
       siloedRoutingReply: partialTribunalReply,
-      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_PODER_JUDICIAL_FALTA_PLAZA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que trabaja en el Poder Judicial / Supremo Tribunal de Justicia de Chihuahua. NO vuelvas a preguntarle en qué dependencia trabaja; reconócelo y pregúntale ÚNICAMENTE si su plaza es sindicalizada o de confianza.\n</triage_channel_silo>`,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_PODER_JUDICIAL_FALTA_PLAZA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que trabaja en el Poder Judicial / Supremo Tribunal de Justicia de Chihuahua. Responde su duda general sobre nuestros productos (Crédito Normal $10k-$500k, Crédito Express $1k-$20k, sin aval, 0% comisión, tope 30% LFT) SIN mencionar ninguna dirección física ni teléfono, y pregúntale ÚNICAMENTE si su plaza es sindicalizada o de confianza.\n</triage_channel_silo>`,
     };
   }
 
   // Estado 4: Indicó Gobierno del Estado, falta Tipo de Plaza
   if (dependency === 'gobierno_estado' && plazaType === 'unknown') {
-    const partialGobReply =
-      '¡Muchas gracias! Veo que colaboras en **Gobierno del Estado de Chihuahua**. Para canalizarte con el área indicada, solo confírmame por favor: **¿tu tipo de plaza es sindicalizada (STSGECH), jubilado/pensionado o de confianza?**';
+    const partialGobReply = selectVariationByTurn(
+      PARTIAL_TRIAGE_VARIATION_POOLS.gobMissingPlaza,
+      history
+    );
 
     return {
       profile: 'partial_gob_missing_plaza',
@@ -517,14 +542,16 @@ export function evaluateTriageAndChannelRouting(
       isFullyResolved: false,
       triageQuestionReply: partialGobReply,
       siloedRoutingReply: partialGobReply,
-      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_GOBIERNO_ESTADO_FALTA_PLAZA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que trabaja en Gobierno del Estado de Chihuahua. NO vuelvas a preguntarle en qué dependencia trabaja; pregúntale ÚNICAMENTE cuál es su tipo de plaza (sindicalizado, jubilado/pensionado o de confianza).\n</triage_channel_silo>`,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_GOBIERNO_ESTADO_FALTA_PLAZA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que trabaja en Gobierno del Estado de Chihuahua. Responde su duda general SIN mencionar ninguna dirección física ni teléfono, y pregúntale ÚNICAMENTE cuál es su tipo de plaza (sindicalizado, jubilado/pensionado o de confianza).\n</triage_channel_silo>`,
     };
   }
 
   // Estado 5: Indicó Personal de Confianza, falta Dependencia
   if (dependency === 'unknown' && plazaType === 'confianza') {
-    const partialConfianzaReply =
-      'Gracias por confirmarme que eres **personal de confianza**. Para verificar el convenio aplicable y darte los datos de atención, por favor indícame: **¿en qué dependencia o institución laboras (por ejemplo, Poder Judicial / Supremo Tribunal de Justicia)?**';
+    const partialConfianzaReply = selectVariationByTurn(
+      PARTIAL_TRIAGE_VARIATION_POOLS.confianzaMissingDep,
+      history
+    );
 
     return {
       profile: 'partial_confianza_missing_dep',
@@ -533,11 +560,11 @@ export function evaluateTriageAndChannelRouting(
       isFullyResolved: false,
       triageQuestionReply: partialConfianzaReply,
       siloedRoutingReply: partialConfianzaReply,
-      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_CONFIANZA_FALTA_DEPENDENCIA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que es personal de confianza. NO vuelvas a preguntarle su tipo de plaza; pregúntale ÚNICAMENTE en qué dependencia o institución labora.\n</triage_channel_silo>`,
+      xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: PARCIAL_CONFIANZA_FALTA_DEPENDENCIA\nREGLA_SILO_ESTRICTO: El usuario YA indicó que es personal de confianza. Responde su duda general SIN mencionar ninguna dirección física ni teléfono, y pregúntale ÚNICAMENTE en qué dependencia o institución labora.\n</triage_channel_silo>`,
     };
   }
 
-  // Estado 1: Sin identificar ni dependencia ni tipo de plaza -> Saludo Inicial Oficial de Alma (Opción 3)
+  // Estado 1: Sin identificar ni dependencia ni tipo de plaza -> Variación Rotativa de Seguimiento con Orientación de Valor (Cero Fuga de Sedes)
   return {
     profile: 'unidentified',
     dependency: 'unknown',
@@ -545,6 +572,6 @@ export function evaluateTriageAndChannelRouting(
     isFullyResolved: false,
     triageQuestionReply,
     siloedRoutingReply: triageQuestionReply,
-    xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: NO_IDENTIFICADO\nREGLA_SILO_ESTRICTO: El usuario AÚN NO ha indicado su dependencia ni su tipo de plaza. Responde con el mensaje oficial de Alma: "${AI_ASSISTANT_WELCOME_MESSAGE}" NO menciones ninguna dirección física hasta que se identifique.\n</triage_channel_silo>`,
+    xmlTriageDirective: `<triage_channel_silo>\nPERFIL_IDENTIFICADO: NO_IDENTIFICADO\nREGLA_SILO_ESTRICTO: El usuario AÚN NO ha indicado su dependencia ni su tipo de plaza. Bríndale orientación general cálida y variada sobre nuestros productos (Crédito Normal de $10,000 a $500,000 MXN y Crédito Express de $1,000 a $20,000 MXN, sin aval, 0% comisión por apertura, plazos quincenales/mensuales, tope legal 30% Art. 110 LFT) y pídele con redacción natural que te confirme en qué dependencia trabaja y su tipo de plaza (sindicalizado, de confianza o jubilado/pensionado). Está TERMINANTEMENTE PROHIBIDO mencionar direcciones físicas (Vía Citadela, Pinos Altos, Laguna de Bustillos), teléfonos o el Departamento de Prestaciones mientras no se identifique, y PROHIBIDO repetir el saludo inicial "¡Bienvenido a Microfinanciera Cruse!".\n</triage_channel_silo>`,
   };
 }

@@ -25,8 +25,15 @@ import {
   validateAndSanitizeExtractedEntities,
 } from '../src/services/ai/chatFinancialCalculator';
 import { buildDeterministicLocalFallbackReply } from '../src/components/public/AiAssistantPublic';
-import { SYSTEM_INSTRUCTION } from '../src/services/api/chatRouter';
-import { AI_ASSISTANT_WELCOME_MESSAGE } from '../src/data/cruseData';
+import {
+  enforcePostLlmTriageBarrier,
+  PRE_TRIAGE_FORBIDDEN_LEAK_REGEX,
+  SYSTEM_INSTRUCTION,
+} from '../src/services/api/chatRouter';
+import {
+  AI_ASSISTANT_WELCOME_MESSAGE,
+  TRIAGE_FOLLOWUP_VARIATION_POOL,
+} from '../src/data/cruseData';
 import { BorrowerProfile, PaymentFrequency } from '../src/types';
 
 interface SheetAuditConfig {
@@ -297,14 +304,69 @@ console.log(
   `   • Guardrail 1 APO-054 (Sanitización contra Enums)       : ${enumGuardrailValid ? 'BLOQUEA ALUCINACIÓN Y PRESERVA ENUM ✅' : 'FALLO ❌'}`
 );
 
-// Simulación 1: Primer contacto sin identificarse -> Saludo Oficial de Alma (Opción 3)
-const unidentifiedReply = buildDeterministicLocalFallbackReply('Hola, quiero informes de un préstamo y dónde firmo', []);
+// Simulación 1 (Guardrail 1, 2 y 4 APO-055): Pool de Variaciones (WELCOME_MESSAGE !== VARIATION_POOL[i]) y 3 Consultas Generales Consecutivas
+const allVariationsDistinctFromWelcome = TRIAGE_FOLLOWUP_VARIATION_POOL.every(
+  (v) => String(v) !== String(AI_ASSISTANT_WELCOME_MESSAGE) && !v.includes('¡Bienvenido a Microfinanciera Cruse!')
+);
+console.log(
+  `   • Guardrail 1 APO-055 (WELCOME !== VARIATION_POOL[i])   : ${allVariationsDistinctFromWelcome ? '4/4 DISTINTAS AL SALUDO INICIAL ✅' : 'FALLO ❌'}`
+);
+
+const genQ1 = 'Hola, quiero solicitar un crédito';
+const genQ2 = 'Quiero información para un crédito';
+const genQ3 = '¿Qué opciones tienen?';
+
+const genReply1 = buildDeterministicLocalFallbackReply(genQ1, [
+  { role: 'assistant', content: AI_ASSISTANT_WELCOME_MESSAGE },
+]);
+const genReply2 = buildDeterministicLocalFallbackReply(genQ2, [
+  { role: 'assistant', content: AI_ASSISTANT_WELCOME_MESSAGE },
+  { role: 'user', content: genQ1 },
+  { role: 'assistant', content: genReply1 },
+]);
+const genReply3 = buildDeterministicLocalFallbackReply(genQ3, [
+  { role: 'assistant', content: AI_ASSISTANT_WELCOME_MESSAGE },
+  { role: 'user', content: genQ1 },
+  { role: 'assistant', content: genReply1 },
+  { role: 'user', content: genQ2 },
+  { role: 'assistant', content: genReply2 },
+]);
+
+const threeConsecutiveDistinct =
+  genReply1 !== genReply2 &&
+  genReply2 !== genReply3 &&
+  genReply1 !== genReply3 &&
+  genReply1 !== AI_ASSISTANT_WELCOME_MESSAGE &&
+  genReply2 !== AI_ASSISTANT_WELCOME_MESSAGE &&
+  genReply3 !== AI_ASSISTANT_WELCOME_MESSAGE;
+
+const zeroPreTriageLeaks =
+  !PRE_TRIAGE_FORBIDDEN_LEAK_REGEX.test(genReply1) &&
+  !PRE_TRIAGE_FORBIDDEN_LEAK_REGEX.test(genReply2) &&
+  !PRE_TRIAGE_FORBIDDEN_LEAK_REGEX.test(genReply3);
+
+// Prueba de Barrera Post-LLM (Guardrail 2 APO-055) bloqueando intento de fuga en Pre-Triaje
+const preTriageState = evaluateTriageAndChannelRouting(genQ1, []);
+const postLlmBlockedReply = enforcePostLlmTriageBarrier(
+  'Puedes acudir a Vía Citadela #5710 o al Salón Pinos Altos al 614 607 7301.',
+  preTriageState
+);
+const postLlmBarrierWorks =
+  !PRE_TRIAGE_FORBIDDEN_LEAK_REGEX.test(postLlmBlockedReply) &&
+  postLlmBlockedReply === preTriageState.triageQuestionReply;
+
 const unidentifiedAsksTriage =
-  unidentifiedReply === AI_ASSISTANT_WELCOME_MESSAGE &&
-  unidentifiedReply.includes('¡Bienvenido a Microfinanciera Cruse! Soy Alma, tu asistente inteligente.') &&
-  !unidentifiedReply.includes('Vía Citadela') &&
-  !unidentifiedReply.includes('Salón Pinos Altos');
-console.log(`   • Saludo Inicial Opción 3 ("Soy Alma" — Sin Identificar): ${unidentifiedAsksTriage ? 'EXACTO Y SIN DIRECCIONES ✅' : 'FALLO ❌'}`);
+  allVariationsDistinctFromWelcome &&
+  threeConsecutiveDistinct &&
+  zeroPreTriageLeaks &&
+  postLlmBarrierWorks;
+
+console.log(
+  `   • Guardrail 4 APO-055 (3 Consultas Generales Consecutivas): ${threeConsecutiveDistinct ? '3 RESPUESTAS DISTINTAS (CERO IVR GRABADO) ✅' : 'FALLO ❌'}`
+);
+console.log(
+  `   • Guardrail 2 APO-055 (Orientación Valor Pre-Triaje 0 Fugas): ${zeroPreTriageLeaks && postLlmBarrierWorks ? '0 FUGAS SEDES/TELS + BARRERA POST-LLM ACTIVA ✅' : 'FALLO ❌'}`
+);
 
 // Simulación 2 (CASO GERARDO ORNELAS — Multi-Turno sin bucles):
 // Turno 1: "Trabajo en el poder judicial de Chihuahua"
@@ -316,7 +378,7 @@ const gerardoTurn1Valid =
   gerardoTurn1Triage.dependency === 'tribunal_poder_judicial' &&
   gerardoTurn1Triage.plazaType === 'unknown' &&
   gerardoTurn1Reply.includes('Poder Judicial / Supremo Tribunal de Justicia') &&
-  gerardoTurn1Reply.includes('¿tu plaza es sindicalizada o eres personal de confianza?') &&
+  gerardoTurn1Reply.includes('¿tu plaza es sindicalizada (de base) o eres personal de confianza?') &&
   !gerardoTurn1Reply.includes('confírmame tu dependencia y tipo de plaza');
 
 console.log(

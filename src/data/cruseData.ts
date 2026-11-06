@@ -219,3 +219,31 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
 export const AI_ASSISTANT_WELCOME_MESSAGE =
   "¡Bienvenido a Microfinanciera Cruse! Soy Alma, tu asistente inteligente. Para canalizar tu consulta al área correcta, por favor confírmame tu dependencia y tipo de plaza (sindicalizado, de confianza, jubilado o pensionado).";
 
+// Pool Rotativo de Variaciones Conversacionales de Seguimiento Pre-Triaje (CRUSE-APO-2026-055 — Guardrails 1, 2 y 4)
+// Ninguna variante repite AI_ASSISTANT_WELCOME_MESSAGE ni revela sedes físicas o teléfonos antes de completar el triaje.
+export const TRIAGE_FOLLOWUP_VARIATION_POOL = [
+  "¡Con todo gusto te brindo los detalles! En **Microfinanciera Cruse** contamos con **Crédito Normal** ($10,000 a $500,000 MXN, plazos de 24 a 72 quincenas) y **Crédito Express** ($1,000 a $20,000 MXN, plazos de 6 a 20 quincenas) vía descuento de nómina, **sin aval, con 0% de comisión por apertura** y cuidando siempre el tope legal del **30% de tu sueldo neto (Art. 110 LFT)**.\n\nPara indicarte los requisitos y el área exacta donde se gestiona tu convenio, ¿me podrías comentar **en qué dependencia trabajas y si tu plaza es sindicalizada, de confianza o eres jubilado/pensionado**?",
+  "¡Claro que sí, estoy para ayudarte! Nuestros créditos de nómina (**Crédito Normal** hasta $500,000 MXN y **Crédito Express** hasta $20,000 MXN) operan con pagos fijos quincenales o mensuales, **0% comisión por apertura y sin aval**, respetando el límite legal del **30% LFT**.\n\nDado que el canal de atención depende de tu convenio laboral, cuéntame por favor: **¿a qué institución o dependencia perteneces (por ejemplo, Poder Judicial o Gobierno del Estado) y cuál es tu tipo de contratación (sindicalizado, confianza o pensionado)?**",
+  "¡Será un placer asesorarte con tu crédito! Manejamos dos esquemas principales con descuento vía nómina y **sin aval**: **Crédito Normal** ($10,000 a $500,000 MXN) y **Crédito Express** ($1,000 a $20,000 MXN), ambos con **0% de comisión por apertura** y protegidos bajo el tope del **30% del Art. 110 de la LFT**.\n\nPara darte los datos precisos de quién atiende tu trámite, solo ayúdame confirmando dos datos rápidos: **¿en qué dependencia laboras actualmente y si eres personal sindicalizado (de base), de confianza o jubilado/pensionado?**",
+  "¡Por supuesto! En **Microfinanciera Cruse** te ofrecemos liquidez inmediata mediante **Crédito Express** ($1,000 a $20,000 MXN) o financiamiento patrimonial con **Crédito Normal** ($10,000 a $500,000 MXN), en plazos quincenales o mensuales, **sin aval, 0% comisión por apertura** y dentro del margen legal del **30% LFT**.\n\nPara guiarte paso a paso con el equipo correspondiente a tu convenio, **¿me indicas en qué dependencia trabajas y si cuentas con plaza sindicalizada, de confianza o eres jubilado/pensionado?**",
+] as const;
+
+export const PARTIAL_TRIAGE_VARIATION_POOLS = {
+  tribunalMissingPlaza: [
+    "¡Excelente! Veo que laboras en el **Poder Judicial / Supremo Tribunal de Justicia del Estado de Chihuahua**. Para canalizarte al área exacta, solo confírmame por favor: **¿tu plaza es sindicalizada (de base) o eres personal de confianza?**",
+    "¡Muchas gracias por el dato! Al pertenecer al **Poder Judicial / Supremo Tribunal de Justicia**, contamos con cobertura tanto para personal de base como de confianza. Solo indícame: **¿eres trabajador sindicalizado o personal de confianza?**",
+    "¡Perfecto! Para darte los datos de contacto exactos correspondientes a tu convenio en el **Poder Judicial / Supremo Tribunal de Justicia**, ¿me confirmas únicamente **si tu contratación es sindicalizada o de confianza**?",
+  ],
+  gobMissingPlaza: [
+    "¡Muchas gracias! Veo que colaboras en **Gobierno del Estado de Chihuahua**. Para canalizarte con el área indicada, solo confírmame por favor: **¿tu tipo de plaza es sindicalizada (STSGECH), jubilado/pensionado o de confianza?**",
+    "¡Excelente! Al trabajar en **Gobierno del Estado de Chihuahua**, para brindarte la ubicación y teléfonos correctos de tu convenio, cuéntame: **¿eres trabajador sindicalizado (de base), jubilado/pensionado o personal de confianza?**",
+    "¡Con gusto te oriento! Ya tengo registrado que laboras en **Gobierno del Estado de Chihuahua**; solo ayúdame confirmando **si tu plaza es sindicalizada (STSGECH), eres jubilado/pensionado o personal de confianza**.",
+  ],
+  confianzaMissingDep: [
+    "Gracias por confirmarme que eres **personal de confianza**. Para verificar el convenio aplicable y darte los datos de atención, por favor indícame: **¿en qué dependencia o institución laboras (por ejemplo, Poder Judicial / Supremo Tribunal de Justicia)?**",
+    "¡Enterado! Ya registré que cuentas con plaza **de confianza**. Para confirmarte el canal de atención correspondiente, cuéntame: **¿en qué dependencia trabajas actualmente?**",
+    "¡Perfecto! Como **personal de confianza**, solo necesito saber **en qué dependencia o institución laboras** para indicarte el procedimiento exacto de tu solicitud.",
+  ],
+} as const;
+
+
