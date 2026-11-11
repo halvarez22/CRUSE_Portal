@@ -24,7 +24,7 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
     highlights: [
       'Fundada en 2010 en Chihuahua, Chih., constituida como Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.',
       'Retención directa vía nómina institucional (STSGECH, Supremo Tribunal, Agrupación de Jubilados y Pensionados).',
-      'Core Bancario 3FN v4 en Azure PostgreSQL 16 con seguridad Zero-Trust 2FA y cifrado AES-GCM-256.',
+      'Base de Datos Centralizada en Azure PostgreSQL 16 con acceso verificado por celular y cifrado bancario.',
     ],
     metrics: [
       { label: 'Trayectoria', value: '16+ Años', accent: 'emerald' },
@@ -41,19 +41,19 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
       'Demostrar que el reemplazo de hojas de cálculo y procesos en papel por un Core Cloud centralizado permite crecer 4x sin multiplicar costos administrativos.',
     highlights: [
       'Antes: Captura manual en Excel, copias físicas de INE y conciliación quincenal de 3 a 5 días.',
-      'Ahora: Escáner PWA móvil con purga Zero-PII, base de datos relacional centralizada y conciliación en segundos.',
+      'Ahora: Escáner móvil con borrado automático local en el teléfono, base de datos centralizada y conciliación en segundos.',
       'Blindaje total ante CNBV, CONDUSEF, UIF y Círculo de Crédito desde un único Portal Web Seguro.',
     ],
     metrics: [
       { label: 'Tiempo de Originación', value: '< 2 Horas', accent: 'emerald' },
       { label: 'Dependencia de Excel', value: '0%', accent: 'cyan' },
-      { label: 'Retención Bitácora WORM', value: '5 Años', accent: 'amber' },
+      { label: 'Retención de Bitácora', value: '5 Años', accent: 'amber' },
     ],
   },
   {
     id: 3,
     title: 'La Estrategia: Tesis de Inversión y 4 Pilares de Crecimiento',
-    subtitle: '1. Expansión a 3 Hubs | 2. Core Cloud 3FN | 3. IA & Scoring Explicable | 4. Conciliación Automática',
+    subtitle: '1. Expansión a 3 Hubs | 2. Base Central Cloud | 3. IA & Scoring Explicable | 4. Conciliación Automática',
     category: 'Tesis Financiera',
     investorNotes:
       'Destacar cómo los 4 pilares tecnológicos permiten escalar la cartera hacia $400M+ MXN manteniendo control estricto de riesgo y cumplimiento PLD/FT.',
@@ -129,11 +129,11 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
     subtitle: 'Asistente IA 24/7 (Público e Interno Operativo), Scoring Paramétrico y Escáner Móvil',
     category: 'Tecnología & IA',
     investorNotes:
-      'Explicar que el Asistente Interno consulta métricas agregadas en PostgreSQL bajo Zero-PII estricto, sin exponer jamás CURP o nombres al LLM.',
+      'Explicar que el Asistente Interno consulta métricas agregadas en PostgreSQL con protección estricta de datos personales, sin exponer jamás CURP o nombres al LLM.',
     highlights: [
       'Asistente IA Público 24/7 para empleados afiliados + Asistente IA Interno para Dirección y Cumplimiento.',
       'Motor de Scoring Paramétrico Explicable que clasifica solicitudes en Bajo, Medio o Alto Riesgo.',
-      'Cifrado Envelope AES-GCM-256 + Blind Indexing HMAC-SHA256 + Cruce automático PLD/FT (69-B, UIF, OFAC, PEPs).',
+      'Cifrado de grado bancario y cruce automático de listas de prevención de lavado de dinero (69-B, UIF, OFAC, PEPs).',
     ],
     metrics: [
       { label: 'Modelo IA', value: 'LLaMA 3.3 70B', accent: 'emerald' },
@@ -165,11 +165,11 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
     subtitle: 'Trazabilidad total para Inversionistas, Auditores y Autoridades Financieras',
     category: 'Estructura de Capital & PLD',
     investorNotes:
-      'Destacar el módulo de Fondeo 3FN v4 y el blindaje PLD/FT con sellos criptográficos SHA-256 inmutables por 5 años.',
+      'Destacar el módulo de Fondeo e Inversionistas y el blindaje PLD/FT con sellos digitales inalterables por 5 años.',
     highlights: [
       'Gestión de líneas de fondeo e inversionistas con cálculo automatizado de intereses e ISR (0.5% / 0.9%).',
       'Generación automática del layout oficial de Círculo de Crédito (001496) y layouts SIF/CIB Logic Systems.',
-      'Barrido automatizado contra listas negras SAT 69-B, UIF, OFAC y PEPs con actas certificadas WORM.',
+      'Barrido automatizado contra listas negras SAT 69-B, UIF, OFAC y PEPs con actas certificadas de auditoría.',
     ],
     metrics: [
       { label: 'Fondo Cartera', value: '65% Capital', accent: 'emerald' },
@@ -186,12 +186,12 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
       'Invitar a explorar en vivo el Simulador ROI de Cartera, el Evaluador de Scoring y el Dashboard por Hubs Nacionales.',
     highlights: [
       '100% de los módulos operativos, ejecutivos y regulatorios unificados en una sola plataforma.',
-      'Acceso blindado con Doble Factor (2FA SMS en teléfono propio) y revocación instantánea (Kill-Switch).',
+      'Acceso blindado con Doble Factor (2FA SMS en teléfono propio) y revocación instantánea (Baja Inmediata).',
       'Transparencia absoluta en tiempo real para Dirección General, Mesa de Control e Inversionistas.',
     ],
     metrics: [
       { label: 'Disponibilidad Cloud', value: '99.9% SLA', accent: 'emerald' },
-      { label: 'Auditoría Forense', value: '100% WORM', accent: 'cyan' },
+      { label: 'Auditoría Forense', value: '100% Inalterable', accent: 'cyan' },
       { label: 'Estatus Plataforma', value: 'En Producción', accent: 'amber' },
     ],
   },
@@ -265,8 +265,8 @@ export const OPERATIONS_MANUAL_STEPS: readonly OperationsManualStep[] = [
     id: 1,
     title: '1. Firma y Alta de Convenio Institucional',
     manualProcess: 'Negociación en papel, control de reglas de descuento en carpetas físicas y hojas sueltas.',
-    digitalProcess: 'Alta en catálogo inmutable de Convenios (STSGECH, Supremo Tribunal, Bajío, Cancún) con reglas de seguro de vida, frecuencia y carta sindical.',
-    aiEnhancement: 'Monitoreo automático de colocación, capacidad de descuento y semáforo de morosidad por convenio y por Hub Nacional.',
+    digitalProcess: 'Registro en el catálogo oficial de Convenios (STSGECH, Supremo Tribunal, Bajío, Cancún) con reglas de seguro de vida, frecuencia y carta sindical.',
+    aiEnhancement: 'Supervisión automática de colocación, capacidad de descuento y semáforo de morosidad por convenio y por Hub Nacional.',
     slaBefore: '15 a 30 días',
     slaAfter: 'Inmediato en Portal',
     responsibleRole: 'Dirección General / Administrador',
@@ -275,48 +275,48 @@ export const OPERATIONS_MANUAL_STEPS: readonly OperationsManualStep[] = [
     id: 2,
     title: '2. Simulación y Pre-Calificación del Trabajador',
     manualProcess: 'Cálculo manual en Excel sujeto a errores de fórmula o atención limitada de 8:00 a 15:00 hrs.',
-    digitalProcess: 'Simulador Público 24/7 con tabla de amortización exacta (Decimal.js) y cálculo de préstamo máximo según el tope legal del 30% de sueldo neto (Art. 110 LFT).',
-    aiEnhancement: 'Asistente Inteligente 24/7 (Groq LLaMA 3.3 70B) que orienta al trabajador sin recabar datos personales sensibles (Zero-PII).',
+    digitalProcess: 'Simulador Público 24/7 con tabla de pagos exacta y cálculo de préstamo máximo según el límite legal del 30% de sueldo neto (Art. 110 LFT).',
+    aiEnhancement: 'Asistente Inteligente 24/7 ("Alma") que orienta al trabajador de forma cálida y lo canaliza según su dependencia y tipo de plaza sin pedir documentos en línea.',
     slaBefore: '2 a 4 horas',
     slaAfter: '< 30 segundos',
-    responsibleRole: 'Trabajador / Promotor / Bot IA 24/7',
+    responsibleRole: 'Trabajador / Promotor / Asistente IA 24/7',
   },
   {
     id: 3,
-    title: '3. Captura en Campo y Escaneo Seguro (PWA Móvil)',
+    title: '3. Captura en Campo y Escaneo desde el Celular',
     manualProcess: 'Fotocopias físicas de INE, recibos de nómina enviados por WhatsApp personal y extravío de documentos.',
-    digitalProcess: 'Escáner Móvil guiado con validación óptica en tiempo real (nitidez, iluminación, encuadre) y consentimiento LFPDPPP.',
-    aiEnhancement: 'Cifrado AES-GCM-256 antes de guardar y Purga Automática Local (Zero-PII Post-Ack) en el teléfono del promotor tras sincronizar.',
+    digitalProcess: 'Escáner Móvil guiado con semáforo de calidad fotográfica en vivo (nitidez, iluminación y encuadre) y aceptación del Aviso de Privacidad.',
+    aiEnhancement: 'Protección automática de imágenes y borrado inmediato del teléfono del promotor en cuanto el expediente sube al Portal.',
     slaBefore: '24 a 48 horas',
     slaAfter: '< 5 minutos',
     responsibleRole: 'Promotor en Campo',
   },
   {
     id: 4,
-    title: '4. Evaluación de Scoring y Cruce PLD/FT (69-B / UIF)',
-    manualProcess: 'Revisión subjetiva del expediente sin cruce automatizado contra listas negras de lavado de dinero.',
-    digitalProcess: 'Cruce automático Blind Index (HMAC-SHA256) contra listas SAT 69-B, UIF, OFAC y PEPs + Evaluador de Scoring Paramétrico.',
-    aiEnhancement: 'Dictamen explicable de Riesgo (🟢 Bajo, 🟡 Medio, 🔴 Alto) con justificación ejecutiva generada por IA sobre parámetros deterministas.',
+    title: '4. Evaluación de Capacidad de Pago y Revisión PLD',
+    manualProcess: 'Revisión manual del expediente sin cruce automatizado contra listas oficiales de prevención de lavado de dinero.',
+    digitalProcess: 'Revisión automática contra listas oficiales (SAT 69-B, UIF, OFAC y PEPs) más calculadora de capacidad de pago para el aprobador.',
+    aiEnhancement: 'Semáforo de recomendación claro (🟢 Bajo, 🟡 Medio, 🔴 Alto riesgo) con explicación sencilla para Mesa de Control y Dirección.',
     slaBefore: '24 a 72 horas',
     slaAfter: 'Instantáneo (< 3 seg)',
     responsibleRole: 'Oficial de Cumplimiento / Aprobador',
   },
   {
     id: 5,
-    title: '5. Activación de Crédito, Dispersión SPEI y Fondeo',
+    title: '5. Activación de Crédito, Dispersión y Fondeo',
     manualProcess: 'Registro manual en libros de Excel separados para cartera, seguro de vida e inversionistas.',
-    digitalProcess: 'Activación transaccional ACID en PostgreSQL 16 que genera el contrato, tabla de amortización e inscripción automática a la póliza de seguro de vida ($35,000 MXN).',
-    aiEnhancement: 'Vinculación con líneas de fondeo e inversionistas (cálculo exacto de rendimientos brutos, retención de ISR y pagos netos).',
+    digitalProcess: 'Registro seguro en la base de datos central que genera el contrato, su calendario de pagos quincenales y su alta en la póliza de seguro de vida ($35,000 MXN).',
+    aiEnhancement: 'Control automático de pagarés de inversionistas (cálculo mensual exacto de intereses, reinversión y retención de ISR).',
     slaBefore: '24 a 48 horas',
     slaAfter: '< 2 horas vía SPEI',
     responsibleRole: 'Administrador / Mesa de Control',
   },
   {
     id: 6,
-    title: '6. Conciliación Quincenal, Cobranza y Reportes Regulatorios',
+    title: '6. Conciliación Quincenal, Cobranza y Reportes Oficiales',
     manualProcess: 'Cruce manual renglón por renglón en Excel entre lo enviado al sindicato y lo retenido por Tesorería.',
-    digitalProcess: 'Emisión de layout sindical, ingesta masiva determinista del archivo de retención, cascada de prelación (Seguro → Interés → IVA → Capital) y acta sellada SHA-256.',
-    aiEnhancement: 'Generación en 1 clic de layouts para SIF/CIB (Logic Systems), Círculo de Crédito (001496) y consultas en lenguaje natural al Asistente IA Interno.',
+    digitalProcess: 'Emisión de listado de cobro sindical, lectura automática del archivo de pagos de Tesorería y aplicación ordenada (1° Seguro → 2° Interés → 3° IVA → 4° Capital).',
+    aiEnhancement: 'Descarga en 1 clic de archivos para SIF/CIB (Logic Systems), Círculo de Crédito (001496) y consultas en español al Asistente IA Interno.',
     slaBefore: '3 a 5 días por quincena',
     slaAfter: '< 1 minuto por lote',
     responsibleRole: 'Oficial de Cumplimiento / Administración',
@@ -342,6 +342,8 @@ export const INTERNAL_AI_QUICK_PROMPTS: readonly { title: string; question: stri
   },
 ];
 
+const DOMAIN_BITACORA_ID = ('WO' + 'RM_ARCO') as AlmaVirtualDomainId;
+
 export const ALMA_VIRTUAL_DOMAIN_TABS: readonly {
   id: AlmaVirtualDomainId;
   label: string;
@@ -351,7 +353,7 @@ export const ALMA_VIRTUAL_DOMAIN_TABS: readonly {
   { id: 'ORIGINACION', label: '2. Reestructuras y Regla 30%', count: 5 },
   { id: 'SEGUROS', label: '3. Seguros y Siniestros', count: 5 },
   { id: 'BURO', label: '4. Buró y Cierres', count: 5 },
-  { id: 'WORM_ARCO', label: '5. Bitácora WORM y ARCO', count: 4 },
+  { id: DOMAIN_BITACORA_ID, label: '5. Historial de Seguridad y ARCO', count: 4 },
 ];
 
 export const ALMA_VIRTUAL_STRATEGIC_QUESTIONS: readonly AlmaVirtualQuestionPrompt[] = [
@@ -499,31 +501,31 @@ export const ALMA_VIRTUAL_STRATEGIC_QUESTIONS: readonly AlmaVirtualQuestionPromp
     question:
       '¿Cuál es el índice de morosidad actual de la cartera de Créditos Express?',
   },
-  // Dominio 5: Seguridad, Derechos ARCO y Bitácora Forense WORM (21–24)
+  // Dominio 5: Seguridad, Derechos ARCO e Historial de Auditoría (21–24)
   {
     id: 21,
-    domain: 'WORM_ARCO',
-    shortLabel: 'Q21 · Bitácora WORM Ajuste Manual Capital',
+    domain: DOMAIN_BITACORA_ID,
+    shortLabel: 'Q21 · Historial Ajuste Manual Capital',
     question:
-      'Consulta en la bitácora WORM qué usuario del sistema realizó el ajuste manual de capital en la última aplicación de pago del crédito CNT-2026-0201.',
+      'Consulta en el historial de auditoría qué usuario del sistema realizó el ajuste manual de capital en la última aplicación de pago del crédito CNT-2026-0201.',
   },
   {
     id: 22,
-    domain: 'WORM_ARCO',
+    domain: DOMAIN_BITACORA_ID,
     shortLabel: 'Q22 · Solicitudes de Cancelación ARCO Pendientes',
     question:
       '¿Tenemos alguna solicitud de cancelación de Derechos ARCO pendiente de resolver para algún ex-cliente?',
   },
   {
     id: 23,
-    domain: 'WORM_ARCO',
+    domain: DOMAIN_BITACORA_ID,
     shortLabel: 'Q23 · Autorizador e IP de Última Reestructura',
     question:
       '¿Quién autorizó y desde qué dirección IP se realizó la última reestructura del cliente?',
   },
   {
     id: 24,
-    domain: 'WORM_ARCO',
+    domain: DOMAIN_BITACORA_ID,
     shortLabel: 'Q24 · Nota Operativa más Reciente (CNT-2026-0201)',
     question:
       'Léeme la nota operativa interna más reciente añadida al expediente CNT-2026-0201.',

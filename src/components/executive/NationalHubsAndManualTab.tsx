@@ -18,6 +18,7 @@ import {
   EXPANSION_HUBS_DATA,
   OPERATIONS_MANUAL_STEPS,
 } from '../../data/cruseExecutiveData';
+import { MODULE_FRIENDLY_GUIDES, ModuleFriendlyGuide } from '../admin/ModuleFriendlyGuideBanner';
 import { ExpansionHubItem } from '../../types/executive';
 
 export const NationalHubsAndManualTab: React.FC = () => {
@@ -27,54 +28,34 @@ export const NationalHubsAndManualTab: React.FC = () => {
   const selectedStep =
     OPERATIONS_MANUAL_STEPS.find((s) => s.id === selectedStepId) || OPERATIONS_MANUAL_STEPS[0]!;
 
-  const handleDownloadPhase2ComplianceManual = () => {
-    const manualLines = [
+  const handleDownloadPhase1FriendlyManual = () => {
+    const guides = Object.values(MODULE_FRIENDLY_GUIDES) as ModuleFriendlyGuide[];
+    const manualLines: string[] = [
       '================================================================================',
       'MICROFINANCIERA CRUSE, S.A. DE C.V. SOFOM E.N.R.',
-      'MANUAL OFICIAL FASE 2: CUMPLIMIENTO ASISTIDO CNBV/UIF Y CARGA SEMIAUTOMÁTICA CIB',
-      'DESTINATARIO: OFICIAL DE CUMPLIMIENTO (LIC. GERARDO OLVERA) Y EQUIPO OPERATIVO',
-      'CÓDIGO DOCUMENTAL: CRUSE-SOP-FASE2-2026-V1 (DATOS DE EJEMPLO 100% SINTÉTICOS)',
+      'MANUAL AMIGABLE DE FASE 1: GUÍA PRÁCTICA DE LOS 11 MÓDULOS (PARA NO TÉCNICOS)',
+      'DIRIGIDO A: LIC. ALMA (MESA DE CONTROL / OPERACIONES), DIRECCIÓN Y CUMPLIMIENTO',
       '================================================================================',
       '',
-      '1. EXTRACCIÓN OCR DETERMINISTA Y MATRIZ DE RIESGO INICIAL (CAPÍTULO X CNBV)',
-      '   - El Promotor captura INE y recibo de nómina desde el Escáner Móvil Zero-PII.',
-      '   - El motor IA extrae exclusivamente cadenas de texto; el backend valida CURP con',
-      '     Dígito Verificador Módulo 10 RENAPO y purga la memoria RAM (rawImageBuffer.fill(0)).',
-      '   - Ejemplo Sintético: Solicitante JUAN PÉREZ DEMO | CURP: CURP_DEMO_0001.',
-      '   - Si el Score de Confianza OCR es < 80.00%, el expediente pasa a estado',
-      '     LOW_CONFIDENCE_EXCEPTION y bloquea la sincronización hasta Revisión Asistida.',
-      '',
-      '2. FLUJO DE LISTA GRIS (¿AUTORIZA DIRECCIÓN?) Y REPORTE INUSUAL TENTATIVO 24H',
-      '   - Si el cruce en tiempo real detecta coincidencia en Lista Gris (PEP / 69-B Presunto),',
-      '     el expediente queda en estado PENDING_DIRECTION.',
-      '   - Si Dirección AUTORIZA (AUTHORIZED_CONTINUE): se libera con Grado de Riesgo ALTO.',
-      '   - Si Dirección RECHAZA (REJECTED_GENERATE_INUSUAL): el sistema bloquea el expediente',
-      '     y genera automáticamente un Reporte SITI Tipo 2 con prefijo obligatorio en',
-      '     Columna 40: "Lista de Personas Bloqueadas. " y Columna 11 en 0.00 o monto bloqueado.',
-      '',
-      '3. OPERACIONES FRACCIONADAS ($500 A $7,500 USD), BUZÓN ROIP Y RELOJ 60+3 DÍAS HÁBILES',
-      '   - El simulador Read-Only (dryRun=true) permite evaluar pagos en efectivo del mismo',
-      '     mes calendario sin alterar la base de datos ni la bitácora WORM.',
-      '   - Una vez dictaminado en Sesión del Comité de Comunicación y Control (CCC), el sistema',
-      '     calcula los 3 días hábiles bancarios CNBV saltando fines de semana y días inhábiles DOF.',
-      '',
-      '4. PROCEDIMIENTO DE 3 PASOS PARA CARGA MANUAL/SEMIAUTOMÁTICA A CIB (LOGIC SYSTEMS)',
-      '   - PASO 1 (Generación Pre-Validada): En la pestaña Expedientes, hacer clic en',
-      '     "Paso 1: Generar Lote CIB Validado". El sistema excluye automáticamente expedientes',
-      '     con OCR < 80% o alertas PLD abiertas y calcula el Hash SHA-256 (GENERATED_PENDING_OC).',
-      '   - PASO 2 (Revisión del Oficial de Cumplimiento): El Lic. Gerardo Olvera revisa el lote',
-      '     y firma "Paso 2: Aprobar OC", sellando el evento inmutable CIB_BATCH_VALIDATED en WORM.',
-      '   - PASO 3 (Carga en CIB y Registro de Folio): Operaciones carga el archivo CSV validado',
-      '     en Logic Systems CIB e ingresa el Folio de Confirmación (ej. CIB-LOGIC-DEMO-0001),',
-      '     cerrando el ciclo en estado UPLOADED_TO_CIB.',
-      '================================================================================',
-    ].join('\r\n');
+    ];
 
-    const blob = new Blob([`\uFEFF${manualLines}`], { type: 'text/plain;charset=utf-8;' });
+    for (const item of guides) {
+      manualLines.push(`MÓDULO ${item.tabNumber}: ${item.friendlyTitle.toUpperCase()}`);
+      manualLines.push(`1. ¿Qué hace este módulo en tu día a día?: ${item.whatItDoes}`);
+      manualLines.push(`2. ¿Qué punto del Contrato de Fase 1 logramos aquí?: ${item.contractDeliverable}`);
+      manualLines.push('3. ¿Cómo interactuar con él en 3 pasos sencillos?:');
+      for (const st of item.threeSimpleSteps) {
+        manualLines.push(`   - ${st}`);
+      }
+      manualLines.push('--------------------------------------------------------------------------------');
+      manualLines.push('');
+    }
+
+    const blob = new Blob([`\uFEFF${manualLines.join('\r\n')}`], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'MANUAL_FASE2_CUMPLIMIENTO_CNBV_Y_CARGA_CIB_CRUSE.txt';
+    link.download = 'MANUAL_AMIGABLE_FASE1_PORTAL_CRUSE.txt';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -224,11 +205,11 @@ export const NationalHubsAndManualTab: React.FC = () => {
             </span>
             <button
               type="button"
-              onClick={handleDownloadPhase2ComplianceManual}
+              onClick={handleDownloadPhase1FriendlyManual}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#249E82] to-[#396CAE] hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Descargar Manual Fase 2 CIB & SITI CNBV (Lic. Gerardo)</span>
+              <span>Descargar Manual Amigable Fase 1 (Guía de los 11 Módulos)</span>
             </button>
           </div>
         </div>

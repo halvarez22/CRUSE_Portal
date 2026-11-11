@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet, Presentation, Bot, Mail } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet, Presentation, Bot, Mail, BookOpen } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
@@ -13,6 +13,7 @@ import { PreApplicationsInboxPanel } from './PreApplicationsInboxPanel';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
 import { ExecutiveSuiteView } from '../executive/ExecutiveSuiteView';
 import { InternalAiAssistantDrawer } from '../executive/InternalAiAssistantDrawer';
+import { AdminTabId, ModuleFriendlyGuideBanner } from './ModuleFriendlyGuideBanner';
 
 interface AdminAuditViewProps {
   session: AuthSession;
@@ -25,8 +26,9 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
   onLogout,
   onBackToPortal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pre_applications' | 'executive' | 'audit' | 'expedientes' | 'reconciliation' | 'funding' | 'credit_bureau' | 'collections' | 'pld' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<AdminTabId>('dashboard');
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [expedientes, setExpedientes] = useState<ExpedienteItem[]>([]);
   const [unreadPreAppsCount, setUnreadPreAppsCount] = useState<number>(0);
@@ -130,7 +132,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#249E82]" />
-              <h1 className="text-base font-bold text-white">Centro de Control Operativo & Cumplimiento Forense (WORM)</h1>
+              <h1 className="text-base font-bold text-white">Portal Operativo y Administrativo — Microfinanciera Cruse</h1>
             </div>
             <p className="text-xs text-slate-400">
               {session.user.name} — <span className="text-[#00D1FF] font-medium">{session.user.role.replace('_', ' ').toUpperCase()}</span>
@@ -138,7 +140,14 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => setIsManualModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-cyan-500/15 border border-[#00D1FF]/40 hover:bg-cyan-500/25 text-[#00D1FF] text-xs font-extrabold flex items-center gap-1.5 transition-all"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Manual Fase 1 (Guía Amigable)</span>
+          </button>
           <button
             onClick={() => setIsAiDrawerOpen(true)}
             className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 border border-[#D4AF37]/40 hover:bg-amber-500/25 text-[#D4AF37] text-xs font-extrabold flex items-center gap-1.5 transition-all"
@@ -148,7 +157,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
           </button>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>2FA SMS Autenticado</span>
+            <span>Acceso Celular Verificado</span>
           </div>
           <button
             onClick={onLogout}
@@ -168,7 +177,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard Cartera ({expedientes.length})</span>
+            <span>1. Resumen de Cartera ({expedientes.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('pre_applications')}
@@ -177,7 +186,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <Mail className="w-4 h-4" />
-            <span>Buzón Pre-Solicitudes</span>
+            <span>2. Buzón Pre-Solicitudes</span>
             {unreadPreAppsCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-[#00D1FF] text-slate-950">
                 {unreadPreAppsCount}
@@ -191,16 +200,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <Presentation className="w-4 h-4" />
-            <span>Suite Ejecutiva & Negocio (5 Módulos)</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'audit' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Hash className="w-4 h-4" />
-            <span>Bitácora Forense (5 Años)</span>
+            <span>3. Suite Ejecutiva (5 Módulos)</span>
           </button>
           <button
             onClick={() => setActiveTab('expedientes')}
@@ -209,7 +209,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Expedientes ({expedientes.length})</span>
+            <span>4. Expedientes ({expedientes.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('reconciliation')}
@@ -218,25 +218,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <FileCheck2 className="w-4 h-4" />
-            <span>Conciliación Quincenal</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('funding')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'funding' ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Landmark className="w-4 h-4" />
-            <span>Fondeo e Inversionistas (3FN v4)</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('credit_bureau')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              activeTab === 'credit_bureau' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Círculo de Crédito (SIC)</span>
+            <span>5. Conciliación Quincenal</span>
           </button>
           <button
             onClick={() => setActiveTab('collections')}
@@ -245,7 +227,25 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
-            <span>Cobranza, Convenios y Reestructuras</span>
+            <span>6. Cobranza y Licencias</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('funding')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'funding' ? 'bg-[#396CAE] text-white shadow-lg shadow-[#396CAE]/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Landmark className="w-4 h-4" />
+            <span>7. Inversionistas y Pagarés</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('credit_bureau')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'credit_bureau' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>8. Reporte a Círculo de Crédito</span>
           </button>
           <button
             onClick={() => setActiveTab('pld')}
@@ -254,7 +254,16 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Prevención PLD/FT (69-B / UIF)</span>
+            <span>9. Prevención Lavado (PLD)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'audit' ? 'bg-[#249E82] text-white shadow-lg shadow-[#249E82]/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Hash className="w-4 h-4" />
+            <span>10. Historial de Seguridad</span>
           </button>
           {session.user.role === 'admin' && (
             <button
@@ -264,7 +273,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>Usuarios y Accesos 2FA</span>
+              <span>11. Usuarios y Accesos</span>
             </button>
           )}
         </div>
@@ -276,7 +285,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-[#249E82] hover:from-emerald-500 hover:to-[#1e856e] text-white text-xs font-semibold shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all"
           >
             {integrityStatus.verifying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-            <span>Verificar Integridad SHA-256</span>
+            <span>Verificar Integridad de Bitácora</span>
           </button>
         )}
       </div>
@@ -311,6 +320,13 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
       )}
 
       <main className="max-w-7xl w-full mx-auto p-6 flex-1 flex flex-col">
+        <ModuleFriendlyGuideBanner
+          activeTab={activeTab}
+          isManualModalOpen={isManualModalOpen}
+          onOpenManualModal={() => setIsManualModalOpen(true)}
+          onCloseManualModal={() => setIsManualModalOpen(false)}
+        />
+
         {activeTab === 'dashboard' && <DashboardLayout />}
 
         {activeTab === 'pre_applications' && (
@@ -341,11 +357,11 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
                   className="px-3 py-1.5 rounded-xl glass-input text-xs text-slate-200 focus:outline-none"
                 >
                   <option value="">Todas las acciones</option>
-                  <option value="LOGIN_2FA_SUCCESS">Acceso Seguro 2FA</option>
+                  <option value="LOGIN_2FA_SUCCESS">Acceso Seguro por Celular</option>
                   <option value="LOGIN_FAILURE">Intento Fallido</option>
                   <option value="EXPEDIENTE_CREATE">Expediente Creado</option>
                   <option value="EXPEDIENTE_SYNC">Sincronización Nube</option>
-                  <option value="EXPEDIENTE_PURGE">Purga Zero-PII</option>
+                  <option value="EXPEDIENTE_PURGE">Borrado Seguro Local en Celular</option>
                   <option value="PAYMENT_APPLIED">Aplicación de Pago / Fondeo</option>
                 </select>
               </div>
@@ -373,12 +389,12 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
                 <table className="w-full text-left text-xs">
                   <thead className="bg-white/5 border-b border-white/10 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                     <tr>
-                      <th className="py-3 px-4">Fecha y Hora (ISO)</th>
-                      <th className="py-3 px-4">Actor & Rol</th>
-                      <th className="py-3 px-4">Acción Auditada</th>
+                      <th className="py-3 px-4">Fecha y Hora</th>
+                      <th className="py-3 px-4">Usuario y Puesto</th>
+                      <th className="py-3 px-4">Acción Realizada</th>
                       <th className="py-3 px-4">CURP Protegido</th>
-                      <th className="py-3 px-4">Origen IP & Dispositivo</th>
-                      <th className="py-3 px-4">Sello SHA-256 (Merkle)</th>
+                      <th className="py-3 px-4">Dispositivo / Red</th>
+                      <th className="py-3 px-4">Folio Digital de Seguridad</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">

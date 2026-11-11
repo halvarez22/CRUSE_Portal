@@ -54,13 +54,13 @@ export const DashboardLayout: React.FC = () => {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-bold mb-2">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Core Relacional Azure PostgreSQL 16 · Cero Excel</span>
+              <span>Base Central de Cartera en Tiempo Real · Cero Hojas de Excel Sueltas</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-white">
-              Dashboard Financiero y Semáforo de Cartera
+              1. Resumen Financiero y Semáforo de Cartera
             </h1>
             <p className="text-xs md:text-sm text-slate-400 mt-1">
-              Monitoreo en tiempo real por Hub Nacional (Chihuahua, León y Cancún) y Semáforo de Morosidad.
+              Consulta en segundos tu cartera nacional (Chihuahua, León y Cancún) y el estado de pago de cada trabajador.
             </p>
           </div>
 
