@@ -1,9 +1,10 @@
 /**
  * MÓDULO B.5: MATRIZ COMPARATIVA DE COMPETENCIA (PIZARRA DE ESTRATEGIA COMERCIAL EDITABLE)
- * Expediente: CRUSE-APO-2026-029 — Guardrail Forense 1 (< 400 líneas)
+ * Expediente: CRUSE-APO-2026-029 / CRUSE-APO-2026-058 — Guardrails 1, 2, 3 y 4 (< 600 líneas)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Decimal from 'decimal.js';
 import {
   BarChart3,
   Sparkles,
@@ -12,8 +13,15 @@ import {
   Check,
   X,
   RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  FileText,
+  Award,
 } from 'lucide-react';
 import { CompetitorBenchmark } from '../../types/executive';
+import { HOMOLOGATED_10K_COMPARISON_DATA } from '../../data/cruseExecutiveData';
+import { PromotionalBrochureModal } from './PromotionalBrochureModal';
 
 interface CompetitorMatrixTabProps {
   token: string;
@@ -24,6 +32,8 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
   const [competitors, setCompetitors] = useState<CompetitorBenchmark[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterBureauOnly, setFilterBureauOnly] = useState(false);
+  const [homologated10kOnly, setHomologated10kOnly] = useState(true);
+  const [isBrochureOpen, setIsBrochureOpen] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRate, setEditRate] = useState('');
@@ -63,11 +73,15 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
     setFeedback(null);
   };
 
+  // Guardrail 3 (CRUSE-APO-2026-058): Persistencia inmediata en backend vía PUT /api/executive/competitors/:id
   const handleSave = async (id: string) => {
     setSaving(true);
     setFeedback(null);
     try {
-      const sampleTotalPayment = Number((editPayment * editTerm).toFixed(2));
+      const sampleTotalPayment = new Decimal(editPayment || 0)
+        .mul(new Decimal(editTerm || 1))
+        .toDP(2, Decimal.ROUND_HALF_UP)
+        .toNumber();
       const res = await fetch(`/api/executive/competitors/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: {
@@ -87,7 +101,7 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
         throw new Error(data.error || 'No se pudo actualizar el competidor');
       }
       setEditingId(null);
-      setFeedback('✓ Pizarra de Estrategia Comercial actualizada y sellada en Bitácora WORM.');
+      setFeedback('✓ Pizarra de Estrategia Comercial actualizada y sincronizada en Base de Datos.');
       await fetchCompetitors();
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : 'Error al guardar cambios');
@@ -96,12 +110,11 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
     }
   };
 
-  const displayed = filterBureauOnly
-    ? competitors.filter((c) => !c.requiresBureau)
-    : competitors;
-
-  const sample10kList = competitors.filter((c) => c.sampleLoan === 10000);
-  const max10kTotal = Math.max(15340, ...sample10kList.map((c) => c.sampleTotalPayment));
+  const displayed = competitors.filter((c) => {
+    if (filterBureauOnly && c.requiresBureau) return false;
+    if (homologated10kOnly && c.sampleLoan !== 10000) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -109,18 +122,27 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
         <div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-[#D4AF37] border border-amber-500/30 text-xs font-bold mb-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
-            <span>Pizarra de Estrategia Comercial (B.5) · Editable en Vivo</span>
+            <span>Pizarra de Estrategia Comercial (B.5) · Efectivo Real en Mano vs. Fricciones</span>
           </span>
           <h3 className="text-xl font-extrabold text-white">
             Matriz Comparativa de Créditos de Nómina en México
           </h3>
           <p className="text-xs text-slate-400">
-            El equipo comercial puede actualizar tasas, cuotas y comisiones de la competencia para demostrar la ventaja competitiva de Cruse.
+            En Microfinanciera Cruse, $10,000 solicitados son $10,000 depositados vía SPEI (0% comisiones ocultas, sin aval y sin freno por Buró).
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
+            onClick={() => setIsBrochureOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#249E82] to-[#396CAE] hover:opacity-95 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-lg transition-all"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Folleto Promocional (PDF 2 Págs)</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setFilterBureauOnly((v) => !v)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
               filterBureauOnly
@@ -131,6 +153,7 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
             {filterBureauOnly ? '✓ Mostrando Sin Buró (Cruse)' : 'Filtrar Opciones Sin Buró'}
           </button>
           <button
+            type="button"
             onClick={fetchCompetitors}
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white"
             title="Refrescar pizarra"
@@ -146,46 +169,157 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
         </div>
       )}
 
-      {/* Comparativo Visual para Crédito Muestra de $10,000 MXN */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-        <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-emerald-400" />
-          <span>Comparativo de Costo Total para un Crédito Muestra de $10,000 MXN</span>
-        </h4>
-        <div className="space-y-2.5">
-          {sample10kList.map((c) => {
-            const pct = Math.min(100, Math.max(20, (c.sampleTotalPayment / max10kTotal) * 100));
-            return (
-              <div key={c.id} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className={c.isCruse ? 'text-emerald-400 font-extrabold flex items-center gap-1' : 'text-slate-300'}>
-                    {c.isCruse && <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />}
-                    {c.name} ({c.productName})
-                  </span>
-                  <span className={c.isCruse ? 'text-emerald-400 font-extrabold' : 'text-slate-300'}>
-                    Total: ${c.sampleTotalPayment.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN | Tasa: {c.annualInterestRate}
+      {/* Comparador Visual Homologado: Efectivo Real en Mano vs. Comisiones ($10,000 MXN a 24 Quincenas) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <h4 className="text-sm md:text-base font-extrabold text-white flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-emerald-400" />
+            <span>Comparativo de Desembolso Real y Costo Total para un Crédito Muestra de $10,000 MXN a 24 Quincenas</span>
+          </h4>
+          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            Muestra Homologada de Referencia (100% Comparable)
+          </span>
+        </div>
+
+        <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-4 text-[11px] font-bold uppercase text-slate-400">
+          <div className="lg:col-span-3">Institución & Estatus</div>
+          <div className="lg:col-span-4 text-center">Efectivo Real vs. Comisiones (Neto en Mano)</div>
+          <div className="lg:col-span-2 text-center">Cuota Quincenal y Costo Total</div>
+          <div className="lg:col-span-3">Facilidad y Fricciones</div>
+        </div>
+
+        <div className="space-y-3">
+          {HOMOLOGATED_10K_COMPARISON_DATA.map((item) => (
+            <div
+              key={item.id}
+              className={`p-4 rounded-2xl border grid grid-cols-1 lg:grid-cols-12 gap-4 items-center transition-all ${
+                item.isCruse
+                  ? 'bg-emerald-950/30 border-emerald-500/60 shadow-lg shadow-emerald-500/10'
+                  : 'bg-slate-950/70 border-slate-800'
+              }`}
+            >
+              {/* Columna 1: Institución */}
+              <div className="lg:col-span-3 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  {item.isCruse && <Award className="w-4 h-4 text-[#D4AF37] shrink-0" />}
+                  <span className={`text-sm font-extrabold ${item.isCruse ? 'text-emerald-400' : 'text-white'}`}>
+                    {item.institution}
                   </span>
                 </div>
-                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                <div className="text-xs text-slate-400">({item.productLabel})</div>
+                {item.badgeText && (
+                  <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500 text-slate-950">
+                    {item.badgeText}
+                  </span>
+                )}
+              </div>
+
+              {/* Columna 2: Efectivo Real en Mano vs Comisiones */}
+              <div className="lg:col-span-4 space-y-1.5 text-center">
+                <div className="w-full h-6 rounded-full bg-slate-900 border border-slate-700 overflow-hidden flex text-[11px] font-extrabold">
                   <div
-                    className={`h-full rounded-full ${
-                      c.isCruse
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                        : c.id === 'independencia'
-                          ? 'bg-rose-500/80'
-                          : 'bg-slate-600'
+                    className={`h-full flex items-center justify-center ${
+                      item.isCruse
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950'
+                        : 'bg-slate-600 text-white'
                     }`}
-                    style={{ width: `${pct}%` }}
-                  />
+                    style={{ width: `${item.netPercent}%` }}
+                  >
+                    {item.isCruse ? '100% Neto en Mano' : `${item.netPercent}%`}
+                  </div>
+                  {item.withheldPercent > 0 && (
+                    <div
+                      className="h-full bg-rose-600 text-white flex items-center justify-center"
+                      style={{ width: `${item.withheldPercent}%` }}
+                    >
+                      -{item.withheldPercent}%
+                    </div>
+                  )}
+                </div>
+                <div className={`text-xs font-extrabold ${item.isCruse ? 'text-white' : 'text-slate-200'}`}>
+                  {item.netDisbursedText}
+                </div>
+                <div className={`text-[11px] font-semibold ${item.isCruse ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {item.withheldDetail}
                 </div>
               </div>
-            );
-          })}
+
+              {/* Columna 3: Cuota Quincenal y Costo Total */}
+              <div className="lg:col-span-2 text-center space-y-0.5">
+                <div className="text-lg font-black text-white">{item.fortnightlyPaymentText}</div>
+                <div className="text-[11px] text-slate-300 font-semibold">{item.totalPaymentText}</div>
+                <div className="text-[11px] text-slate-400">{item.rateLabel}</div>
+              </div>
+
+              {/* Columna 4: Facilidad y Fricciones */}
+              <div className="lg:col-span-3 space-y-1.5">
+                {item.frictionBullets.map((bullet, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5 text-xs">
+                    {item.frictionStatus === 'recommended' && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    )}
+                    {item.frictionStatus === 'warning' && (
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    )}
+                    {item.frictionStatus === 'critical' && (
+                      <XCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    )}
+                    <span
+                      className={
+                        item.frictionStatus === 'recommended'
+                          ? 'text-emerald-300 font-semibold'
+                          : item.frictionStatus === 'warning'
+                            ? 'text-amber-300'
+                            : 'text-rose-300'
+                      }
+                    >
+                      {bullet}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Tabla Comparativa Editable */}
+      {/* Tabla Comparativa Editable Conectada a Base de Datos (Guardrail 3) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="text-xs font-extrabold uppercase text-white">
+              Catálogo Editable de Competidores (Conectado en Vivo a Base de Datos)
+            </h4>
+            <p className="text-[11px] text-slate-400">
+              Cualquier ajuste en tasas, plazos o comisiones se guarda directamente en el servidor mediante el botón Guardar.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHomologated10kOnly(true)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                homologated10kOnly
+                  ? 'bg-[#249E82] text-white border-teal-400'
+                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              }`}
+            >
+              Muestra Homologada ($10,000 MXN)
+            </button>
+            <button
+              type="button"
+              onClick={() => setHomologated10kOnly(false)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                !homologated10kOnly
+                  ? 'bg-[#396CAE] text-white border-cyan-400'
+                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              }`}
+            >
+              Todos los Registros ({competitors.length})
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -203,6 +337,9 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
             <tbody className="divide-y divide-slate-800/60">
               {displayed.map((c) => {
                 const isEditing = editingId === c.id;
+                const liveTotal = isEditing
+                  ? new Decimal(editPayment || 0).mul(new Decimal(editTerm || 1)).toNumber()
+                  : c.sampleTotalPayment;
                 return (
                   <tr
                     key={c.id}
@@ -246,7 +383,7 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
                       )}
                     </td>
                     <td className="p-3.5 font-mono font-black text-emerald-400">
-                      ${(isEditing ? editPayment * editTerm : c.sampleTotalPayment).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      ${liveTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="p-3.5 text-cyan-300 font-semibold">
                       {isEditing ? (
@@ -310,6 +447,11 @@ export const CompetitorMatrixTab: React.FC<CompetitorMatrixTabProps> = ({ token,
           </table>
         </div>
       </div>
+
+      <PromotionalBrochureModal
+        isOpen={isBrochureOpen}
+        onClose={() => setIsBrochureOpen(false)}
+      />
     </div>
   );
 };

@@ -13,6 +13,7 @@ import {
   XCircle,
   FileText,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import { LOAN_PRODUCTS } from '../../data/cruseData';
 import { HubRegion, ScoringEvaluationResult } from '../../types/executive';
@@ -79,6 +80,53 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
     } finally {
       setEvaluating(false);
     }
+  };
+
+  // Guardrail 1 (CRUSE-APO-2026-058): Sumatoria estricta de la Tabla de Amortización con Decimal.js (cero '+' nativo sobre floats)
+  const scheduleTotals = result
+    ? result.schedule.reduce(
+        (acc, row) => ({
+          capital: acc.capital.plus(new Decimal(row.capital)),
+          interest: acc.interest.plus(new Decimal(row.interest)),
+          vat: acc.vat.plus(new Decimal(row.vat)),
+          insurance: acc.insurance.plus(new Decimal(row.insurance)),
+          payment: acc.payment.plus(new Decimal(row.payment)),
+        }),
+        {
+          capital: new Decimal(0),
+          interest: new Decimal(0),
+          vat: new Decimal(0),
+          insurance: new Decimal(0),
+          payment: new Decimal(0),
+        }
+      )
+    : null;
+
+  const handleExportScheduleCsv = () => {
+    if (!result || !scheduleTotals) return;
+    const headerMeta = [
+      `"MICROFINANCIERA CRUSE, S.A. DE C.V. SOFOM E.N.R. - TABLA DE AMORTIZACIÓN Y SCORING APROBADOR"`,
+      `"Producto","${product.name}","Monto Solicitado","$${new Decimal(requestedAmount).toFixed(2)}","Plazo","${termFortnights} Quincenas","CAT s/IVA","${result.catPercent}%"`,
+      `"Convenio","${convenio}","Hub","${hubRegion}","Dictamen","${result.riskLevel} (${result.score}/950 pts)"`,
+      '',
+      '"Quincena","Capital ($)","Interés ($)","IVA ($)","Seguro de Vida ($)","Cuota Quincenal ($)","Saldo Insoluto ($)"',
+    ];
+
+    const dataRows = result.schedule.map(
+      (r) =>
+        `"${r.period}","${new Decimal(r.capital).toFixed(2)}","${new Decimal(r.interest).toFixed(2)}","${new Decimal(r.vat).toFixed(2)}","${new Decimal(r.insurance).toFixed(2)}","${new Decimal(r.payment).toFixed(2)}","${new Decimal(r.balance).toFixed(2)}"`
+    );
+
+    const totalRow = `"TOTALES","${scheduleTotals.capital.toFixed(2)}","${scheduleTotals.interest.toFixed(2)}","${scheduleTotals.vat.toFixed(2)}","${scheduleTotals.insurance.toFixed(2)}","${scheduleTotals.payment.toFixed(2)}","0.00"`;
+
+    const csvContent = [...headerMeta, ...dataRows, totalRow].join('\r\n');
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `TABLA_AMORTIZACION_CRUSE_${productType.toUpperCase()}_${requestedAmount}_${termFortnights}Q.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -235,6 +283,42 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
           </button>
 
           {error && <p className="text-xs text-rose-400 font-semibold">{error}</p>}
+
+          {/* ① Desglose de Puntajes y Reglas Paramétricas debajo de los Parámetros (Columna Izquierda) */}
+          {result && (
+            <div className="pt-4 border-t border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase text-[#00D1FF]">
+                  Desglose de Puntajes y Reglas Auditables
+                </span>
+                <span className="text-[11px] font-mono font-bold text-[#D4AF37]">
+                  Base 700 → {result.score} pts
+                </span>
+              </div>
+              <div className="space-y-2">
+                {result.parametricRules.map((r) => (
+                  <div
+                    key={r.ruleCode}
+                    className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 flex items-center justify-between gap-2 text-xs"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-200 leading-snug">{r.label}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">{r.valueFormatted}</div>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded font-mono font-bold text-xs shrink-0 ${
+                        r.pointsDelta >= 0
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                      }`}
+                    >
+                      {r.pointsDelta >= 0 ? `+${r.pointsDelta}` : r.pointsDelta} pts
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Panel de Resultados y Dictamen Explicable */}
@@ -309,36 +393,8 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
                   </div>
                 </div>
 
-                {/* Desglose de Reglas Paramétricas Deterministas */}
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold uppercase text-slate-400">
-                    Desglose de Reglas Paramétricas Auditables (Guardrail CNBV):
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {result.parametricRules.map((r) => (
-                      <div
-                        key={r.ruleCode}
-                        className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 flex items-center justify-between text-xs"
-                      >
-                        <div>
-                          <div className="font-bold text-slate-200">{r.label}</div>
-                          <div className="text-[11px] text-slate-400">{r.valueFormatted}</div>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded font-mono font-bold text-xs ${
-                            r.pointsDelta >= 0
-                              ? 'bg-emerald-500/15 text-emerald-400'
-                              : 'bg-rose-500/15 text-rose-400'
-                          }`}
-                        >
-                          {r.pointsDelta >= 0 ? `+${r.pointsDelta}` : r.pointsDelta} pts
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 text-xs text-slate-200 leading-relaxed">
+                {/* ② Justificación Ejecutiva elevada directamente al lugar del Desglose */}
+                <div className="p-4 rounded-xl bg-slate-950/90 border border-cyan-500/30 text-xs text-slate-200 leading-relaxed">
                   <strong className="text-[#00D1FF] block mb-1">
                     Justificación Ejecutiva ({result.generatedByModel}):
                   </strong>
@@ -346,43 +402,66 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
                 </div>
               </div>
 
-              {/* Tabla de Amortización resumida */}
+              {/* ③ y ④ Tabla de Amortización Ampliada con Fila de Totales (Decimal.js) y Exportación a Excel (.CSV) */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <h4 className="text-xs font-extrabold uppercase text-white flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-emerald-400" />
                     <span>Tabla de Amortización Quincenal ({termFortnights} periodos · CAT {result.catPercent}%)</span>
                   </h4>
-                  <span className="text-xs font-bold text-emerald-400">
-                    Total a Pagar: ${result.totalToPay.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-emerald-400">
+                      Total a Pagar: ${scheduleTotals ? scheduleTotals.payment.toFixed(2) : result.totalToPay.toFixed(2)} MXN
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleExportScheduleCsv}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition-all"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Exportar a Excel (.CSV)</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="max-h-52 overflow-y-auto border border-slate-800 rounded-xl">
+                <div className="max-h-[420px] overflow-y-auto border border-slate-800 rounded-xl">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950 sticky top-0 text-slate-400">
+                    <thead className="bg-slate-950 sticky top-0 z-10 text-slate-400 border-b border-slate-800">
                       <tr>
-                        <th className="p-2">Qna</th>
-                        <th className="p-2">Capital</th>
-                        <th className="p-2">Interés</th>
-                        <th className="p-2">IVA</th>
-                        <th className="p-2">Seguro</th>
-                        <th className="p-2">Cuota</th>
-                        <th className="p-2">Saldo Insoluto</th>
+                        <th className="p-2.5">Qna</th>
+                        <th className="p-2.5">Capital</th>
+                        <th className="p-2.5">Interés</th>
+                        <th className="p-2.5">IVA</th>
+                        <th className="p-2.5">Seguro</th>
+                        <th className="p-2.5">Cuota</th>
+                        <th className="p-2.5">Saldo Insoluto</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
                       {result.schedule.map((row) => (
-                        <tr key={row.period}>
-                          <td className="p-2 font-bold">{row.period}</td>
-                          <td className="p-2">${row.capital}</td>
-                          <td className="p-2 text-amber-300">${row.interest}</td>
-                          <td className="p-2">${row.vat}</td>
-                          <td className="p-2">${row.insurance}</td>
-                          <td className="p-2 font-bold text-emerald-400">${row.payment}</td>
-                          <td className="p-2">${row.balance}</td>
+                        <tr key={row.period} className="hover:bg-slate-800/40">
+                          <td className="p-2.5 font-bold">{row.period}</td>
+                          <td className="p-2.5">${new Decimal(row.capital).toFixed(2)}</td>
+                          <td className="p-2.5 text-amber-300">${new Decimal(row.interest).toFixed(2)}</td>
+                          <td className="p-2.5">${new Decimal(row.vat).toFixed(2)}</td>
+                          <td className="p-2.5">${new Decimal(row.insurance).toFixed(2)}</td>
+                          <td className="p-2.5 font-bold text-emerald-400">${new Decimal(row.payment).toFixed(2)}</td>
+                          <td className="p-2.5">${new Decimal(row.balance).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
+                    {scheduleTotals && (
+                      <tfoot className="bg-slate-950 sticky bottom-0 z-10 border-t-2 border-emerald-500/40 text-white font-mono font-extrabold">
+                        <tr>
+                          <td className="p-2.5 text-[#00D1FF]">TOTALES</td>
+                          <td className="p-2.5">${scheduleTotals.capital.toFixed(2)}</td>
+                          <td className="p-2.5 text-amber-300">${scheduleTotals.interest.toFixed(2)}</td>
+                          <td className="p-2.5">${scheduleTotals.vat.toFixed(2)}</td>
+                          <td className="p-2.5">${scheduleTotals.insurance.toFixed(2)}</td>
+                          <td className="p-2.5 text-emerald-400">${scheduleTotals.payment.toFixed(2)}</td>
+                          <td className="p-2.5 text-slate-400">$0.00</td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               </div>
