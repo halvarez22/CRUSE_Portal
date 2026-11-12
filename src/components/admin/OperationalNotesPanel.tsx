@@ -4,10 +4,11 @@
  * @implements RN-02 (Notas operativas fijadas visibles en expedientes y créditos)
  * @implements RN-04 (Notas operativas fijadas visibles en inversionistas)
  * @implements CRUSE-APO-2026-059 Guardrail 3 (Sincronización pesimista del contador de notas post HTTP 200/201 y estado vacío explícito)
+ * @implements CRUSE-APO-2026-061 Guardrails 1, 2 y 3 (Patrón useRef en useEffect, AbortController con cleanup y manejo seguro de errores)
  * @implements Regla 3 Anti-God-Object (< 210 líneas) y Regla 6 SQA (0 any)
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Pin, PlusCircle, MessageSquareText, FileText } from 'lucide-react';
 
 export type NoteEntityType = 'LOAN_ACCOUNT' | 'INVESTOR' | 'INVESTMENT' | 'EXPEDIENTE';
@@ -43,6 +44,12 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Guardrail 1 (CRUSE-APO-2026-061): Actualización de ref exclusivamente dentro de useEffect (Cero mutación en render)
+  const onNotesCountChangeRef = useRef(onNotesCountChange);
+  useEffect(() => {
+    onNotesCountChangeRef.current = onNotesCountChange;
+  }, [onNotesCountChange]);
+
   const token =
     propToken && propToken.trim().length > 0
       ? propToken
@@ -50,29 +57,39 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
         ? localStorage.getItem('auth_token') ?? ''
         : '';
 
-  const fetchNotes = useCallback(async () => {
-    if (!entityId || !token) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/notes/${entityType}/${encodeURIComponent(entityId)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.ok && Array.isArray(data.notes)) {
-        const fetchedNotes: OperationalNoteItem[] = data.notes;
-        setNotes(fetchedNotes);
-        onNotesCountChange?.(fetchedNotes.length);
-      }
-    } catch (err: unknown) {
-      console.error('Error cargando notas operativas:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [entityType, entityId, token, onNotesCountChange]);
-
+  // Guardrails 2 & 3 (CRUSE-APO-2026-061): Fetch cancelable con AbortController y sin dependencia de callback
   useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
+    if (!entityId || !token) return;
+    const controller = new AbortController();
+    let active = true;
+
+    const loadNotes = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/notes/${entityType}/${encodeURIComponent(entityId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (active && res.ok && data.ok && Array.isArray(data.notes)) {
+          const fetchedNotes: OperationalNoteItem[] = data.notes;
+          setNotes(fetchedNotes);
+          onNotesCountChangeRef.current?.(fetchedNotes.length);
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        console.error('Error cargando notas operativas:', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void loadNotes();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [entityType, entityId, token]);
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,12 +110,11 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
         }),
       });
       const data = await res.json();
-      // Guardrail 3 (CRUSE-APO-2026-059): Sincronización estrictamente pesimista tras confirmación HTTP 200/201
       if (res.ok && data.ok && data.note) {
         const updatedList = [data.note as OperationalNoteItem, ...notes];
         setNotes(updatedList);
         setNewContent('');
-        onNotesCountChange?.(updatedList.length);
+        onNotesCountChangeRef.current?.(updatedList.length);
       }
     } catch (err: unknown) {
       console.error('Error guardando nota operativa:', err);

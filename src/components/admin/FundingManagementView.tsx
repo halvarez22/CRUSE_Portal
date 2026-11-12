@@ -80,11 +80,13 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
     fetchOverview();
   }, [fetchOverview]);
 
-  // Guardrail 3 (CRUSE-APO-2026-059): Actualización pesimista del contador de notas confirmada por el backend
+  // Guardrail 4 (CRUSE-APO-2026-061): Cortocircuito idempotente de igualdad referencial (aborta re-render si el conteo no cambió)
   const handleNotesCountChange = useCallback((investmentId: string, count: number) => {
-    setInvestments((prev) =>
-      prev.map((inv) => (inv.id === investmentId ? { ...inv, notes_count: count } : inv))
-    );
+    setInvestments((prev) => {
+      const target = prev.find((inv) => inv.id === investmentId);
+      if (!target || target.notes_count === count) return prev;
+      return prev.map((inv) => (inv.id === investmentId ? { ...inv, notes_count: count } : inv));
+    });
   }, []);
 
   const handleCreateInvestor = async (e: React.FormEvent) => {

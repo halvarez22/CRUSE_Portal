@@ -2,11 +2,11 @@
  * MODAL DE BITÁCORA Y NOTAS OPERATIVAS DE PAGARÉS / INVERSIONES (RN-04)
  *
  * @implements CRUSE-APO-2026-059 Guardrail 2 (Focus Trap estricto Tab/Shift+Tab, cierre con Escape y clic en Backdrop)
- * @implements CRUSE-APO-2026-059 Guardrail 4 (Componente modular extraído < 200 líneas)
- * @implements Regla 4 U-First (Cero Callejones sin Salida)
+ * @implements CRUSE-APO-2026-061 Barrera 2 (Estabilización referencial de handleCountChange con useCallback)
+ * @implements Regla 3 Anti-God-Object (< 200 líneas) y Regla 4 U-First (Cero Callejones sin Salida)
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { X, MessageSquareText, Landmark } from 'lucide-react';
 import { OperationalNotesPanel } from './OperationalNotesPanel';
 
@@ -31,6 +31,16 @@ export const InvestmentNotesModal: React.FC<InvestmentNotesModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Barrera 2 (CRUSE-APO-2026-061): Callback estabilizado con useCallback (cero closures inline)
+  const handleCountChange = useCallback(
+    (count: number) => {
+      if (investmentId) {
+        onNotesCountChange(investmentId, count);
+      }
+    },
+    [investmentId, onNotesCountChange]
+  );
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -38,7 +48,6 @@ export const InvestmentNotesModal: React.FC<InvestmentNotesModalProps> = ({
     const focusableSelector =
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-    // Enfocar el primer elemento interactivo al abrir el modal
     const initialTimer = window.setTimeout(() => {
       if (!modalEl) return;
       const focusable = modalEl.querySelectorAll<HTMLElement>(focusableSelector);
@@ -47,7 +56,6 @@ export const InvestmentNotesModal: React.FC<InvestmentNotesModalProps> = ({
       }
     }, 30);
 
-    // Guardrail 2: Cierre con Escape + Focus Trap estricto (Tab y Shift+Tab)
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -85,7 +93,6 @@ export const InvestmentNotesModal: React.FC<InvestmentNotesModalProps> = ({
 
   if (!isOpen || !investmentId) return null;
 
-  // Guardrail 2: Cierre al hacer clic directamente en el backdrop (fondo oscuro)
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
@@ -104,7 +111,6 @@ export const InvestmentNotesModal: React.FC<InvestmentNotesModalProps> = ({
         ref={modalRef}
         className="bg-slate-950 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
-        {/* Encabezado del Modal */}
         <div className="px-5 py-4 bg-[#0D1B3E] border-b border-slate-700 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-400/30">
@@ -137,18 +143,16 @@ export const InvestmentNotesModal: React.FC<InvestmentNotesModalProps> = ({
           </button>
         </div>
 
-        {/* Cuerpo del Modal */}
         <div className="p-5 overflow-y-auto">
           <OperationalNotesPanel
             entityType="INVESTMENT"
             entityId={investmentId}
             token={token}
             title={`Notas Operativas de la Inversión ${investmentId}`}
-            onNotesCountChange={(count) => onNotesCountChange(investmentId, count)}
+            onNotesCountChange={handleCountChange}
           />
         </div>
 
-        {/* Pie del Modal con Salida Explícita (Regla 4 U-First) */}
         <div className="px-5 py-3 bg-slate-900/80 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
           <span>Presiona Esc o haz clic fuera de la ventana para cerrar</span>
           <button
