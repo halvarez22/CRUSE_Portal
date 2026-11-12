@@ -34,6 +34,7 @@ interface FundingOverviewInvestmentRow {
   isr_retention_rate: number;
   applies_isr: 0 | 1;
   requires_invoice: 0 | 1;
+  notes_count: number | string | null;
 }
 
 interface InvestorPaymentRow {
@@ -76,7 +77,8 @@ fundingRouter.get('/overview', requireAuth('funding:read'), async (_req: Request
         i.blind_name,
         i.isr_retention_rate,
         i.applies_isr,
-        i.requires_invoice
+        i.requires_invoice,
+        COALESCE((SELECT COUNT(*) FROM operational_notes n WHERE n.entity_type = 'INVESTMENT' AND n.entity_id = inv.id), 0) AS notes_count
       FROM investments inv
       JOIN investors i ON inv.investor_id = i.id
       ORDER BY inv.created_at DESC, inv.id DESC
@@ -96,9 +98,14 @@ fundingRouter.get('/overview', requireAuth('funding:read'), async (_req: Request
       LIMIT 50
     `);
 
+    const normalizedInvestments = invRes.rows.map((r) => ({
+      ...r,
+      notes_count: Number.isFinite(Number(r.notes_count)) ? Math.max(0, Math.trunc(Number(r.notes_count))) : 0,
+    }));
+
     return res.json({
       ok: true,
-      investments: invRes.rows,
+      investments: normalizedInvestments,
       payments: pmtRes.rows,
       capitalMovements: movRes.rows,
     });

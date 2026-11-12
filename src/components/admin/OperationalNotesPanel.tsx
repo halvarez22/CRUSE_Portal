@@ -3,11 +3,12 @@
  *
  * @implements RN-02 (Notas operativas fijadas visibles en expedientes y créditos)
  * @implements RN-04 (Notas operativas fijadas visibles en inversionistas)
+ * @implements CRUSE-APO-2026-059 Guardrail 3 (Sincronización pesimista del contador de notas post HTTP 200/201 y estado vacío explícito)
  * @implements Regla 3 Anti-God-Object (< 210 líneas) y Regla 6 SQA (0 any)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Pin, PlusCircle, MessageSquareText } from 'lucide-react';
+import { Pin, PlusCircle, MessageSquareText, FileText } from 'lucide-react';
 
 export type NoteEntityType = 'LOAN_ACCOUNT' | 'INVESTOR' | 'INVESTMENT' | 'EXPEDIENTE';
 
@@ -25,12 +26,16 @@ interface OperationalNotesPanelProps {
   entityType: NoteEntityType;
   entityId: string;
   title?: string;
+  token?: string;
+  onNotesCountChange?: (count: number) => void;
 }
 
 export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
   entityType,
   entityId,
   title = 'Block de Notas Operativas Fijadas (RN-02 / RN-04)',
+  token: propToken,
+  onNotesCountChange,
 }) => {
   const [notes, setNotes] = useState<OperationalNoteItem[]>([]);
   const [newContent, setNewContent] = useState('');
@@ -38,7 +43,12 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') ?? '' : '';
+  const token =
+    propToken && propToken.trim().length > 0
+      ? propToken
+      : typeof window !== 'undefined'
+        ? localStorage.getItem('auth_token') ?? ''
+        : '';
 
   const fetchNotes = useCallback(async () => {
     if (!entityId || !token) return;
@@ -48,15 +58,17 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (data.ok && Array.isArray(data.notes)) {
-        setNotes(data.notes);
+      if (res.ok && data.ok && Array.isArray(data.notes)) {
+        const fetchedNotes: OperationalNoteItem[] = data.notes;
+        setNotes(fetchedNotes);
+        onNotesCountChange?.(fetchedNotes.length);
       }
     } catch (err: unknown) {
       console.error('Error cargando notas operativas:', err);
     } finally {
       setLoading(false);
     }
-  }, [entityType, entityId, token]);
+  }, [entityType, entityId, token, onNotesCountChange]);
 
   useEffect(() => {
     fetchNotes();
@@ -81,9 +93,12 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
         }),
       });
       const data = await res.json();
-      if (data.ok && data.note) {
-        setNotes((prev) => [data.note, ...prev]);
+      // Guardrail 3 (CRUSE-APO-2026-059): Sincronización estrictamente pesimista tras confirmación HTTP 200/201
+      if (res.ok && data.ok && data.note) {
+        const updatedList = [data.note as OperationalNoteItem, ...notes];
+        setNotes(updatedList);
         setNewContent('');
+        onNotesCountChange?.(updatedList.length);
       }
     } catch (err: unknown) {
       console.error('Error guardando nota operativa:', err);
@@ -99,8 +114,8 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
           <MessageSquareText className="w-4 h-4 text-amber-400" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">{title}</h3>
         </div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-semibold">
-          {notes.length} nota(s)
+        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold">
+          {notes.length} nota(s) registrada(s)
         </span>
       </div>
 
@@ -109,10 +124,10 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
           type="text"
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
-          placeholder="Registrar acuerdo, teléfono alterno o indicación operativa..."
-          className="flex-1 bg-black/50 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+          placeholder="Registrar acuerdo, teléfono alterno o indicación operativa (mín. 3 caracteres)..."
+          className="flex-1 bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
         />
-        <label className="flex items-center gap-1.5 text-[11px] text-slate-300 px-2 cursor-pointer">
+        <label className="flex items-center gap-1.5 text-[11px] text-slate-300 px-2 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={isPinned}
@@ -125,7 +140,7 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
         <button
           type="submit"
           disabled={newContent.trim().length < 3 || saving}
-          className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1 disabled:opacity-40"
+          className="px-3.5 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 transition-all"
         >
           <PlusCircle className="w-3.5 h-3.5" />
           <span>{saving ? 'Guardando...' : 'Agregar Nota'}</span>
@@ -133,24 +148,30 @@ export const OperationalNotesPanel: React.FC<OperationalNotesPanelProps> = ({
       </form>
 
       {loading ? (
-        <p className="text-xs text-slate-400">Cargando bitácora de notas...</p>
+        <div className="py-6 text-center text-xs text-slate-400">Cargando bitácora de notas...</div>
       ) : notes.length === 0 ? (
-        <p className="text-xs text-slate-500 italic">
-          Sin notas operativas registradas para este registro.
-        </p>
+        <div className="p-5 rounded-xl border border-dashed border-slate-700 bg-black/30 flex flex-col items-center justify-center text-center space-y-1.5">
+          <FileText className="w-6 h-6 text-slate-500" />
+          <p className="text-xs font-semibold text-slate-300">
+            No existen notas operativas registradas para este registro ({entityId}).
+          </p>
+          <p className="text-[11px] text-slate-400 max-w-md">
+            Utiliza el campo superior si deseas dejar asentada una indicación especial, acuerdo de pago o comentario en la bitácora.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
           {notes.map((n) => (
             <div
               key={n.id}
-              className={`p-2.5 rounded-lg border text-xs flex items-start justify-between gap-2 ${
+              className={`p-3 rounded-lg border text-xs flex items-start justify-between gap-2 ${
                 n.is_pinned === 1
                   ? 'bg-amber-500/10 border-amber-500/30 text-amber-100'
                   : 'bg-black/40 border-white/10 text-slate-300'
               }`}
             >
               <div className="space-y-0.5">
-                <p className="font-medium">{n.note_content}</p>
+                <p className="font-medium leading-relaxed">{n.note_content}</p>
                 <p className="text-[10px] text-slate-400">
                   Por {n.author_email} • {new Date(n.created_at).toLocaleString('es-MX')}
                 </p>
