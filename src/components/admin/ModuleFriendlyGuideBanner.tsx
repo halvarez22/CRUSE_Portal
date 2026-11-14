@@ -47,11 +47,11 @@ export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
     whatItDoes:
       'Reúne en un solo lugar las 5 herramientas para Dirección, Mesa de Control e Inversionistas: la presentación comercial de 10 láminas, el proyector de ganancias a 36 meses, la calculadora de descuento quincenal del trabajador, el comparador frente a bancos y el mapa de sedes.',
     contractDeliverable:
-      'Contrato Fase 1 — Bloque B (B.1 a B.5) y Visión Ejecutiva C.8 / C.9: Entrega de los 5 Módulos Ejecutivos de Valor con evaluación del límite del 30% de sueldo neto y transparencia total de tasas sin comisiones ocultas.',
+      'Contrato Fase 1 — Bloque B (B.1 a B.5) y Visión Ejecutiva C.8 / C.9: Evaluación del límite del 30% LFT (Ingreso Neto Ajustado = Ingreso Neto + Descuento Liberado) e impresión del "Anexo 1 — Tabla para Compensación" a 2 tantos membretados vinculado a la Constancia NOM-151.',
     threeSimpleSteps: [
       'Paso 1: Elige cualquiera de los 5 botones superiores (por ejemplo "3. Simulador & Scoring Aprobador" para evaluar si un trabajador califica).',
       'Paso 2: Captura el monto, plazo, sueldo neto quincenal y antigüedad del trabajador y presiona "Emitir Dictamen de Scoring para Aprobador".',
-      'Paso 3: Consulta el semáforo de recomendación (Bajo, Medio o Alto riesgo), la cuota quincenal exacta con seguro de $22.85 y la tabla de pagos.',
+      'Paso 3: Consulta el semáforo de recomendación, la cuota quincenal exacta con seguro de $22.85 e imprime el "Anexo 1 — Tabla para Compensación" (2 tantos).',
     ],
   },
   expedientes: {
@@ -71,9 +71,9 @@ export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
     tabNumber: 5,
     friendlyTitle: '5. Conciliación Quincenal de Nómina',
     whatItDoes:
-      'Antes tomaba de 3 a 5 días comparar renglón por renglón en Excel lo que se mandó a cobrar al sindicato contra lo que realmente depositó Tesorería. Este módulo hace ese cruce en segundos y detecta quién pagó completo, quién pagó parcial y quién faltó.',
+      'Cruza en segundos lo enviado al sindicato contra los pagos retenidos por Tesorería, y administra Créditos Especiales con tasa mensual de 3.0% a 5.0% bajo los 3 regímenes de IVA (EXEMPT_SOFOM, ADDITIVE_16 e INCLUDED_1_16 con desglose inverso /1.16).',
     contractDeliverable:
-      'Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.6: Motor de Conciliación Quincenal Inteligente con prelación automática de pagos (1° Seguro $22.85 → 2° Interés → 3° IVA → 4° Capital) y descarga de archivo para SIF/CIB.',
+      'Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.6: Motor de Conciliación Quincenal con prelación automática (1° Seguro $22.85 → 2° Interés → 3° IVA → 4° Capital), Crédito Especial con 3 regímenes de IVA y layout para SIF/CIB.',
     threeSimpleSteps: [
       'Paso 1: Selecciona el Convenio y la Quincena, y presiona "Generar Layout de Cobro Sindical" para obtener la lista que se envía a Recursos Humanos.',
       'Paso 2: Cuando Tesorería envíe los pagos retenidos, sube el archivo y presiona "Previsualizar Cruce Quincenal" para ver las diferencias antes de guardar.',
@@ -84,24 +84,24 @@ export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
     tabNumber: 6,
     friendlyTitle: '6. Cobranza, Licencias y Reestructuras',
     whatItDoes:
-      'Permite atender casos especiales de los trabajadores sin perder el orden: pausar cobros cuando un empleado pide licencia sin goce de sueldo, congelar recargos por baja laboral, unir varios préstamos en uno solo (reestructura) y revisar el seguro de vida.',
+      'Permite pausar cobros por licencia sin sueldo, unir hasta 4 préstamos Normales liberando capacidad DTI (30% LFT con sello WORM DTI_CAPACITY_RELEASED_FOR_RENEWAL) y emitir el "Padrón de Aseguradora ($35,000 M.N.)" junto con la "Póliza Contable Aspel COI".',
     contractDeliverable:
-      'Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.7: Control estricto de cartera vencida, pausa por licencias sin goce de sueldo, consolidación de hasta 4 créditos Normales en 1 y cotejo de póliza de seguro de vida de $35,000 MXN.',
+      'Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.7: Pausa por licencias, renovaciones con liberación DTI (30% LFT), "Padrón de Aseguradora ($35,000 M.N.)" y "Póliza Contable Aspel COI" con partida doble inquebrantable.',
     threeSimpleSteps: [
       'Paso 1: Busca al trabajador y elige la pestaña que necesites: "1. Licencias y Convenios", "2. Reestructura N-a-1" o "3. Cotejo Póliza Seguro de Vida".',
       'Paso 2: Si el trabajador salió de permiso sin sueldo, selecciona "Suspensión Temporal", anota el motivo y confirma para pausar sus recargos.',
-      'Paso 3: Si va a renovar o unir hasta 4 préstamos Normales en uno nuevo, márcalos en la pestaña 2 y presiona "Consolidar en Nuevo Contrato".',
+      'Paso 3: En la pestaña 2 consolida hasta 4 préstamos liberando capacidad DTI, o en la pestaña 3 emite el "Padrón de Aseguradora ($35,000 M.N.)" y la "Póliza Contable Aspel COI".',
     ],
   },
   funding: {
     tabNumber: 7,
     friendlyTitle: '7. Inversionistas y Pagarés',
     whatItDoes:
-      'Lleva el control claro del dinero que los inversionistas confían a Microfinanciera Cruse: registra sus pagarés, calcula automáticamente los intereses de cada mes (simples o reinvertibles) y descuenta la retención de impuestos (ISR).',
+      'Lleva el control de los pagarés de fondeo operando la convención comercial Base 365/30.4 (Capital × (Tasa / 365) × 30.4), partición de tramos por días calendario reales (30.4 - días_Tramo_1) y retención de ISR configurable (0.5%, 0.9%, 20% o Exento).',
     contractDeliverable:
-      'Contrato Fase 1 — Bloque A.3 y Visión Ejecutiva C.3: Administración centralizada de fondeo e inversionistas con emisión de pagarés y cálculo mensual automático sin riesgo de duplicar cobros.',
+      'Contrato Fase 1 — Bloque A.3 y Visión Ejecutiva C.3: Administración centralizada de fondeo e inversionistas con Base 365/30.4, split de tramos por días reales, retención de ISR (0.5%, 0.9%, 20% o Exento) y corte mensual idempotente.',
     threeSimpleSteps: [
-      'Paso 1: Haz clic en "+ Nuevo Inversionista", escribe su nombre, capital inicial, tasa anual y retención de ISR, y presiona "Guardar y Generar Pagaré".',
+      'Paso 1: Haz clic en "+ Nuevo Inversionista", captura nombre, capital inicial, tasa anual, convención 365/30.4 y retención de ISR (0.5%, 0.9%, 20% o Exento), y presiona "Guardar y Generar Pagaré".',
       'Paso 2: Al final del mes, elige la fecha en el calendario superior y presiona el botón verde de Corte Mensual para calcular los rendimientos de todos.',
       'Paso 3: Si necesitas anotar una instrucción especial sobre algún inversionista, presiona "Ver Notas" en su renglón.',
     ],
@@ -110,13 +110,13 @@ export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
     tabNumber: 8,
     friendlyTitle: '8. Reporte a Círculo de Crédito',
     whatItDoes:
-      'Prepara y revisa en un clic el archivo mensual oficial que Microfinanciera Cruse debe entregar a Círculo de Crédito (con su clave oficial 001496), marcando correctamente las cuentas al corriente, liquidadas o reestructuradas.',
+      'Prepara y valida el archivo mensual oficial de Círculo de Crédito (otorgante 001496) para Personas Físicas, el "Layout PM v5" de longitud fija (HD:100, EM:350, AC:200, CR:280) para Personas Morales y el filtro de cobranza "BAJA_LABORAL_ACTIVA".',
     contractDeliverable:
-      'Contrato Fase 1 — Bloque D.2: Generador automatizado y validado del reporte mensual regulatorio para Sociedades de Información Crediticia (Círculo de Crédito, otorgante 001496).',
+      'Contrato Fase 1 — Bloque D.2: Generador automatizado del reporte mensual para Círculo de Crédito (001496), "Layout PM v5" de Personas Morales y filtro "BAJA_LABORAL_ACTIVA".',
     threeSimpleSteps: [
-      'Paso 1: Selecciona el Periodo de Corte mensual y el Tipo de Cartera que deseas reportar.',
-      'Paso 2: Presiona "Previsualizar Cartera a Reportar" para revisar en pantalla que todos los saldos y claves estén completos.',
-      'Paso 3: Haz clic en "Generar y Descargar Layout Oficial (001496)" para guardar el archivo listo para subir a Círculo de Crédito.',
+      'Paso 1: Selecciona el Periodo de Corte mensual, el Tipo de Cartera o el filtro de cobranza directa "BAJA_LABORAL_ACTIVA".',
+      'Paso 2: Presiona "Previsualizar Cartera a Reportar" para revisar en pantalla que todos los saldos y claves (CC, CL, RV) estén completos.',
+      'Paso 3: Haz clic en "Generar y Descargar Layout Oficial (001496)" para Personas Físicas o en el botón "Layout PM v5" para Personas Morales.',
     ],
   },
   pld: {
@@ -147,11 +147,11 @@ export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
   },
   cloud_migration: {
     tabNumber: 11,
-    friendlyTitle: '11. Migración Nube & Rollback (Fase 3.3)',
+    friendlyTitle: '11. Migración Nube & Rollback',
     whatItDoes:
       'Migra las sábanas históricas de Excel al sistema central en la nube limpiando automáticamente fechas y monedas, verificando que los saldos cuadren centavo a centavo ($0.00 de diferencia) e incluye un botón de Plan de Regreso (Rollback Instantáneo).',
     contractDeliverable:
-      'Contrato Fase 3 — Entregable 3.3: Motor de Migración Histórica Excel a la Nube con saneamiento determinista, idempotencia total y Rollback criptográfico verificado por huella SHA-256.',
+      'Contrato Fase 3 — Entregable 3.3: Motor de "Migración Nube & Rollback" con saneamiento determinista, idempotencia total y Rollback criptográfico verificado por huella SHA-256.',
     threeSimpleSteps: [
       'Paso 1: Verifica en la parte superior el modo de operación ("STAGING_PARALLEL" o "PRODUCTION_CUTOVER_ACTIVE").',
       'Paso 2: Haz clic en "Ingestar y Sanear Sábana Histórica Excel (Idempotente)" y revisa las transformaciones aplicadas en la tabla.',
@@ -160,14 +160,14 @@ export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
   },
   operations_hub: {
     tabNumber: 12,
-    friendlyTitle: '12. Tablero Operaciones & Hub Layouts (Fase 3.4)',
+    friendlyTitle: '12. Hub de Integración & Conciliación',
     whatItDoes:
-      'Reúne en una sola pantalla gerencial (Single Pane of Glass) las métricas de las Fases 1, 2 y 3 filtrables por Chihuahua, León y Cancún, e integra el Hub de Layouts (.TXT de 60 caracteres y .CSV Pipe) para el Supremo Tribunal y Patrones.',
+      'Reúne en una sola pantalla gerencial (Single Pane of Glass) las métricas de las Fases 1, 2 y 3 filtrables por Chihuahua, León y Cancún, e integra el "Hub de Integración & Conciliación" por Layouts (.TXT de 60 caracteres y .CSV Pipe) para el Supremo Tribunal y Patrones.',
     contractDeliverable:
-      'Contrato Fase 3 — Entregable 3.4: Tablero Web de Operaciones Unificado por 3 Hubs Nacionales, Hub de Integración por Layouts con aislamiento de líneas truncadas y Conectores Internos Zero-Trust.',
+      'Contrato Fase 3 — Entregable 3.4: "Hub de Integración & Conciliación" por 3 Hubs Nacionales con aislamiento de líneas truncadas y Conectores Internos Zero-Trust.',
     threeSimpleSteps: [
       'Paso 1: Usa los botones superiores ("Nacional (3 Hubs)", "Chihuahua", "León" o "Cancún") para filtrar los indicadores de las 3 Fases.',
-      'Paso 2: En el Hub de Layouts selecciona el conector y formato (.TXT o .CSV) para generar un layout saliente o validar uno entrante.',
+      'Paso 2: En el "Hub de Integración & Conciliación" selecciona el conector y formato (.TXT o .CSV) para generar un layout saliente o validar uno entrante.',
       'Paso 3: En la tabla inferior prueba los Conectores Internos Zero-Trust con "Sync HMAC Válido" o "Simular Firma Alterada".',
     ],
   },

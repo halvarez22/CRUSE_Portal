@@ -1,20 +1,18 @@
 /**
- * GENERADOR AUTOMATIZADO DEL MANUAL OFICIAL DE USUARIO Y ENTRENAMIENTO (.HTML Y .PDF)
- * Expediente: CRUSE-APO-2026-030 (Fase 5 — Cierre Contractual de Fase 1)
+ * GENERADOR AUTOMATIZADO DE MANUALES OFICIALES (.MD, .HTML Y .PDF — FASE 1 Y FASE 3)
+ * Expediente: CRUSE-APO-2026-064 (Sincronización Documental Post-Homologación APO-063)
  *
- * Cumple Directrices Forenses:
- * - Regeneración automatizada de C:\CRUSE_PORTAL\MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.html y .pdf
- * - Sello institucional de Microfinanciera Cruse e índice navegable
- * - Tipado estricto TypeScript (0 any) y < 300 líneas (Directriz 4)
+ * Cumple Guardrail Forense 4:
+ * - Sincroniza y compila MANUAL_FASE1_PORTAL_WEB_SEGURO_CRUSE y MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE
+ *   en public/docs/, docs/ y C:\CRUSE_PORTAL\
+ * - Verifica que cada PDF generado supere 500 KB (> 512,000 bytes)
+ * - Tipado estricto TypeScript (0 any) y < 250 líneas
  */
 
 import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { db } from '../src/services/db/connectionPool';
-import { ensureUsersPhoneColumn } from '../src/services/auth/userRepository';
-import { getServerEnv } from '../src/config/serverEnv';
 
 function formatInlineMarkdown(line: string): string {
   return line
@@ -116,12 +114,13 @@ function markdownToHtmlBody(md: string): string {
   return htmlParts.join('\n');
 }
 
-function buildInstitutionalHtml(bodyHtml: string): string {
+function buildInstitutionalHtml(bodyHtml: string, title: string, subtitle: string, badge: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Manual Oficial de Usuario, Administración y Entrenamiento (Fase 1) — CRUSE Fintech Portal</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none';">
+  <title>${title}</title>
   <style>
     @page { size: letter; margin: 16mm; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; color: #0f172a; line-height: 1.55; max-width: 960px; margin: 0 auto; padding: 24px; background: #ffffff; }
@@ -145,10 +144,10 @@ function buildInstitutionalHtml(bodyHtml: string): string {
 <body>
   <div class="seal-banner">
     <div>
-      <div class="title">MICROFINANCIERA CRUSE, S.A. DE C.V., SOFOM, E.N.R.</div>
-      <div class="subtitle">Documento Oficial de Entrega Operativa Fase 1 • Expediente CRUSE-APO-2026-030 • 2FA vía Código SMS al Móvil</div>
+      <div class="title">MICROFINANCIERA CRUSE, S.A. DE C.V., SOFOM, E.N.R. • RFC: MCR1002231B7</div>
+      <div class="subtitle">${subtitle}</div>
     </div>
-    <div class="seal-badge">SELLO INSTITUCIONAL APROBADO</div>
+    <div class="seal-badge">${badge}</div>
   </div>
 ${bodyHtml}
 </body>
@@ -167,38 +166,80 @@ function findEdgeBinary(): string {
   throw new Error('No se encontró navegador para exportar PDF.');
 }
 
+interface ManualBuildSpec {
+  baseName: string;
+  sourceMdPath: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  syncTrainingAlias?: boolean;
+}
+
 async function main(): Promise<void> {
-  await ensureUsersPhoneColumn();
-  const env = getServerEnv();
-  const defaultPhone = env.testPhoneNumber || '+524777241148';
+  const appDir = process.cwd();
+  const rootDir = path.resolve(appDir, '..');
+  const publicDocsDir = path.join(appDir, 'public', 'docs');
+  const docsDir = path.join(appDir, 'docs');
+  const browserBin = findEdgeBinary();
 
-  await db.execute(
-    `UPDATE users SET phone_number = $1 WHERE phone_number IS NULL OR phone_number = ''`,
-    [defaultPhone]
-  );
+  const specs: ManualBuildSpec[] = [
+    {
+      baseName: 'MANUAL_FASE1_PORTAL_WEB_SEGURO_CRUSE',
+      sourceMdPath: path.join(publicDocsDir, 'MANUAL_FASE1_PORTAL_WEB_SEGURO_CRUSE.md'),
+      title: 'Manual Oficial de Usuario, Administración y Entrenamiento (Fase 1) — CRUSE Fintech Portal',
+      subtitle: 'Documento Oficial Fase 1 Homologado (CRUSE-APO-2026-063 / 064) • 2FA SMS • Base 365/30.4 • 3 Regímenes IVA',
+      badge: 'FASE 1 CERTIFICADA',
+      syncTrainingAlias: true,
+    },
+    {
+      baseName: 'MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE',
+      sourceMdPath: path.join(publicDocsDir, 'MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE.md'),
+      title: 'Manual Oficial de Usuario, Operación Digital y Entrenamiento (Fase 3) — CRUSE Fintech Portal',
+      subtitle: 'Documento Oficial Fase 3 Homologado (CRUSE-APO-2026-063 / 064) • App Cruse • NOM-151 + Anexo 1 • Migración Nube & Rollback',
+      badge: 'FASE 3 CERTIFICADA',
+    },
+  ];
 
-  const docsMdPath = path.resolve(process.cwd(), 'docs', 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.md');
-  const rootDir = path.resolve(process.cwd(), '..');
-  const rootMdPath = path.join(rootDir, 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.md');
-  const rootHtmlPath = path.join(rootDir, 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.html');
-  const rootPdfPath = path.join(rootDir, 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.pdf');
+  for (const spec of specs) {
+    const mdContent = fs.readFileSync(spec.sourceMdPath, 'utf-8');
+    const htmlContent = buildInstitutionalHtml(markdownToHtmlBody(mdContent), spec.title, spec.subtitle, spec.badge);
 
-  const mdContent = fs.readFileSync(docsMdPath, 'utf-8');
-  fs.writeFileSync(rootMdPath, mdContent, 'utf-8');
+    const publicHtmlPath = path.join(publicDocsDir, `${spec.baseName}.html`);
+    const publicPdfPath = path.join(publicDocsDir, `${spec.baseName}.pdf`);
+    fs.writeFileSync(publicHtmlPath, htmlContent, 'utf-8');
 
-  const htmlContent = buildInstitutionalHtml(markdownToHtmlBody(mdContent));
-  fs.writeFileSync(rootHtmlPath, htmlContent, 'utf-8');
+    execFileSync(browserBin, [
+      '--headless',
+      '--disable-gpu',
+      '--no-pdf-header-footer',
+      `--print-to-pdf=${publicPdfPath}`,
+      publicHtmlPath,
+    ]);
 
-  execFileSync(findEdgeBinary(), [
-    '--headless',
-    '--disable-gpu',
-    '--no-pdf-header-footer',
-    `--print-to-pdf=${rootPdfPath}`,
-    rootHtmlPath,
-  ]);
+    const pdfSize = fs.statSync(publicPdfPath).size;
+    const htmlSize = fs.statSync(publicHtmlPath).size;
+    if (pdfSize < 500_000) {
+      throw new Error(`Guardrail 4 violado: ${spec.baseName}.pdf pesa ${pdfSize}B (< 500 KB).`);
+    }
 
-  console.log(`[APO-030] Manual regenerado: HTML=${fs.statSync(rootHtmlPath).size}B, PDF=${fs.statSync(rootPdfPath).size}B`);
-  process.exit(0);
+    // Sincronizar espejos en C:\CRUSE_PORTAL\ y docs/
+    fs.copyFileSync(spec.sourceMdPath, path.join(rootDir, `${spec.baseName}.md`));
+    fs.copyFileSync(publicHtmlPath, path.join(rootDir, `${spec.baseName}.html`));
+    fs.copyFileSync(publicPdfPath, path.join(rootDir, `${spec.baseName}.pdf`));
+
+    if (spec.baseName === 'MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE') {
+      fs.copyFileSync(spec.sourceMdPath, path.join(docsDir, `${spec.baseName}.md`));
+    }
+
+    if (spec.syncTrainingAlias) {
+      fs.copyFileSync(spec.sourceMdPath, path.join(docsDir, 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.md'));
+      fs.copyFileSync(spec.sourceMdPath, path.join(rootDir, 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.md'));
+      fs.copyFileSync(publicHtmlPath, path.join(rootDir, 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.html'));
+      fs.copyFileSync(publicPdfPath, path.join(rootDir, 'MANUAL_USUARIO_ENTRENAMIENTO_CRUSE_PORTAL.pdf'));
+    }
+
+    console.log(`[APO-064] ${spec.baseName} regenerado: MD=${mdContent.length}B, HTML=${htmlSize}B, PDF=${pdfSize}B (>500KB OK)`);
+  }
 }
 
 main().catch((err: unknown) => {

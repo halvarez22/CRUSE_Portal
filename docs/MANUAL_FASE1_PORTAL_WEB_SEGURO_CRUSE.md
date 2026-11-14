@@ -75,17 +75,17 @@ Al entrar al Portal con tu correo y tu código de acceso, verás en la parte sup
 - **Ahora en el Portal:** Reúne en una sola pantalla las **5 herramientas estratégicas de negocio**:
   1. **1. Pitch Inversionistas:** Presentación interactiva de 10 láminas para exponer el modelo de Microfinanciera Cruse.
   2. **2. Simulador ROI 36 Meses:** Proyecta el crecimiento de cartera y rendimientos a 3 años.
-  3. **3. Simulador & Scoring Aprobador:** Calcula al instante si el descuento quincenal respeta el límite legal del **30% del sueldo neto (Art. 110 LFT)** y emite un semáforo de recomendación.
+  3. **3. Simulador & Scoring Aprobador:** Calcula al instante si el descuento quincenal respeta el límite legal del **30% del sueldo neto (Art. 110 LFT)** (liberando automáticamente en renovaciones el descuento de los préstamos que se liquidan: `Ingreso Neto Ajustado = Ingreso Neto + Descuento Liberado`), emite un semáforo de recomendación e imprime el **`"Anexo 1 — Tabla para Compensación"`** membretado a 2 tantos (RFC `MCR1002231B7`, domicilio `Vía Citadela #5710 Int 401`) vinculado a la **Constancia NOM-151**.
   4. **4. Pizarra Competencia:** Compara el costo del crédito de Cruse frente a bancos y otras financieras.
   5. **5. Hubs Nacionales & Manual:** Muestra el mapa de Chihuahua, León y Cancún junto con la guía operativa.
 
 ### 2. 📜 ¿Qué punto del Contrato de Fase 1 logramos aquí?
-- **Contrato Fase 1 — Bloque B (B.1 a B.5) y Visión Ejecutiva C.8 / C.9:** Entrega de los 5 Módulos Ejecutivos de Valor con calculadora de capacidad de pago quincenal (tope del 30% de sueldo neto) y desglose transparente de Capital, Interés, IVA y Seguro de Vida de **$22.85**.
+- **Contrato Fase 1 — Bloque B (B.1 a B.5) y Visión Ejecutiva C.8 / C.9:** Entrega de los 5 Módulos Ejecutivos de Valor con calculadora de capacidad de pago quincenal (tope del 30% de sueldo neto), desglose transparente de Capital, Interés, IVA y Seguro de Vida de **$22.85**, e impresión del **`"Anexo 1 — Tabla para Compensación"`**.
 
 ### 3. 👆 ¿Cómo interactuar con él en 3 pasos sencillos?
 1. **Paso 1:** Haz clic en cualquiera de las 5 sub-pestañas superiores (por ejemplo, **"3. Simulador & Scoring Aprobador"** para calificar una solicitud).
 2. **Paso 2:** Captura el monto solicitado, el plazo en quincenas, el sueldo neto quincenal del trabajador y sus años de antigüedad, y presiona **"Emitir Dictamen de Scoring para Aprobador"**.
-3. **Paso 3:** Revisa el resultado en pantalla (🟢 Riesgo Bajo, 🟡 Riesgo Medio o 🔴 Riesgo Alto), el monto máximo recomendado y la tabla de pagos quincenales.
+3. **Paso 3:** Revisa el resultado en pantalla (🟢 Riesgo Bajo, 🟡 Riesgo Medio o 🔴 Riesgo Alto), el monto máximo recomendado y presiona **`"Anexo 1 — Tabla para Compensación"`** para imprimir los 2 tantos membretados (*Empresa* y *Empleado*).
 
 ---
 
@@ -108,11 +108,11 @@ Al entrar al Portal con tu correo y tu código de acceso, verás en la parte sup
 ## Módulo 5: `5. Conciliación Quincenal`
 
 ### 1. 💡 ¿Qué hace este módulo en tu día a día?
-- **Antes:** Cada quincena tomaba de 3 a 5 días cruzar a mano en Excel la lista de descuentos enviada al sindicato o dependencia contra el archivo de pagos que realmente depositaba Tesorería.
-- **Ahora en el Portal:** El sistema genera la lista de cobro para enviar a Recursos Humanos y, cuando recibes el archivo de pagos retenidos, los compara en segundos: te señala quién pagó exacto, quién pagó incompleto y a quién no le descontaron, repartiendo cada pago en el orden oficial (**1° Seguro de Vida $22.85 → 2° Intereses → 3° IVA → 4° Capital**).
+- **Antes:** Cada quincena tomaba de 3 a 5 días cruzar a mano en Excel la lista de descuentos enviada al sindicato o dependencia contra el archivo de pagos que realmente depositaba Tesorería, además de calcular manualmente los intereses de Créditos Especiales según su régimen de IVA.
+- **Ahora en el Portal:** El sistema genera la lista de cobro para enviar a Recursos Humanos y, cuando recibes el archivo de pagos retenidos, los compara en segundos: te señala quién pagó exacto, quién pagó incompleto y a quién no le descontaron, repartiendo cada pago en el orden oficial (**1° Seguro de Vida $22.85 → 2° Intereses → 3° IVA → 4° Capital**). Además, soporta **Crédito Especial** con tasa mensual de **`3.0%` a `5.0%`** y los **3 regímenes de IVA** (`EXEMPT_SOFOM` como *María Teresa García Chacón* al `5.0%` mensual sin IVA, `ADDITIVE_16` más `16%` de IVA, e `INCLUDED_1_16` con desglose inverso `/1.16` como *Con Sazón S.A. de C.V.* donde `$11,600.00` se desglosan en `$10,000.00` de interés neto + `$1,600.00` de IVA).
 
 ### 2. 📜 ¿Qué punto del Contrato de Fase 1 logramos aquí?
-- **Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.6:** Motor de Conciliación Quincenal Inteligente con aplicación ordenada de descuentos gubernamentales/sindicales y generación de archivo para **SIF/CIB (Logic Systems)**.
+- **Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.6:** Motor de Conciliación Quincenal Inteligente con aplicación ordenada de descuentos gubernamentales/sindicales, Crédito Especial con 3 regímenes de IVA y generación de archivo para **SIF/CIB (Logic Systems)**.
 
 ### 3. 👆 ¿Cómo interactuar con él en 3 pasos sencillos?
 1. **Paso 1:** Selecciona el **Convenio** (por ejemplo *STSGECH* o *Supremo Tribunal*) y la **Quincena**, y presiona **"Generar Layout de Cobro Sindical"** para descargar el listado que se entrega a la dependencia.
@@ -124,33 +124,33 @@ Al entrar al Portal con tu correo y tu código de acceso, verás en la parte sup
 ## Módulo 6: `6. Cobranza y Licencias`
 
 ### 1. 💡 ¿Qué hace este módulo en tu día a día?
-- **Antes:** Cuando un empleado pedía una licencia sin goce de sueldo en su trabajo, causaba baja o quería unir varios préstamos Normales en uno nuevo, había que llevar notas manuales para que no se le cobraran recargos por error o para cuadrar su liquidación.
+- **Antes:** Cuando un empleado pedía una licencia sin goce de sueldo en su trabajo, causaba baja o quería unir varios préstamos Normales en uno nuevo, había que llevar notas manuales para que no se le cobraran recargos por error o para cuadrar su liquidación y su seguro de vida.
 - **Ahora en el Portal:** Tiene 3 sub-pestañas muy claras para resolver estos casos:
   1. **Licencias y Convenios:** Pausa temporalmente el crédito cuando el trabajador está de licencia sin goce de sueldo (pasándolo a color amarillo sin recargos) o congela la cuenta si entra a demanda/convenio judicial.
-  2. **Reestructura N-a-1:** Permite seleccionar hasta **4 créditos Normales activos** de un mismo trabajador y unirlos en un solo contrato nuevo, liquidando automáticamente los anteriores y calculando cuánto efectivo libre se le entrega. *(Los créditos Express están bloqueados por regla de negocio).*
-  3. **Cotejo Póliza Seguro de Vida ($35,000 MXN):** Muestra el padrón de asegurados y resalta en color rosa los contratos en demanda o convenio que ya no deben pagar prima.
+  2. **Reestructura N-a-1 y Renovaciones con Liberación DTI (`30% LFT`):** Permite seleccionar hasta **4 créditos Normales activos** de un mismo trabajador y unirlos en un solo contrato nuevo, liberando automáticamente la capacidad de descuento de los préstamos que se liquidan (`Ingreso Neto Ajustado = Ingreso Neto + Descuento Liberado`) con sello forense WORM **`DTI_CAPACITY_RELEASED_FOR_RENEWAL`**. *(Los créditos Express están bloqueados por regla de negocio).*
+  3. **`Padrón de Aseguradora ($35,000 M.N.)` y `Póliza Contable Aspel COI`:** Muestra el padrón de asegurados con suma asegurada fija de **`$35,000.00 M.N.`** por préstamo activo elegible (resaltando en color rosa los contratos en demanda o baja laboral excluidos de prima) y genera la **`Póliza Contable Aspel COI`** con partida doble inquebrantable sobre las cuentas `1104001001`, `4101001001`, `2104001001` y `4103000001`.
 
 ### 2. 📜 ¿Qué punto del Contrato de Fase 1 logramos aquí?
-- **Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.7:** Control de cartera vencida, pausa por licencias sin goce de sueldo, consolidación de hasta 4 créditos Normales en 1 y auditoría de la póliza de seguro de vida de $35,000 MXN.
+- **Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.7:** Control de cartera vencida, pausa por licencias sin goce de sueldo, consolidación de hasta 4 créditos Normales en 1 con liberación de capacidad LFT, **`Padrón de Aseguradora ($35,000 M.N.)`** y **`Póliza Contable Aspel COI`**.
 
 ### 3. 👆 ¿Cómo interactuar con él en 3 pasos sencillos?
 1. **Paso 1:** Busca al trabajador por su nombre o número de contrato y elige arriba la sub-pestaña que necesitas (**"1. Licencias"**, **"2. Reestructura N-a-1"** o **"3. Cotejo Póliza Seguro de Vida"**).
 2. **Paso 2:** Para registrar un permiso sin sueldo, haz clic en **"Suspensión Temporal"**, indica cuántas quincenas durará, escribe el motivo y confirma para pausar sus recargos. *(Cuando regrese a trabajar, solo presiona **"Reactivar Nómina"**).*
-3. **Paso 3:** Para unir varios préstamos Normales en uno nuevo, entra a la sub-pestaña 2, marca los créditos del trabajador y presiona **"Consolidar en Nuevo Contrato"**.
+3. **Paso 3:** Para renovar o unir varios préstamos Normales en uno nuevo, entra a la sub-pestaña 2, marca los créditos del trabajador y presiona **"Consolidar en Nuevo Contrato"**; o en la sub-pestaña 3 descarga el **`Padrón de Aseguradora ($35,000 M.N.)`** y la **`Póliza Contable Aspel COI`**.
 
 ---
 
 ## Módulo 7: `7. Inversionistas y Pagarés`
 
 ### 1. 💡 ¿Qué hace este módulo en tu día a día?
-- **Antes:** Los pagarés de los fondeadores e inversionistas, sus tasas de interés y sus retenciones de impuestos se llevaban en hojas de cálculo separadas.
-- **Ahora en el Portal:** Lleva el registro ordenado de cada inversionista y sus pagarés vigentes, calcula automáticamente el interés de cada mes (ya sea pago mensual o reinversión de intereses) y descuenta la retención de ISR correspondiente, asegurando que si presionas el botón de cierre dos veces en el mismo mes nunca se duplique un pago.
+- **Antes:** Los pagarés de los fondeadores e inversionistas, sus tasas de interés sobre base `365/30.4`, los tramos partidos cuando inyectaban capital a mitad de mes y sus retenciones de impuestos se llevaban en hojas de cálculo separadas.
+- **Ahora en el Portal:** Lleva el registro ordenado de cada inversionista y sus pagarés vigentes operando la convención comercial **`365/30.4`** de la Lic. Alma (por ejemplo, el pagaré de *César Augusto* de `$400,000.00` al `27.84%` anual genera exactamente `$9,274.91` de interés bruto mensual), divide tramos por días calendario reales (`30.4 - días_Tramo_1`) y descuenta la retención de ISR configurable (**`0.5%`**, **`0.9%`**, **`20%`** como *Martha Alicia*, o **Exento `0.0%`**), asegurando que si presionas el botón de cierre dos veces en el mismo mes nunca se duplique un pago.
 
 ### 2. 📜 ¿Qué punto del Contrato de Fase 1 logramos aquí?
-- **Contrato Fase 1 — Bloque A.3 y Visión Ejecutiva C.3:** Gestión centralizada de fondeadores e inversionistas con emisión de pagarés, cálculo mensual exacto de rendimientos brutos/netos y bitácora de notas operativas.
+- **Contrato Fase 1 — Bloque A.3 y Visión Ejecutiva C.3:** Gestión centralizada de fondeadores e inversionistas con emisión de pagarés en base **`365/30.4`**, partición de tramos por días reales, retención de ISR (`0.5%`, `0.9%`, `20%` o Exento) y bitácora de notas operativas.
 
 ### 3. 👆 ¿Cómo interactuar con él en 3 pasos sencillos?
-1. **Paso 1:** Presiona el botón **"+ Nuevo Inversionista"**, captura su **Nombre**, **Capital Inicial ($)**, **Tasa Anual** y **Retención de ISR**, y haz clic en **"Guardar y Generar Pagaré"**.
+1. **Paso 1:** Presiona el botón **"+ Nuevo Inversionista"**, captura su **Nombre**, **Capital Inicial ($)**, **Tasa Anual**, convención **`365/30.4`** y **Retención de ISR (`0.5%`, `0.9%`, `20%` o Exento)**, y haz clic en **"Guardar y Generar Pagaré"**.
 2. **Paso 2:** Al cierre del mes, selecciona el periodo en el calendario superior derecho y presiona el botón verde de **Corte Mensual** para calcular los intereses de todos los pagarés activos.
 3. **Paso 3:** Para consultar o escribir observaciones sobre un inversionista en particular, haz clic en el botón **"Ver Notas"** de su renglón.
 
@@ -159,16 +159,16 @@ Al entrar al Portal con tu correo y tu código de acceso, verás en la parte sup
 ## Módulo 8: `8. Reporte a Círculo de Crédito`
 
 ### 1. 💡 ¿Qué hace este módulo en tu día a día?
-- **Antes:** Armar el archivo mensual para reportar el comportamiento de pago de los acreditados a Círculo de Crédito requería acomodar columnas y claves manualmente en Excel.
-- **Ahora en el Portal:** Revisa automáticamente todos los créditos activos y liquidados del mes, asigna las claves oficiales (como cuenta al corriente, cuenta liquidada o reestructurada) y descarga el archivo oficial con la clave de otorgante **`001496`** de Microfinanciera Cruse.
+- **Antes:** Armar el archivo mensual para reportar el comportamiento de pago de Personas Físicas y Personas Morales a Círculo de Crédito requería acomodar columnas y claves manualmente en Excel.
+- **Ahora en el Portal:** Revisa automáticamente todos los créditos activos y liquidados del mes, asigna las claves oficiales (como cuenta al corriente `CC`, cuenta liquidada `CL` o reestructurada `RV`), permite filtrar ex-empleados con saldo activo mediante **`"BAJA_LABORAL_ACTIVA"`**, y descarga tanto el layout de Personas Físicas (`001496`) como el **`"Layout PM v5"`** de longitud fija (`HD:100`, `EM:350`, `AC:200`, `CR:280`, `TR:100`) para Personas Morales.
 
 ### 2. 📜 ¿Qué punto del Contrato de Fase 1 logramos aquí?
-- **Contrato Fase 1 — Bloque D.2:** Generador automatizado y validado del reporte mensual oficial para Círculo de Crédito (`001496`).
+- **Contrato Fase 1 — Bloque D.2:** Generador automatizado y validado del reporte mensual oficial para Círculo de Crédito (`001496`), **`"Layout PM v5"`** para Personas Morales y filtro de cobranza **`"BAJA_LABORAL_ACTIVA"`**.
 
 ### 3. 👆 ¿Cómo interactuar con él en 3 pasos sencillos?
-1. **Paso 1:** Elige el **Periodo de Corte** mensual y el **Tipo de Cartera** (*Personas Físicas*, *Personas Morales* o *Ambas*).
+1. **Paso 1:** Elige el **Periodo de Corte** mensual, el **Tipo de Cartera** (*Personas Físicas*, *Personas Morales* o *Ambas*) o el filtro **`"BAJA_LABORAL_ACTIVA"`**.
 2. **Paso 2:** Haz clic en **"Previsualizar Cartera a Reportar"** para revisar en pantalla el resumen de cuentas al corriente, con atraso o cerradas.
-3. **Paso 3:** Presiona **"Generar y Descargar Layout Oficial (001496)"** para descargar el archivo listo para entregarse a Círculo de Crédito.
+3. **Paso 3:** Presiona **"Generar y Descargar Layout Oficial (001496)"** para Personas Físicas o el botón **`"Layout PM v5"`** para Personas Morales.
 
 ---
 

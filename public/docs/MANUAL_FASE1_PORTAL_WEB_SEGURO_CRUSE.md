@@ -200,47 +200,74 @@ Haz clic en la pestaña **11. "Usuarios y Accesos 2FA"**.
 
 # 🟣 DÍA 3 (SECCIÓN 3): GUÍAS PASO A PASO (CLIC POR CLIC) DE MÓDULOS ADMINISTRATIVOS CRÍTICOS
 
-## 7.1 Guía Paso a Paso: Fondeo e Inversionistas
-Para registrar un nuevo inversionista y emitir su pagaré, o ejecutar el corte mensual:
-1. Haz clic en la pestaña **'Fondeo e Inversionistas (3FN v4)'**.
+## 7.1 Guía Paso a Paso: Fondeo e Inversionistas (Base Comercial `365/30.4`, Split de Tramos e ISR `0.5%`, `0.9%`, `20%` o Exento)
+Para registrar un nuevo inversionista y emitir su pagaré, simular tramos partidos o ejecutar el corte mensual:
+1. Haz clic en la pestaña **'7. Inversionistas y Pagarés'** (*Fondeo e Inversionistas 3FN v4*).
 2. Presiona el botón **'+ Nuevo Inversionista'**.
-3. Llena los campos **'Nombre'**, **'Capital Inicial ($)'**, **'Tasa Anual'** y selecciona en el desplegable **'Retención ISR: 0.9%'** (o *'Exento de ISR: 0.0%'* si aplica exención).
-4. Presiona **'Guardar y Generar Pagaré'**. El nuevo pagaré aparecerá de inmediato en la tabla de inversiones activas.
-5. **Para el cierre de mes:** Selecciona la fecha en el calendario superior derecho y presiona el botón verde **'Ejecutar Corte Mensual Idempotente'**. El sistema calcula los intereses del mes, aplica la retención de ISR y, en los pagarés compuestos, suma el rendimiento al capital automáticamente sin duplicar cobros.
-6. **Para agregar anotaciones:** Presiona el botón **'Ver Notas'** en el renglón de cualquier inversión y escribe tus observaciones en el **Block de Notas Operativas**.
+3. Llena los campos **'Nombre'**, **'Capital Inicial ($)'**, **'Tasa Anual'** y selecciona la **Convención de Días** (**`365/30.4`** comercial de la Lic. Alma o `360/30` estándar) y el esquema de **Retención de ISR** (**`0.5%`**, **`0.9%`**, **`20%`** sobre intereses o **`Exento 0.0%`**).
+   - *Ejemplo numérico real (Pagaré César Augusto — Base `365/30.4`):* Para un capital de **`$400,000.00 MXN`** al **`27.84%`** anual bajo base **`365/30.4`**, el motor calcula exactamente `400,000 × (0.2784 / 365) × 30.4 = $9,274.91 MXN` de interés bruto mensual.
+   - *Ejemplo numérico real (Pagaré Martha Alicia — ISR `20%`):* Cuando el inversionista opera bajo retención del **`20%`**, sobre un interés bruto de `$10,000.00 MXN` el sistema retiene exactamente `$2,000.00 MXN` de ISR y liquida `$8,000.00 MXN` netos.
+4. **Partición de Tramos por Días Calendario Reales (Split-Tranche):** Si un inversionista inyecta capital o renueva tasa a mitad de mes, el motor divide automáticamente el periodo calculando los **días calendario reales** del Tramo 1 (`fecha_cambio - fecha_inicio`) y asigna al Tramo 2 el remanente exacto (`30.4 - días_Tramo_1`), evitando cualquier sobrepago de intereses.
+5. Presiona **'Guardar y Generar Pagaré'**. El nuevo pagaré aparecerá de inmediato en la tabla de inversiones activas.
+6. **Para el cierre de mes:** Selecciona la fecha en el calendario superior derecho y presiona el botón verde **'Ejecutar Corte Mensual Idempotente'**. El sistema calcula los intereses del mes, aplica la retención de ISR y, en los pagarés compuestos, suma el rendimiento al capital automáticamente sin duplicar cobros.
+7. **Para agregar anotaciones:** Presiona el botón **'Ver Notas'** en el renglón de cualquier inversión y escribe tus observaciones en el **Block de Notas Operativas**.
 
 ---
 
-## 7.2 Guía Paso a Paso: Cobranza, Convenios y Reestructuras
-Para aplicar una licencia sin goce de sueldo, congelar mora por demanda/baja o consolidar varios préstamos de un mismo trabajador:
-1. En la pestaña **'Cobranza, Convenios y Reestructuras'**, busca el expediente en la barra de búsqueda superior.
-2. Para una Licencia, selecciona **'Suspensión Temporal'**, elige las quincenas de aplicación, anota el motivo en el cuadro de notas y presiona **'Confirmar y Sellar WORM'**. El crédito pasará a estado amarillo (**`PAUSA LICENCIA S/GOCE`**) sin generar recargos moratorios. *(Cuando el trabajador regrese a laborar, presiona **'Reactivar Nómina'**).*
-3. Para una Reestructura N-a-1, entra a la sub-pestaña **'2. Reestructura N-a-1 de Créditos Normales'**, selecciona hasta 4 créditos activos del mismo trabajador y presiona **'Consolidar en Nuevo Contrato'**, verificando que el sistema liquide automáticamente los anteriores (dejándolos en saldo `$0.00` con clave **`RV`**) y calcule el remanente neto a entregar. *(Por regla de negocio, los créditos Express aparecen bloqueados para reestructura).*
-4. Para revisar el seguro de vida, entra a la sub-pestaña **'3. Cotejo Póliza Seguro de Vida $35,000'** y verifica que los contratos en demanda o convenio aparezcan resaltados en **color rosa pálido** como excluidos de pago de prima.
+## 7.2 Guía Paso a Paso: Cobranza, Licencias, Renovaciones con Liberación DTI LFT, Padrón de Aseguradora (`$35,000 M.N.`) y Póliza Contable Aspel COI
+Para aplicar una licencia sin goce de sueldo, renovar créditos liberando capacidad de descuento LFT o emitir el padrón de seguro y la póliza contable:
+1. En la pestaña **'6. Cobranza y Licencias'**, busca el expediente en la barra de búsqueda superior.
+2. **Para una Licencia:** Selecciona **'Suspensión Temporal'**, elige las quincenas de aplicación, anota el motivo en el cuadro de notas y presiona **'Confirmar y Sellar WORM'**. El crédito pasará a estado amarillo (**`PAUSA LICENCIA S/GOCE`**) sin generar recargos moratorios. *(Cuando el trabajador regrese a laborar, presiona **'Reactivar Nómina'**).*
+3. **Para una Renovación o Reestructura N-a-1 con Liberación de Capacidad DTI (Tope `30% LFT`):**
+   - Entra a la sub-pestaña **'2. Reestructura N-a-1 de Créditos Normales'**, selecciona hasta 4 créditos activos del mismo trabajador y presiona **'Consolidar en Nuevo Contrato'**.
+   - **Fórmula de Liberación de Capacidad LFT (Art. 110):** Al tratarse de una renovación donde el nuevo préstamo liquida los anteriores, el sistema aplica automáticamente la fórmula:
+     `Ingreso Neto Ajustado = Ingreso Neto Actual + Descuento Quincenal Liberado de Créditos a Liquidar`
+   - *Ejemplo numérico real:* Si un trabajador percibe `$10,000.00 MXN` netos quincenales (tope legal `30% LFT` = `$3,000.00 MXN`), ya tiene un descuento vigente de `$1,800.00 MXN` que será liquidado en la renovación y solicita un nuevo crédito con cuota de `$2,200.00 MXN`, el sistema libera primero los `$1,800.00 MXN` (`DTI post-renovación = 22.00% <= 30.00%`), valida que el monto del nuevo contrato cubra el saldo insoluto real, liquida los contratos previos en `$0.00` con clave **`RV`** y estampa el sello forense WORM **`DTI_CAPACITY_RELEASED_FOR_RENEWAL`**. *(Por regla de negocio, los créditos Express aparecen bloqueados para reestructura).*
+4. **Padrón de Aseguradora (`$35,000 M.N.`) y Póliza Contable Aspel COI:**
+   - Entra a la sub-pestaña **'3. Cotejo Póliza Seguro de Vida $35,000'**.
+   - El sistema genera el **`Padrón de Aseguradora ($35,000 M.N.)`** asignando una suma asegurada fija de **`$35,000.00 M.N.`** por cada préstamo activo elegible (excluyendo y resaltando en **color rosa pálido** los contratos en demanda judicial o baja laboral).
+   - Presiona el botón para exportar la **`Póliza Contable Aspel COI`**, la cual genera automáticamente los asientos de diario/ingreso quincenal sobre las cuentas oficiales de Microfinanciera Cruse:
+     - **`1104001001`** (*Cartera de Créditos / Bancos*)
+     - **`4101001001`** (*Intereses Cobrados de Cartera*)
+     - **`2104001001`** (*IVA Trasladado Cobrado 16%*)
+     - **`4103000001`** (*Recuperación de Seguro de Vida `$22.85`*)
+   - *Ejemplo numérico real de Partida Doble Inquebrantable:* Ante un cobro quincenal de `$1,522.85 MXN` (`$1,000.00` Capital + `$431.03` Interés + `$68.97` IVA + `$22.85` Seguro de Vida), la **`Póliza Contable Aspel COI`** cuadra al centavo con **Total Cargos = `$1,522.85`** y **Total Abonos = `$1,522.85`** (`Diferencia = $0.00`).
 
 ---
 
-## 7.3 Guía Paso a Paso: Conciliación Quincenal y Layouts para SIF/CIB
-1. Haz clic en la pestaña **'Conciliación Quincenal'**.
+## 7.3 Guía Paso a Paso: Conciliación Quincenal, Layouts SIF/CIB y Crédito Especial con 3 Regímenes de IVA (`3.0%` a `5.0%` Mensual)
+1. Haz clic en la pestaña **'5. Conciliación Quincenal'**.
 2. Selecciona el **Convenio** (ej. *STSGECH*) y el **Periodo Quincenal**, y presiona **'Generar Layout de Cobro Sindical'** para obtener el listado de descuentos a enviar a Recursos Humanos.
 3. Cuando recibas los pagos retenidos por la dependencia, carga el archivo y presiona **'Previsualizar Cruce Quincenal'** para revisar pagos exactos, pagos parciales y omisiones antes de afectar saldos.
 4. Presiona **'Confirmar y Aplicar Conciliación en Firme'** para aplicar los cobros en orden de prelación (**1° Seguro de Vida $22.85 → 2° Intereses → 3° IVA → 4° Capital**) y haz clic en **'Descargar Layout SIF/CIB (Logic Systems)'**.
+5. **Operación de Crédito Especial / Línea Revolvente (Tasa `3.0%` a `5.0%` Mensual y 3 Regímenes de IVA):**
+   - Al dar de alta o devengar un **Crédito Especial**, el sistema permite parametrizar la tasa mensual desde **`0.1%` hasta `5.0%`** y elegir cualquiera de los **3 Regímenes de IVA** que opera la Lic. Alma:
+     1. **`EXEMPT_SOFOM` (Exento de IVA `0%`):** El interés se calcula directo sin agregar IVA.
+        - *Ejemplo numérico real (Caso María Teresa García Chacón — `5.0%` mensual):* Sobre un saldo insoluto de **`$100,000.00 MXN`** al **`5.0%`** mensual bajo régimen **`EXEMPT_SOFOM`**, el interés devengado es exactamente **`$5,000.00 MXN`** y el IVA es **`$0.00 MXN`**.
+     2. **`ADDITIVE_16` (Más `16%` de IVA):** Calcula el interés base más el `16%` de IVA adicional.
+        - *Ejemplo numérico real:* Sobre **`$100,000.00 MXN`** al **`3.0%`** mensual bajo **`ADDITIVE_16`**, el interés neto es **`$3,000.00 MXN`** + **`$480.00 MXN`** de IVA = **`$3,480.00 MXN`** de exigible total.
+     3. **`INCLUDED_1_16` (IVA Incluido con Desglose Inverso `/1.16`):** Cuando la cuota o tasa pactada ya incluye el IVA, el motor aplica el desglose inverso fiscal SAT (`ROUND_HALF_UP`): `Interés Neto = Total / 1.16` e `IVA = Total - Interés Neto`.
+        - *Ejemplo numérico real (Caso Con Sazón S.A. de C.V. — IVA Incluido):* Ante un cobro de intereses con IVA incluido por **`$11,600.00 MXN`**, el motor divide `$11,600.00 / 1.16` obteniendo exactamente **`$10,000.00 MXN`** de interés neto y **`$1,600.00 MXN`** de IVA trasladado, garantizando que `Interés Neto + IVA === Total Cobrado` sin perder un solo centavo.
 
 ---
 
-## 7.4 Guía Paso a Paso: Reporte Mensual para Círculo de Crédito (`001496`)
-1. Haz clic en la pestaña **'Círculo de Crédito (SIC)'**.
+## 7.4 Guía Paso a Paso: Reporte Mensual para Círculo de Crédito (`001496`), `"Layout PM v5"` y Filtro `"BAJA_LABORAL_ACTIVA"`
+1. Haz clic en la pestaña **'8. Reporte a Círculo de Crédito'**.
 2. Elige el **Periodo de Corte** y el **Tipo de Cartera** (*Personas Físicas*, *Personas Morales* o *Ambas*).
-3. Presiona **'Previsualizar Cartera a Reportar'** para revisar los saldos y claves de observación (**`CC`**, **`CL`**, **`RV`**).
-4. Presiona **'Generar y Descargar Layout Oficial (001496)'** para descargar el archivo mensual listo para carga.
+3. **Filtro Especial de Cobranza Directa (`"BAJA_LABORAL_ACTIVA"`):**
+   - Selecciona en el filtro de estatus la opción **`"BAJA_LABORAL_ACTIVA"`** para listar únicamente a los trabajadores que causaron baja de su dependencia o sindicato pero mantienen saldo insoluto activo (`> $0.00`), facilitando a la Lic. Alma el seguimiento de cobranza directa o convenio extrajudicial.
+4. **Reporte de Personas Físicas (`001496`):** Presiona **'Previsualizar Cartera a Reportar'** para revisar los saldos y claves de observación (**`CC`**, **`CL`**, **`RV`**) y haz clic en **'Generar y Descargar Layout Oficial (001496)'**.
+5. **Reporte Oficial de Empresas — `"Layout PM v5"` (Personas Morales):**
+   - Para reportar acreditados empresariales (como *Con Sazón S.A. de C.V.*), presiona el botón púrpura **`"Layout PM v5"`**.
+   - El sistema genera y descarga el archivo posicional de longitud fija validando estrictamente cada segmento técnico: **`HD` (`100` caracteres)**, **`EM` (`350` caracteres)**, **`AC` (`200` caracteres)**, **`CR` (`280` caracteres)** y **`TR` (`100` caracteres)**, clasificando automáticamente los días de atraso en las cubetas regulatorias (`0-29`, `30-59`, `60-89`, `90-119`, `120-179` y `180+` días).
 
 ---
 
 ### ✅ Checklist de Dominio del Día 3
-- [ ] El Administrador entró a **'Fondeo e Inversionistas'**, presionó **'+ Nuevo Inversionista'**, capturó **'Nombre'**, **'Tasa Anual'**, seleccionó **'Retención ISR: 0.9%'**, presionó **'Guardar y Generar Pagaré'** y ejecutó el **'Corte Mensual Idempotente'**.
-- [ ] El equipo entró a **'Cobranza, Convenios y Reestructuras'**, aplicó una **'Suspensión Temporal'** por licencia y ejecutó una Reestructura N-a-1 con el botón **'Consolidar en Nuevo Contrato'**.
-- [ ] Mesa de Control procesó una **'Conciliación Quincenal'** y descargó el layout para **SIF/CIB**.
-- [ ] El Oficial de Cumplimiento generó y descargó el archivo oficial de **Círculo de Crédito (`001496`)**.
+- [ ] El Administrador entró a **'7. Inversionistas y Pagarés'**, presionó **'+ Nuevo Inversionista'**, probó la convención **`365/30.4`** y las tasas de **Retención ISR (`0.5%`, `0.9%`, `20%` o Exento)** y ejecutó el **'Corte Mensual Idempotente'**.
+- [ ] El equipo entró a **'6. Cobranza y Licencias'**, aplicó una **'Suspensión Temporal'**, verificó la liberación de capacidad LFT (`DTI_CAPACITY_RELEASED_FOR_RENEWAL`) en una renovación y descargó el **`Padrón de Aseguradora ($35,000 M.N.)`** junto con la **`Póliza Contable Aspel COI`**.
+- [ ] Mesa de Control procesó una **'5. Conciliación Quincenal'**, descargó el layout para **SIF/CIB** y verificó los 3 regímenes de IVA en **Crédito Especial** (`EXEMPT_SOFOM`, `ADDITIVE_16`, `INCLUDED_1_16`).
+- [ ] El Oficial de Cumplimiento generó el archivo de **Círculo de Crédito (`001496`)**, descargó el **`"Layout PM v5"`** de Personas Morales y consultó el filtro **`"BAJA_LABORAL_ACTIVA"`**.
 
 ---
 
@@ -277,7 +304,10 @@ Haz clic en la pestaña **3. 'Suite Ejecutiva & Negocio (5 Módulos)'** para ope
 
 1. **1. Pitch Inversionistas (Bloque B.1):** Presentación ejecutiva interactiva de 10 diapositivas con botón **'Guía de Presentación'** para exponer el modelo de negocio ante fondeadores, sindicatos y consejo.
 2. **2. Simulador ROI 36 Meses (Bloque B.2):** Presiona **'Calibrar Simulador con Cartera Real'** y ajusta las barras de capital, Hubs activos y reinversión para proyectar la utilidad neta y TIR a 36 meses.
-3. **3. Simulador & Scoring Aprobador (Bloque B.3):** Ingresa monto, plazo, sueldo neto quincenal, deducciones y antigüedad del trabajador y presiona **'Emitir Dictamen de Scoring para Aprobador'** para obtener el semáforo de riesgo (🟢 Bajo, 🟡 Medio, 🔴 Alto), el monto máximo sugerido y la tabla de amortización quincenal.
+3. **3. Simulador & Scoring Aprobador y `"Anexo 1 — Tabla para Compensación"` (Bloque B.3):**
+   - Ingresa monto, plazo, sueldo neto quincenal, deducciones y antigüedad del trabajador y presiona **'Emitir Dictamen de Scoring para Aprobador'** para obtener el semáforo de riesgo (🟢 Bajo, 🟡 Medio, 🔴 Alto) y el monto máximo sugerido (evaluando en renovaciones la fórmula `Ingreso Neto Ajustado = Ingreso Neto + Descuento Liberado` bajo el tope `30% LFT`).
+   - Presiona el botón **`"Anexo 1 — Tabla para Compensación"`** para imprimir el documento oficial membretado de **Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.** (RFC **`MCR1002231B7`**, domicilio fiscal **`Vía Citadela #5710 Int 401, Fracc. Saucito, C.P. 31110, Chihuahua, Chih.`**) con **2 tantos en una sola hoja** (*Tanto 1: Empresa / Expediente* y *Tanto 2: Empleado*), línea punteada de recorte, recuadro de firma autógrafa y vinculación al folio de la **Constancia NOM-151**.
+   - *Ejemplo numérico real:* Para un crédito de nómina de `$20,000.00 MXN` a `24` quincenas en *STSGECH*, el **`"Anexo 1 — Tabla para Compensación"`** imprime en ambos tantos el monto otorgado, descuento quincenal exacto con seguro de vida de `$22.85`, total a pagar, quincena de inicio y quincena de término.
 4. **4. Pizarra Competencia (Bloque B.5):** Haz clic en **'Actualizar'** en cualquier banco o competidor, edita su tasa o comisión y presiona el botón verde **`✓` (Guardar)** para recalcular al instante la gráfica comparativa de ahorro.
 5. **5. Hubs Nacionales & Manual (Bloques C.4 y A.6):** Consulta las metas operativas de **Chihuahua**, **León** y **Cancún**, el flujo institucional de 6 etapas y descarga en PDF los Manuales Oficiales por Fase.
 6. **Botón Dorado 'Asistente IA Interno 24/7' (Bloque B.4):** Haz clic en el botón dorado superior derecho, escribe cualquier consulta de negocio en español y presiona **'Enviar'** para recibir respuestas inmediatas sobre la cartera sin exponer datos personales.

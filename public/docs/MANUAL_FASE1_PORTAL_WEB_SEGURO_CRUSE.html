@@ -27,8 +27,8 @@
 <body>
   <div class="seal-banner">
     <div>
-      <div class="title">MICROFINANCIERA CRUSE, S.A. DE C.V., SOFOM, E.N.R.</div>
-      <div class="subtitle">Documento Oficial de Entrega Operativa Fase 1 • Portal Web Seguro Integral • 2FA vía Código SMS al Móvil</div>
+      <div class="title">MICROFINANCIERA CRUSE, S.A. DE C.V., SOFOM, E.N.R. • RFC: MCR1002231B7</div>
+      <div class="subtitle">Documento Oficial Fase 1 Homologado (CRUSE-APO-2026-063 / 064) • 2FA SMS • Base 365/30.4 • 3 Regímenes IVA</div>
     </div>
     <div class="seal-badge">FASE 1 CERTIFICADA</div>
   </div>
@@ -255,109 +255,175 @@
 </ul>
 <hr/>
 <h1>🟣 DÍA 3 (SECCIÓN 3): GUÍAS PASO A PASO (CLIC POR CLIC) DE MÓDULOS ADMINISTRATIVOS CRÍTICOS</h1>
-<h2>7.1 Guía Paso a Paso: Fondeo e Inversionistas</h2>
-<p>Para registrar un nuevo inversionista y emitir su pagaré, o ejecutar el corte mensual:</p>
+<h2>7.1 Guía Paso a Paso: Fondeo e Inversionistas (Base Comercial <code>365/30.4</code>, Split de Tramos e ISR <code>0.5%</code>, <code>0.9%</code>, <code>20%</code> o Exento)</h2>
+<p>Para registrar un nuevo inversionista y emitir su pagaré, simular tramos partidos o ejecutar el corte mensual:</p>
 <ol>
-<li>Haz clic en la pestaña <strong>&#39;Fondeo e Inversionistas (3FN v4)&#39;</strong>.</li>
-<li>Presiona el botón <strong>&#39;+ Nuevo Inversionista&#39;</strong>.</li>
-<li>Llena los campos <strong>&#39;Nombre&#39;</strong>, <strong>&#39;Capital Inicial ($)&#39;</strong>, <strong>&#39;Tasa Anual&#39;</strong> y selecciona en el desplegable <strong>&#39;Retención ISR: 0.9%&#39;</strong> (o <em>&#39;Exento de ISR: 0.0%&#39;</em> si aplica exención).</li>
-<li>Presiona <strong>&#39;Guardar y Generar Pagaré&#39;</strong>. El nuevo pagaré aparecerá de inmediato en la tabla de inversiones activas.</li>
-<li><strong>Para el cierre de mes:</strong> Selecciona la fecha en el calendario superior derecho y presiona el botón verde <strong>&#39;Ejecutar Corte Mensual Idempotente&#39;</strong>. El sistema calcula los intereses del mes, aplica la retención de ISR y, en los pagarés compuestos, suma el rendimiento al capital automáticamente sin duplicar cobros.</li>
-<li><strong>Para agregar anotaciones:</strong> Presiona el botón <strong>&#39;Ver Notas&#39;</strong> en el renglón de cualquier inversión y escribe tus observaciones en el <strong>Block de Notas Operativas</strong>.</li>
+<li>Haz clic en la pestaña <strong>'7. Inversionistas y Pagarés'</strong> (<em>Fondeo e Inversionistas 3FN v4</em>).</li>
+<li>Presiona el botón <strong>'+ Nuevo Inversionista'</strong>.</li>
+<li>Llena los campos <strong>'Nombre'</strong>, <strong>'Capital Inicial ($)'</strong>, <strong>'Tasa Anual'</strong> y selecciona la <strong>Convención de Días</strong> (<strong><code>365/30.4</code></strong> comercial de la Lic. Alma o <code>360/30</code> estándar) y el esquema de <strong>Retención de ISR</strong> (<strong><code>0.5%</code></strong>, <strong><code>0.9%</code></strong>, <strong><code>20%</code></strong> sobre intereses o <strong><code>Exento 0.0%</code></strong>).</li>
+</ol>
+<ul>
+<li><em>Ejemplo numérico real (Pagaré César Augusto — Base <code>365/30.4</code>):</em> Para un capital de <strong><code>$400,000.00 MXN</code></strong> al <strong><code>27.84%</code></strong> anual bajo base <strong><code>365/30.4</code></strong>, el motor calcula exactamente <code>400,000 × (0.2784 / 365) × 30.4 = $9,274.91 MXN</code> de interés bruto mensual.</li>
+<li><em>Ejemplo numérico real (Pagaré Martha Alicia — ISR <code>20%</code>):</em> Cuando el inversionista opera bajo retención del <strong><code>20%</code></strong>, sobre un interés bruto de <code>$10,000.00 MXN</code> el sistema retiene exactamente <code>$2,000.00 MXN</code> de ISR y liquida <code>$8,000.00 MXN</code> netos.</li>
+</ul>
+<ol>
+<li><strong>Partición de Tramos por Días Calendario Reales (Split-Tranche):</strong> Si un inversionista inyecta capital o renueva tasa a mitad de mes, el motor divide automáticamente el periodo calculando los <strong>días calendario reales</strong> del Tramo 1 (<code>fecha_cambio - fecha_inicio</code>) y asigna al Tramo 2 el remanente exacto (<code>30.4 - días_Tramo_1</code>), evitando cualquier sobrepago de intereses.</li>
+<li>Presiona <strong>'Guardar y Generar Pagaré'</strong>. El nuevo pagaré aparecerá de inmediato en la tabla de inversiones activas.</li>
+<li><strong>Para el cierre de mes:</strong> Selecciona la fecha en el calendario superior derecho y presiona el botón verde <strong>'Ejecutar Corte Mensual Idempotente'</strong>. El sistema calcula los intereses del mes, aplica la retención de ISR y, en los pagarés compuestos, suma el rendimiento al capital automáticamente sin duplicar cobros.</li>
+<li><strong>Para agregar anotaciones:</strong> Presiona el botón <strong>'Ver Notas'</strong> en el renglón de cualquier inversión y escribe tus observaciones en el <strong>Block de Notas Operativas</strong>.</li>
 </ol>
 <hr/>
-<h2>7.2 Guía Paso a Paso: Cobranza, Convenios y Reestructuras</h2>
-<p>Para aplicar una licencia sin goce de sueldo, congelar mora por demanda/baja o consolidar varios préstamos de un mismo trabajador:</p>
+<h2>7.2 Guía Paso a Paso: Cobranza, Licencias, Renovaciones con Liberación DTI LFT, Padrón de Aseguradora (<code>$35,000 M.N.</code>) y Póliza Contable Aspel COI</h2>
+<p>Para aplicar una licencia sin goce de sueldo, renovar créditos liberando capacidad de descuento LFT o emitir el padrón de seguro y la póliza contable:</p>
 <ol>
-<li>En la pestaña <strong>&#39;Cobranza, Convenios y Reestructuras&#39;</strong>, busca el expediente en la barra de búsqueda superior.</li>
-<li>Para una Licencia, selecciona <strong>&#39;Suspensión Temporal&#39;</strong>, elige las quincenas de aplicación, anota el motivo en el cuadro de notas y presiona <strong>&#39;Confirmar y Sellar WORM&#39;</strong>. El crédito pasará a estado amarillo (<strong><code>PAUSA LICENCIA S/GOCE</code></strong>) sin generar recargos moratorios. <em>(Cuando el trabajador regrese a laborar, presiona <strong>&#39;Reactivar Nómina&#39;</strong>).</em></li>
-<li>Para una Reestructura N-a-1, entra a la sub-pestaña <strong>&#39;2. Reestructura N-a-1 de Créditos Normales&#39;</strong>, selecciona hasta 4 créditos activos del mismo trabajador y presiona <strong>&#39;Consolidar en Nuevo Contrato&#39;</strong>, verificando que el sistema liquide automáticamente los anteriores (dejándolos en saldo <code>$0.00</code> con clave <strong><code>RV</code></strong>) y calcule el remanente neto a entregar. <em>(Por regla de negocio, los créditos Express aparecen bloqueados para reestructura).</em></li>
-<li>Para revisar el seguro de vida, entra a la sub-pestaña <strong>&#39;3. Cotejo Póliza Seguro de Vida $35,000&#39;</strong> y verifica que los contratos en demanda o convenio aparezcan resaltados en <strong>color rosa pálido</strong> como excluidos de pago de prima.</li>
+<li>En la pestaña <strong>'6. Cobranza y Licencias'</strong>, busca el expediente en la barra de búsqueda superior.</li>
+<li><strong>Para una Licencia:</strong> Selecciona <strong>'Suspensión Temporal'</strong>, elige las quincenas de aplicación, anota el motivo en el cuadro de notas y presiona <strong>'Confirmar y Sellar WORM'</strong>. El crédito pasará a estado amarillo (<strong><code>PAUSA LICENCIA S/GOCE</code></strong>) sin generar recargos moratorios. <em>(Cuando el trabajador regrese a laborar, presiona <strong>'Reactivar Nómina'</strong>).</em></li>
+<li><strong>Para una Renovación o Reestructura N-a-1 con Liberación de Capacidad DTI (Tope <code>30% LFT</code>):</strong></li>
 </ol>
-<hr/>
-<h2>7.3 Guía Paso a Paso: Conciliación Quincenal y Layouts para SIF/CIB</h2>
+<ul>
+<li>Entra a la sub-pestaña <strong>'2. Reestructura N-a-1 de Créditos Normales'</strong>, selecciona hasta 4 créditos activos del mismo trabajador y presiona <strong>'Consolidar en Nuevo Contrato'</strong>.</li>
+<li><strong>Fórmula de Liberación de Capacidad LFT (Art. 110):</strong> Al tratarse de una renovación donde el nuevo préstamo liquida los anteriores, el sistema aplica automáticamente la fórmula:</li>
+</ul>
+<p><code>Ingreso Neto Ajustado = Ingreso Neto Actual + Descuento Quincenal Liberado de Créditos a Liquidar</code></p>
+<ul>
+<li><em>Ejemplo numérico real:</em> Si un trabajador percibe <code>$10,000.00 MXN</code> netos quincenales (tope legal <code>30% LFT</code> = <code>$3,000.00 MXN</code>), ya tiene un descuento vigente de <code>$1,800.00 MXN</code> que será liquidado en la renovación y solicita un nuevo crédito con cuota de <code>$2,200.00 MXN</code>, el sistema libera primero los <code>$1,800.00 MXN</code> (<code>DTI post-renovación = 22.00% &lt;= 30.00%</code>), valida que el monto del nuevo contrato cubra el saldo insoluto real, liquida los contratos previos en <code>$0.00</code> con clave <strong><code>RV</code></strong> y estampa el sello forense WORM <strong><code>DTI_CAPACITY_RELEASED_FOR_RENEWAL</code></strong>. <em>(Por regla de negocio, los créditos Express aparecen bloqueados para reestructura).</em></li>
+</ul>
 <ol>
-<li>Haz clic en la pestaña <strong>&#39;Conciliación Quincenal&#39;</strong>.</li>
-<li>Selecciona el <strong>Convenio</strong> (ej. <em>STSGECH</em>) y el <strong>Periodo Quincenal</strong>, y presiona <strong>&#39;Generar Layout de Cobro Sindical&#39;</strong> para obtener el listado de descuentos a enviar a Recursos Humanos.</li>
-<li>Cuando recibas los pagos retenidos por la dependencia, carga el archivo y presiona <strong>&#39;Previsualizar Cruce Quincenal&#39;</strong> para revisar pagos exactos, pagos parciales y omisiones antes de afectar saldos.</li>
-<li>Presiona <strong>&#39;Confirmar y Aplicar Conciliación en Firme&#39;</strong> para aplicar los cobros en orden de prelación (<strong>1° Seguro de Vida $22.85 → 2° Intereses → 3° IVA → 4° Capital</strong>) y haz clic en <strong>&#39;Descargar Layout SIF/CIB (Logic Systems)&#39;</strong>.</li>
+<li><strong>Padrón de Aseguradora (<code>$35,000 M.N.</code>) y Póliza Contable Aspel COI:</strong></li>
 </ol>
+<ul>
+<li>Entra a la sub-pestaña <strong>'3. Cotejo Póliza Seguro de Vida $35,000'</strong>.</li>
+<li>El sistema genera el <strong><code>Padrón de Aseguradora ($35,000 M.N.)</code></strong> asignando una suma asegurada fija de <strong><code>$35,000.00 M.N.</code></strong> por cada préstamo activo elegible (excluyendo y resaltando en <strong>color rosa pálido</strong> los contratos en demanda judicial o baja laboral).</li>
+<li>Presiona el botón para exportar la <strong><code>Póliza Contable Aspel COI</code></strong>, la cual genera automáticamente los asientos de diario/ingreso quincenal sobre las cuentas oficiales de Microfinanciera Cruse:</li>
+<li><strong><code>1104001001</code></strong> (<em>Cartera de Créditos / Bancos</em>)</li>
+<li><strong><code>4101001001</code></strong> (<em>Intereses Cobrados de Cartera</em>)</li>
+<li><strong><code>2104001001</code></strong> (<em>IVA Trasladado Cobrado 16%</em>)</li>
+<li><strong><code>4103000001</code></strong> (<em>Recuperación de Seguro de Vida <code>$22.85</code></em>)</li>
+<li><em>Ejemplo numérico real de Partida Doble Inquebrantable:</em> Ante un cobro quincenal de <code>$1,522.85 MXN</code> (<code>$1,000.00</code> Capital + <code>$431.03</code> Interés + <code>$68.97</code> IVA + <code>$22.85</code> Seguro de Vida), la <strong><code>Póliza Contable Aspel COI</code></strong> cuadra al centavo con <strong>Total Cargos = <code>$1,522.85</code></strong> y <strong>Total Abonos = <code>$1,522.85</code></strong> (<code>Diferencia = $0.00</code>).</li>
+</ul>
 <hr/>
-<h2>7.4 Guía Paso a Paso: Reporte Mensual para Círculo de Crédito (<code>001496</code>)</h2>
+<h2>7.3 Guía Paso a Paso: Conciliación Quincenal, Layouts SIF/CIB y Crédito Especial con 3 Regímenes de IVA (<code>3.0%</code> a <code>5.0%</code> Mensual)</h2>
 <ol>
-<li>Haz clic en la pestaña <strong>&#39;Círculo de Crédito (SIC)&#39;</strong>.</li>
+<li>Haz clic en la pestaña <strong>'5. Conciliación Quincenal'</strong>.</li>
+<li>Selecciona el <strong>Convenio</strong> (ej. <em>STSGECH</em>) y el <strong>Periodo Quincenal</strong>, y presiona <strong>'Generar Layout de Cobro Sindical'</strong> para obtener el listado de descuentos a enviar a Recursos Humanos.</li>
+<li>Cuando recibas los pagos retenidos por la dependencia, carga el archivo y presiona <strong>'Previsualizar Cruce Quincenal'</strong> para revisar pagos exactos, pagos parciales y omisiones antes de afectar saldos.</li>
+<li>Presiona <strong>'Confirmar y Aplicar Conciliación en Firme'</strong> para aplicar los cobros en orden de prelación (<strong>1° Seguro de Vida $22.85 → 2° Intereses → 3° IVA → 4° Capital</strong>) y haz clic en <strong>'Descargar Layout SIF/CIB (Logic Systems)'</strong>.</li>
+<li><strong>Operación de Crédito Especial / Línea Revolvente (Tasa <code>3.0%</code> a <code>5.0%</code> Mensual y 3 Regímenes de IVA):</strong></li>
+</ol>
+<ul>
+<li>Al dar de alta o devengar un <strong>Crédito Especial</strong>, el sistema permite parametrizar la tasa mensual desde <strong><code>0.1%</code> hasta <code>5.0%</code></strong> y elegir cualquiera de los <strong>3 Regímenes de IVA</strong> que opera la Lic. Alma:</li>
+</ul>
+<ol>
+<li><strong><code>EXEMPT_SOFOM</code> (Exento de IVA <code>0%</code>):</strong> El interés se calcula directo sin agregar IVA.</li>
+</ol>
+<ul>
+<li><em>Ejemplo numérico real (Caso María Teresa García Chacón — <code>5.0%</code> mensual):</em> Sobre un saldo insoluto de <strong><code>$100,000.00 MXN</code></strong> al <strong><code>5.0%</code></strong> mensual bajo régimen <strong><code>EXEMPT_SOFOM</code></strong>, el interés devengado es exactamente <strong><code>$5,000.00 MXN</code></strong> y el IVA es <strong><code>$0.00 MXN</code></strong>.</li>
+</ul>
+<ol>
+<li><strong><code>ADDITIVE_16</code> (Más <code>16%</code> de IVA):</strong> Calcula el interés base más el <code>16%</code> de IVA adicional.</li>
+</ol>
+<ul>
+<li><em>Ejemplo numérico real:</em> Sobre <strong><code>$100,000.00 MXN</code></strong> al <strong><code>3.0%</code></strong> mensual bajo <strong><code>ADDITIVE_16</code></strong>, el interés neto es <strong><code>$3,000.00 MXN</code></strong> + <strong><code>$480.00 MXN</code></strong> de IVA = <strong><code>$3,480.00 MXN</code></strong> de exigible total.</li>
+</ul>
+<ol>
+<li><strong><code>INCLUDED_1_16</code> (IVA Incluido con Desglose Inverso <code>/1.16</code>):</strong> Cuando la cuota o tasa pactada ya incluye el IVA, el motor aplica el desglose inverso fiscal SAT (<code>ROUND_HALF_UP</code>): <code>Interés Neto = Total / 1.16</code> e <code>IVA = Total - Interés Neto</code>.</li>
+</ol>
+<ul>
+<li><em>Ejemplo numérico real (Caso Con Sazón S.A. de C.V. — IVA Incluido):</em> Ante un cobro de intereses con IVA incluido por <strong><code>$11,600.00 MXN</code></strong>, el motor divide <code>$11,600.00 / 1.16</code> obteniendo exactamente <strong><code>$10,000.00 MXN</code></strong> de interés neto y <strong><code>$1,600.00 MXN</code></strong> de IVA trasladado, garantizando que <code>Interés Neto + IVA === Total Cobrado</code> sin perder un solo centavo.</li>
+</ul>
+<hr/>
+<h2>7.4 Guía Paso a Paso: Reporte Mensual para Círculo de Crédito (<code>001496</code>), <code>&quot;Layout PM v5&quot;</code> y Filtro <code>&quot;BAJA_LABORAL_ACTIVA&quot;</code></h2>
+<ol>
+<li>Haz clic en la pestaña <strong>'8. Reporte a Círculo de Crédito'</strong>.</li>
 <li>Elige el <strong>Periodo de Corte</strong> y el <strong>Tipo de Cartera</strong> (<em>Personas Físicas</em>, <em>Personas Morales</em> o <em>Ambas</em>).</li>
-<li>Presiona <strong>&#39;Previsualizar Cartera a Reportar&#39;</strong> para revisar los saldos y claves de observación (<strong><code>CC</code></strong>, <strong><code>CL</code></strong>, <strong><code>RV</code></strong>).</li>
-<li>Presiona <strong>&#39;Generar y Descargar Layout Oficial (001496)&#39;</strong> para descargar el archivo mensual listo para carga.</li>
+<li><strong>Filtro Especial de Cobranza Directa (<code>&quot;BAJA_LABORAL_ACTIVA&quot;</code>):</strong></li>
 </ol>
+<ul>
+<li>Selecciona en el filtro de estatus la opción <strong><code>&quot;BAJA_LABORAL_ACTIVA&quot;</code></strong> para listar únicamente a los trabajadores que causaron baja de su dependencia o sindicato pero mantienen saldo insoluto activo (<code>&gt; $0.00</code>), facilitando a la Lic. Alma el seguimiento de cobranza directa o convenio extrajudicial.</li>
+</ul>
+<ol>
+<li><strong>Reporte de Personas Físicas (<code>001496</code>):</strong> Presiona <strong>'Previsualizar Cartera a Reportar'</strong> para revisar los saldos y claves de observación (<strong><code>CC</code></strong>, <strong><code>CL</code></strong>, <strong><code>RV</code></strong>) y haz clic en <strong>'Generar y Descargar Layout Oficial (001496)'</strong>.</li>
+<li><strong>Reporte Oficial de Empresas — <code>&quot;Layout PM v5&quot;</code> (Personas Morales):</strong></li>
+</ol>
+<ul>
+<li>Para reportar acreditados empresariales (como <em>Con Sazón S.A. de C.V.</em>), presiona el botón púrpura <strong><code>&quot;Layout PM v5&quot;</code></strong>.</li>
+<li>El sistema genera y descarga el archivo posicional de longitud fija validando estrictamente cada segmento técnico: <strong><code>HD</code> (<code>100</code> caracteres)</strong>, <strong><code>EM</code> (<code>350</code> caracteres)</strong>, <strong><code>AC</code> (<code>200</code> caracteres)</strong>, <strong><code>CR</code> (<code>280</code> caracteres)</strong> y <strong><code>TR</code> (<code>100</code> caracteres)</strong>, clasificando automáticamente los días de atraso en las cubetas regulatorias (<code>0-29</code>, <code>30-59</code>, <code>60-89</code>, <code>90-119</code>, <code>120-179</code> y <code>180+</code> días).</li>
+</ul>
 <hr/>
 <h3>✅ Checklist de Dominio del Día 3</h3>
 <ul>
-<li>[ ] El Administrador entró a <strong>&#39;Fondeo e Inversionistas&#39;</strong>, presionó <strong>&#39;+ Nuevo Inversionista&#39;</strong>, capturó <strong>&#39;Nombre&#39;</strong>, <strong>&#39;Tasa Anual&#39;</strong>, seleccionó <strong>&#39;Retención ISR: 0.9%&#39;</strong>, presionó <strong>&#39;Guardar y Generar Pagaré&#39;</strong> y ejecutó el <strong>&#39;Corte Mensual Idempotente&#39;</strong>.</li>
-<li>[ ] El equipo entró a <strong>&#39;Cobranza, Convenios y Reestructuras&#39;</strong>, aplicó una <strong>&#39;Suspensión Temporal&#39;</strong> por licencia y ejecutó una Reestructura N-a-1 con el botón <strong>&#39;Consolidar en Nuevo Contrato&#39;</strong>.</li>
-<li>[ ] Mesa de Control procesó una <strong>&#39;Conciliación Quincenal&#39;</strong> y descargó el layout para <strong>SIF/CIB</strong>.</li>
-<li>[ ] El Oficial de Cumplimiento generó y descargó el archivo oficial de <strong>Círculo de Crédito (<code>001496</code>)</strong>.</li>
+<li>[ ] El Administrador entró a <strong>'7. Inversionistas y Pagarés'</strong>, presionó <strong>'+ Nuevo Inversionista'</strong>, probó la convención <strong><code>365/30.4</code></strong> y las tasas de <strong>Retención ISR (<code>0.5%</code>, <code>0.9%</code>, <code>20%</code> o Exento)</strong> y ejecutó el <strong>'Corte Mensual Idempotente'</strong>.</li>
+<li>[ ] El equipo entró a <strong>'6. Cobranza y Licencias'</strong>, aplicó una <strong>'Suspensión Temporal'</strong>, verificó la liberación de capacidad LFT (<code>DTI_CAPACITY_RELEASED_FOR_RENEWAL</code>) en una renovación y descargó el <strong><code>Padrón de Aseguradora ($35,000 M.N.)</code></strong> junto con la <strong><code>Póliza Contable Aspel COI</code></strong>.</li>
+<li>[ ] Mesa de Control procesó una <strong>'5. Conciliación Quincenal'</strong>, descargó el layout para <strong>SIF/CIB</strong> y verificó los 3 regímenes de IVA en <strong>Crédito Especial</strong> (<code>EXEMPT_SOFOM</code>, <code>ADDITIVE_16</code>, <code>INCLUDED_1_16</code>).</li>
+<li>[ ] El Oficial de Cumplimiento generó el archivo de <strong>Círculo de Crédito (<code>001496</code>)</strong>, descargó el <strong><code>&quot;Layout PM v5&quot;</code></strong> de Personas Morales y consultó el filtro <strong><code>&quot;BAJA_LABORAL_ACTIVA&quot;</code></strong>.</li>
 </ul>
 <hr/>
 <h1>🛡️ DÍA 4 (SECCIÓN 3): GUÍA PASO A PASO DE PREVENCIÓN PLD/FT BASE Y BITÁCORA DE 5 AÑOS</h1>
 <h2>8.1 Guía Paso a Paso: Carga de Listas PLD y Barrido de Cartera (Alcance Fase 1)</h2>
 <p>Para actualizar los catálogos oficiales de riesgo y revisar toda la cartera ante la CNBV:</p>
 <ol>
-<li>Ve a la pestaña <strong>&#39;Prevención PLD/FT (69-B / UIF)&#39;</strong>.</li>
-<li>En la sección <strong>&#39;Ingestar Lista Oficial&#39;</strong>, elige el tipo de lista en el desplegable (<em>SAT Art. 69-B Definitivo</em>, <em>SAT Art. 69-B Presunto</em>, <em>UIF Lista de Personas Bloqueadas</em>, <em>OFAC SDN</em> o <em>PEP</em>) y escribe el número de oficio o publicación del Diario Oficial.</li>
-<li>Selecciona el archivo CSV (69-B, UIF, OFAC) haciendo clic en <strong>&#39;Seleccionar archivo CSV/TXT...&#39;</strong> (o pega el listado en el recuadro).</li>
-<li>Presiona <strong>&#39;Previsualizar&#39;</strong> para confirmar el número de registros detectados y luego presiona el botón verde <strong>&#39;Sellar e Ingresar a Base de Datos&#39;</strong>.</li>
-<li><strong>Para revisar toda la cartera:</strong> Presiona el botón superior derecho <strong>&#39;Ejecutar Barrido Integral (Cartera + Fondeo)&#39;</strong> y enseguida haz clic en <strong>&#39;Descargar Acta CNBV/UIF&#39;</strong> para guardar el certificado oficial de cumplimiento.</li>
-<li><strong>Para resolver una alerta:</strong> En la tabla de alertas, haz clic en el botón <strong>&#39;Dictaminar&#39;</strong>, selecciona la resolución (<em>Confirmar Bloqueo Definitivo</em>, <em>Autorizado con Debida Diligencia Reforzada</em> o <em>Descartar por Homonimia</em>), escribe la justificación y presiona <strong>&#39;Firmar y Sellar Dictamen WORM&#39;</strong>.</li>
+<li>Ve a la pestaña <strong>'Prevención PLD/FT (69-B / UIF)'</strong>.</li>
+<li>En la sección <strong>'Ingestar Lista Oficial'</strong>, elige el tipo de lista en el desplegable (<em>SAT Art. 69-B Definitivo</em>, <em>SAT Art. 69-B Presunto</em>, <em>UIF Lista de Personas Bloqueadas</em>, <em>OFAC SDN</em> o <em>PEP</em>) y escribe el número de oficio o publicación del Diario Oficial.</li>
+<li>Selecciona el archivo CSV (69-B, UIF, OFAC) haciendo clic en <strong>'Seleccionar archivo CSV/TXT...'</strong> (o pega el listado en el recuadro).</li>
+<li>Presiona <strong>'Previsualizar'</strong> para confirmar el número de registros detectados y luego presiona el botón verde <strong>'Sellar e Ingresar a Base de Datos'</strong>.</li>
+<li><strong>Para revisar toda la cartera:</strong> Presiona el botón superior derecho <strong>'Ejecutar Barrido Integral (Cartera + Fondeo)'</strong> y enseguida haz clic en <strong>'Descargar Acta CNBV/UIF'</strong> para guardar el certificado oficial de cumplimiento.</li>
+<li><strong>Para resolver una alerta:</strong> En la tabla de alertas, haz clic en el botón <strong>'Dictaminar'</strong>, selecciona la resolución (<em>Confirmar Bloqueo Definitivo</em>, <em>Autorizado con Debida Diligencia Reforzada</em> o <em>Descartar por Homonimia</em>), escribe la justificación y presiona <strong>'Firmar y Sellar Dictamen WORM'</strong>.</li>
 </ol>
 <hr/>
 <h2>8.2 Guía Paso a Paso: Bitácora Forense de 5 Años</h2>
 <ol>
-<li>Haz clic en la pestaña <strong>&#39;Bitácora Forense (5 Años)&#39;</strong>.</li>
+<li>Haz clic en la pestaña <strong>'Bitácora Forense (5 Años)'</strong>.</li>
 <li>Filtra por tipo de movimiento en el desplegable o escribe el correo del usuario en el buscador para inspeccionar la fecha, hora exacta, dirección IP y acción realizada.</li>
-<li>Presiona el botón verde superior derecho <strong>&#39;Verificar Integridad SHA-256&#39;</strong> para mostrar al auditor el sello verde que certifica que ningún registro histórico ha sido alterado.</li>
+<li>Presiona el botón verde superior derecho <strong>'Verificar Integridad SHA-256'</strong> para mostrar al auditor el sello verde que certifica que ningún registro histórico ha sido alterado.</li>
 </ol>
 <hr/>
 <h3>✅ Checklist de Dominio del Día 4</h3>
 <ul>
-<li>[ ] El Oficial de Cumplimiento entró a <strong>&#39;Prevención PLD/FT&#39;</strong>, fue a <strong>&#39;Ingestar Lista Oficial&#39;</strong>, seleccionó un archivo CSV (69-B, UIF, OFAC), presionó <strong>&#39;Previsualizar&#39;</strong> y luego <strong>&#39;Sellar e Ingresar a Base de Datos&#39;</strong>.</li>
-<li>[ ] El Oficial de Cumplimiento ejecutó el <strong>&#39;Barrido Integral (Cartera + Fondeo)&#39;</strong>, descargó el <strong>Acta CNBV/UIF</strong> y dictaminó una alerta pendiente.</li>
-<li>[ ] Dirección y Cumplimiento consultaron la <strong>&#39;Bitácora Forense (5 Años)&#39;</strong> y validaron el sello verde con el botón <strong>&#39;Verificar Integridad SHA-256&#39;</strong>.</li>
+<li>[ ] El Oficial de Cumplimiento entró a <strong>'Prevención PLD/FT'</strong>, fue a <strong>'Ingestar Lista Oficial'</strong>, seleccionó un archivo CSV (69-B, UIF, OFAC), presionó <strong>'Previsualizar'</strong> y luego <strong>'Sellar e Ingresar a Base de Datos'</strong>.</li>
+<li>[ ] El Oficial de Cumplimiento ejecutó el <strong>'Barrido Integral (Cartera + Fondeo)'</strong>, descargó el <strong>Acta CNBV/UIF</strong> y dictaminó una alerta pendiente.</li>
+<li>[ ] Dirección y Cumplimiento consultaron la <strong>'Bitácora Forense (5 Años)'</strong> y validaron el sello verde con el botón <strong>'Verificar Integridad SHA-256'</strong>.</li>
 </ul>
 <hr/>
 <h1>🚀 DÍA 5 (SECCIÓN 4): LOS 5 MÓDULOS EJECUTIVOS, MAPEO DE LOS 10 PUNTOS DE LA VISIÓN EJECUTIVA Y ASISTENTE IA 24/7</h1>
-<p>Haz clic en la pestaña <strong>3. &#39;Suite Ejecutiva &amp; Negocio (5 Módulos)&#39;</strong> para operar las 5 herramientas estratégicas:</p>
+<p>Haz clic en la pestaña <strong>3. 'Suite Ejecutiva &amp; Negocio (5 Módulos)'</strong> para operar las 5 herramientas estratégicas:</p>
 <ol>
-<li><strong>1. Pitch Inversionistas (Bloque B.1):</strong> Presentación ejecutiva interactiva de 10 diapositivas con botón <strong>&#39;Guía de Presentación&#39;</strong> para exponer el modelo de negocio ante fondeadores, sindicatos y consejo.</li>
-<li><strong>2. Simulador ROI 36 Meses (Bloque B.2):</strong> Presiona <strong>&#39;Calibrar Simulador con Cartera Real&#39;</strong> y ajusta las barras de capital, Hubs activos y reinversión para proyectar la utilidad neta y TIR a 36 meses.</li>
-<li><strong>3. Simulador &amp; Scoring Aprobador (Bloque B.3):</strong> Ingresa monto, plazo, sueldo neto quincenal, deducciones y antigüedad del trabajador y presiona <strong>&#39;Emitir Dictamen de Scoring para Aprobador&#39;</strong> para obtener el semáforo de riesgo (🟢 Bajo, 🟡 Medio, 🔴 Alto), el monto máximo sugerido y la tabla de amortización quincenal.</li>
-<li><strong>4. Pizarra Competencia (Bloque B.5):</strong> Haz clic en <strong>&#39;Actualizar&#39;</strong> en cualquier banco o competidor, edita su tasa o comisión y presiona el botón verde <strong><code>✓</code> (Guardar)</strong> para recalcular al instante la gráfica comparativa de ahorro.</li>
+<li><strong>1. Pitch Inversionistas (Bloque B.1):</strong> Presentación ejecutiva interactiva de 10 diapositivas con botón <strong>'Guía de Presentación'</strong> para exponer el modelo de negocio ante fondeadores, sindicatos y consejo.</li>
+<li><strong>2. Simulador ROI 36 Meses (Bloque B.2):</strong> Presiona <strong>'Calibrar Simulador con Cartera Real'</strong> y ajusta las barras de capital, Hubs activos y reinversión para proyectar la utilidad neta y TIR a 36 meses.</li>
+<li><strong>3. Simulador &amp; Scoring Aprobador y <code>&quot;Anexo 1 — Tabla para Compensación&quot;</code> (Bloque B.3):</strong></li>
+</ol>
+<ul>
+<li>Ingresa monto, plazo, sueldo neto quincenal, deducciones y antigüedad del trabajador y presiona <strong>'Emitir Dictamen de Scoring para Aprobador'</strong> para obtener el semáforo de riesgo (🟢 Bajo, 🟡 Medio, 🔴 Alto) y el monto máximo sugerido (evaluando en renovaciones la fórmula <code>Ingreso Neto Ajustado = Ingreso Neto + Descuento Liberado</code> bajo el tope <code>30% LFT</code>).</li>
+<li>Presiona el botón <strong><code>&quot;Anexo 1 — Tabla para Compensación&quot;</code></strong> para imprimir el documento oficial membretado de <strong>Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.</strong> (RFC <strong><code>MCR1002231B7</code></strong>, domicilio fiscal <strong><code>Vía Citadela #5710 Int 401, Fracc. Saucito, C.P. 31110, Chihuahua, Chih.</code></strong>) con <strong>2 tantos en una sola hoja</strong> (<em>Tanto 1: Empresa / Expediente</em> y <em>Tanto 2: Empleado</em>), línea punteada de recorte, recuadro de firma autógrafa y vinculación al folio de la <strong>Constancia NOM-151</strong>.</li>
+<li><em>Ejemplo numérico real:</em> Para un crédito de nómina de <code>$20,000.00 MXN</code> a <code>24</code> quincenas en <em>STSGECH</em>, el <strong><code>&quot;Anexo 1 — Tabla para Compensación&quot;</code></strong> imprime en ambos tantos el monto otorgado, descuento quincenal exacto con seguro de vida de <code>$22.85</code>, total a pagar, quincena de inicio y quincena de término.</li>
+</ul>
+<ol>
+<li><strong>4. Pizarra Competencia (Bloque B.5):</strong> Haz clic en <strong>'Actualizar'</strong> en cualquier banco o competidor, edita su tasa o comisión y presiona el botón verde <strong><code>✓</code> (Guardar)</strong> para recalcular al instante la gráfica comparativa de ahorro.</li>
 <li><strong>5. Hubs Nacionales &amp; Manual (Bloques C.4 y A.6):</strong> Consulta las metas operativas de <strong>Chihuahua</strong>, <strong>León</strong> y <strong>Cancún</strong>, el flujo institucional de 6 etapas y descarga en PDF los Manuales Oficiales por Fase.</li>
-<li><strong>Botón Dorado &#39;Asistente IA Interno 24/7&#39; (Bloque B.4):</strong> Haz clic en el botón dorado superior derecho, escribe cualquier consulta de negocio en español y presiona <strong>&#39;Enviar&#39;</strong> para recibir respuestas inmediatas sobre la cartera sin exponer datos personales.</li>
+<li><strong>Botón Dorado 'Asistente IA Interno 24/7' (Bloque B.4):</strong> Haz clic en el botón dorado superior derecho, escribe cualquier consulta de negocio en español y presiona <strong>'Enviar'</strong> para recibir respuestas inmediatas sobre la cartera sin exponer datos personales.</li>
 </ol>
 <hr/>
 <h2>9.1 SECCIÓN 4: Mapeo Oficial de los 10 Puntos de la Visión Ejecutiva (Bloque C)</h2>
 <p>Guía de verificación directa para demostrar ante auditores de <strong>ASOFOM / CNBV</strong> e inversionistas exactamente en qué pantalla y columna del Portal vive cada compromiso contractual:</p>
 <table><thead><tr><th>Código</th><th>Punto de la Visión Ejecutiva</th><th>Ubicación Exacta en el Portal para Demostración en Vivo</th></tr></thead><tbody>
-<tr><td><strong>Punto C.1</strong></td><td><strong>Consolidación como SOFOM de Alta Calidad</strong></td><td>Se visualiza en <strong>&#39;Dashboard Cartera&#39;</strong> y en <strong>&#39;Suite Ejecutiva → 1. Pitch Inversionistas (Láminas 1 y 2)&#39;</strong>, operando sobre una base de datos central única que sustituye al 100% los archivos de Excel.</td></tr>
-<tr><td><strong>Punto C.2</strong></td><td><strong>Certificación y Calificación ASOFOM</strong></td><td>Se visualiza en la pestaña <strong>&#39;Bitácora Forense (5 Años)&#39;</strong> mediante el botón verde <strong>&#39;Verificar Integridad SHA-256&#39;</strong> y en <strong>&#39;Prevención PLD/FT&#39;</strong> mediante el botón <strong>&#39;Descargar Acta CNBV/UIF&#39;</strong>.</td></tr>
-<tr><td><strong>Punto C.3</strong></td><td><strong>Trayectoria e Historia Institucional (+15 años)</strong></td><td>Se visualiza en <strong>&#39;Dashboard Cartera&#39;</strong> y en <strong>&#39;Fondeo e Inversionistas&#39;</strong>, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo.</td></tr>
-<tr><td><strong>Punto C.4</strong></td><td><strong>Semáforo de Morosidad y Supervisión por 3 Hubs</strong></td><td>Se visualiza en el <strong>Dashboard Financiero (&#39;Dashboard Cartera&#39;)</strong>, columna <strong>&#39;Salud del Crédito / Semáforo&#39;</strong> con íconos <strong>🟢 Verde</strong>, <strong>🟡 Amarillo</strong> y <strong>🔴 Rojo</strong>, y en los botones superiores de filtro por <strong>Chihuahua</strong>, <strong>León</strong> y <strong>Cancún</strong>.</td></tr>
-<tr><td><strong>Punto C.5</strong></td><td><strong>Enfoque en Crédito de Nómina Humano y Tecnológico</strong></td><td>Se visualiza en el <strong>Buzón Pre-Solicitudes</strong>, en el <strong>Escáner Móvil</strong> de promotores y en el <strong>&#39;Asistente IA 24/7&#39;</strong> (público e interno), que agilizan la atención al trabajador sin trámites engorrosos.</td></tr>
-<tr><td><strong>Punto C.6</strong></td><td><strong>Retención Directa Gubernamental y Sindical</strong></td><td>Se visualiza en la pestaña <strong>&#39;Conciliación Quincenal&#39;</strong>, mediante el botón <strong>&#39;Generar Layout de Cobro Sindical&#39;</strong> y la aplicación automática de descuentos de nómina.</td></tr>
-<tr><td><strong>Punto C.7</strong></td><td><strong>Control Estricto de Cartera Vencida y Licencias</strong></td><td>Se visualiza en <strong>&#39;Cobranza, Convenios y Reestructuras&#39;</strong> con los botones <strong>&#39;Suspensión Temporal&#39;</strong>, <strong>&#39;Congelar / Demanda&#39;</strong> y <strong>&#39;Consolidar en Nuevo Contrato&#39;</strong>.</td></tr>
-<tr><td><strong>Punto C.8</strong></td><td><strong>Evaluación por Estabilidad de Nómina (Scoring Ágil)</strong></td><td>Se visualiza en <strong>&#39;Suite Ejecutiva → 3. Simulador &amp; Scoring Aprobador&#39;</strong>, calificando antigüedad laboral y capacidad de pago quincenal con el botón <strong>&#39;Emitir Dictamen de Scoring para Aprobador&#39;</strong>.</td></tr>
-<tr><td><strong>Punto C.9</strong></td><td><strong>Transparencia Total y Cero Comisiones Ocultas</strong></td><td>Se visualiza en <strong>&#39;Suite Ejecutiva → 3. Simulador &amp; Scoring&#39;</strong> (Tabla de Amortización con Capital, Interés, IVA y Seguro de Vida de <strong>$22.85</strong>) y en <strong>&#39;4. Pizarra Competencia&#39;</strong>.</td></tr>
-<tr><td><strong>Punto C.10</strong></td><td><strong>Convenios Institucionales Exclusivos (STSGECH, Supremo Tribunal, Bajío y Sur)</strong></td><td>Se visualiza en <strong>&#39;Buzón Pre-Solicitudes&#39;</strong>, <strong>&#39;Expedientes&#39;</strong>, <strong>&#39;Conciliación Quincenal&#39;</strong> y <strong>&#39;Suite Ejecutiva → 5. Hubs Nacionales&#39;</strong>, con reglas parametrizadas por sindicato y dependencia.</td></tr>
+<tr><td><strong>Punto C.1</strong></td><td><strong>Consolidación como SOFOM de Alta Calidad</strong></td><td>Se visualiza en <strong>'Dashboard Cartera'</strong> y en <strong>'Suite Ejecutiva → 1. Pitch Inversionistas (Láminas 1 y 2)'</strong>, operando sobre una base de datos central única que sustituye al 100% los archivos de Excel.</td></tr>
+<tr><td><strong>Punto C.2</strong></td><td><strong>Certificación y Calificación ASOFOM</strong></td><td>Se visualiza en la pestaña <strong>'Bitácora Forense (5 Años)'</strong> mediante el botón verde <strong>'Verificar Integridad SHA-256'</strong> y en <strong>'Prevención PLD/FT'</strong> mediante el botón <strong>'Descargar Acta CNBV/UIF'</strong>.</td></tr>
+<tr><td><strong>Punto C.3</strong></td><td><strong>Trayectoria e Historia Institucional (+15 años)</strong></td><td>Se visualiza en <strong>'Dashboard Cartera'</strong> y en <strong>'Fondeo e Inversionistas'</strong>, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo.</td></tr>
+<tr><td><strong>Punto C.4</strong></td><td><strong>Semáforo de Morosidad y Supervisión por 3 Hubs</strong></td><td>Se visualiza en el <strong>Dashboard Financiero ('Dashboard Cartera')</strong>, columna <strong>'Salud del Crédito / Semáforo'</strong> con íconos <strong>🟢 Verde</strong>, <strong>🟡 Amarillo</strong> y <strong>🔴 Rojo</strong>, y en los botones superiores de filtro por <strong>Chihuahua</strong>, <strong>León</strong> y <strong>Cancún</strong>.</td></tr>
+<tr><td><strong>Punto C.5</strong></td><td><strong>Enfoque en Crédito de Nómina Humano y Tecnológico</strong></td><td>Se visualiza en el <strong>Buzón Pre-Solicitudes</strong>, en el <strong>Escáner Móvil</strong> de promotores y en el <strong>'Asistente IA 24/7'</strong> (público e interno), que agilizan la atención al trabajador sin trámites engorrosos.</td></tr>
+<tr><td><strong>Punto C.6</strong></td><td><strong>Retención Directa Gubernamental y Sindical</strong></td><td>Se visualiza en la pestaña <strong>'Conciliación Quincenal'</strong>, mediante el botón <strong>'Generar Layout de Cobro Sindical'</strong> y la aplicación automática de descuentos de nómina.</td></tr>
+<tr><td><strong>Punto C.7</strong></td><td><strong>Control Estricto de Cartera Vencida y Licencias</strong></td><td>Se visualiza en <strong>'Cobranza, Convenios y Reestructuras'</strong> con los botones <strong>'Suspensión Temporal'</strong>, <strong>'Congelar / Demanda'</strong> y <strong>'Consolidar en Nuevo Contrato'</strong>.</td></tr>
+<tr><td><strong>Punto C.8</strong></td><td><strong>Evaluación por Estabilidad de Nómina (Scoring Ágil)</strong></td><td>Se visualiza en <strong>'Suite Ejecutiva → 3. Simulador &amp; Scoring Aprobador'</strong>, calificando antigüedad laboral y capacidad de pago quincenal con el botón <strong>'Emitir Dictamen de Scoring para Aprobador'</strong>.</td></tr>
+<tr><td><strong>Punto C.9</strong></td><td><strong>Transparencia Total y Cero Comisiones Ocultas</strong></td><td>Se visualiza en <strong>'Suite Ejecutiva → 3. Simulador &amp; Scoring'</strong> (Tabla de Amortización con Capital, Interés, IVA y Seguro de Vida de <strong>$22.85</strong>) y en <strong>'4. Pizarra Competencia'</strong>.</td></tr>
+<tr><td><strong>Punto C.10</strong></td><td><strong>Convenios Institucionales Exclusivos (STSGECH, Supremo Tribunal, Bajío y Sur)</strong></td><td>Se visualiza en <strong>'Buzón Pre-Solicitudes'</strong>, <strong>'Expedientes'</strong>, <strong>'Conciliación Quincenal'</strong> y <strong>'Suite Ejecutiva → 5. Hubs Nacionales'</strong>, con reglas parametrizadas por sindicato y dependencia.</td></tr>
 </tbody></table>
 <hr/>
 <h3>✅ Checklist de Dominio del Día 5</h3>
 <ul>
-<li>[ ] Dirección General presentó las 10 láminas de <strong>&#39;1. Pitch Inversionistas&#39;</strong> activando la <strong>&#39;Guía de Presentación&#39;</strong>.</li>
-<li>[ ] Dirección ejecutó el botón <strong>&#39;Calibrar Simulador con Cartera Real&#39;</strong> en <strong>&#39;2. Simulador ROI 36 Meses&#39;</strong> y proyectó escenarios de crecimiento.</li>
-<li>[ ] Mesa de Control emitió un dictamen en <strong>&#39;3. Simulador &amp; Scoring Aprobador&#39;</strong> y verificó la tabla de amortización quincenal.</li>
-<li>[ ] El equipo comercial editó una tasa en <strong>&#39;4. Pizarra Competencia&#39;</strong> con el botón <strong>&#39;Actualizar&#39;</strong> y la guardó con el botón verde <strong><code>✓</code></strong>.</li>
-<li>[ ] Dirección y el Oficial de Cumplimiento verificaron en vivo la <strong>Tabla de Mapeo de los 10 Puntos de la Visión Ejecutiva</strong> y realizaron preguntas operativas al <strong>&#39;Asistente IA Interno 24/7&#39;</strong>.</li>
+<li>[ ] Dirección General presentó las 10 láminas de <strong>'1. Pitch Inversionistas'</strong> activando la <strong>'Guía de Presentación'</strong>.</li>
+<li>[ ] Dirección ejecutó el botón <strong>'Calibrar Simulador con Cartera Real'</strong> en <strong>'2. Simulador ROI 36 Meses'</strong> y proyectó escenarios de crecimiento.</li>
+<li>[ ] Mesa de Control emitió un dictamen en <strong>'3. Simulador &amp; Scoring Aprobador'</strong> y verificó la tabla de amortización quincenal.</li>
+<li>[ ] El equipo comercial editó una tasa en <strong>'4. Pizarra Competencia'</strong> con el botón <strong>'Actualizar'</strong> y la guardó con el botón verde <strong><code>✓</code></strong>.</li>
+<li>[ ] Dirección y el Oficial de Cumplimiento verificaron en vivo la <strong>Tabla de Mapeo de los 10 Puntos de la Visión Ejecutiva</strong> y realizaron preguntas operativas al <strong>'Asistente IA Interno 24/7'</strong>.</li>
 </ul>
 <hr/>
 <h2>10. ✍️ FORMATO DE ACTA DE CIERRE DE CAPACITACIÓN Y RECEPCIÓN OPERATIVA (FASE 1)</h2>

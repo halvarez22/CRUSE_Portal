@@ -61,9 +61,9 @@ Con la Fase 3, Microfinanciera Cruse culmina su evolución hacia un **Ecosistema
 | Ubicación en el Portal | Nombre del Módulo de Fase 3 | Botones Principales que Operarás |
 | :--- | :--- | :--- |
 | **Barra Superior del Portal Público / Simulador** | **App Cruse — Subir Documentos y Firmar Contrato (Autoservicio 24/7)** | Botón **`Instalar App Cruse`**, botón **`Subir mis Documentos (Con Folio)`**, campos **`Folio de Pre-Solicitud`** y **`Teléfono Celular (10 dígitos)`**, y botones de carga para los **4 Documentos**. |
-| **Dentro del Portal de Autoservicio del Cliente (al completar 4/4 documentos)** | **Firma Digital con Validez Legal (NOM-151) y Biometría Facial** | Casillas de **`Aceptación de Contrato y CAT`**, **`Autorización de Descuento por Nómina`** y **`Consentimiento Biométrico LFPDPPP`**, botón **`Iniciar Prueba de Vida en Cámara`** y botón **`Estampar Firma Digital NOM-151`**. |
-| **Portal Administrativo → Pestaña: Migración Nube & Rollback (Fase 3.3)** | **Motor de Saneamiento Determinista, Reconciliación y Rollback Criptográfico** | Conmutador **`Modo: STAGING_PARALLEL / PRODUCTION_CUTOVER_ACTIVE`**, botón **`Ingestar y Sanear Sábana Histórica Excel (Idempotente)`** y botón **`Ejecutar Rollback`**. |
-| **Portal Administrativo → Pestaña: Tablero Operaciones & Hub Integración (Fase 3.4)** | **Single Pane of Glass + Hub de Layouts Institucionales + Conectores Zero-Trust** | Botones de filtro **`Nacional (3 Hubs)` / `Hub CHIHUAHUA` / `Hub LEON` / `Hub CANCUN`**, botón **`Generar Layout Saliente`**, botón **`Ingestar y Validar Layout Entrante`** y botones **`Sync HMAC Válido`** / **`Simular Firma Alterada`**. |
+| **Dentro del Portal de Autoservicio del Cliente (al completar 4/4 documentos)** | **Firma Digital con Validez Legal (NOM-151) y Biometría Facial** | Casillas de **`Aceptación de Contrato y CAT`**, **`Autorización de Descuento por Nómina`** y **`Consentimiento Biométrico LFPDPPP`**, botón **`Iniciar Prueba de Vida en Cámara`**, botón **`Estampar Firma Digital NOM-151`** y descarga del **`"Anexo 1 — Tabla para Compensación"`**. |
+| **Portal Administrativo → Pestaña: `"Migración Nube & Rollback"` (Fase 3.3)** | **Motor de Saneamiento Determinista, Reconciliación y Rollback Criptográfico** | Conmutador **`Modo: STAGING_PARALLEL / PRODUCTION_CUTOVER_ACTIVE`**, botón **`Ingestar y Sanear Sábana Histórica Excel (Idempotente)`** y botón **`Ejecutar Rollback`**. |
+| **Portal Administrativo → Pestaña: `"Hub de Integración & Conciliación"` (Fase 3.4)** | **Single Pane of Glass + Hub de Layouts Institucionales + Conectores Zero-Trust** | Botones de filtro **`Nacional (3 Hubs)` / `Hub CHIHUAHUA` / `Hub LEON` / `Hub CANCUN`**, botón **`Generar Layout Saliente`**, botón **`Ingestar y Validar Layout Entrante`** y botones **`Sync HMAC Válido`** / **`Simular Firma Alterada`**. |
 
 ---
 
@@ -116,18 +116,22 @@ Antes de activar la cámara, el cliente debe marcar personalmente las **3 casill
 2. Una vez superada la prueba de vida, el cliente presiona **`Estampar Firma Digital NOM-151`**.
 3. El sistema emite de inmediato el **Certificado de Firma Digital y Constancia de Conservación NOM-151**, mostrando en pantalla el **Folio del Certificado**, el **Sello de Tiempo Oficial UTC** y la **Huella Criptográfica SHA-256** del contrato firmado.
 
+### Paso 4: Emisión del `"Anexo 1 — Tabla para Compensación"` Vinculado a la Constancia NOM-151
+1. Tanto al concluir la firma digital como desde el módulo **'3. Simulador & Scoring Aprobador'**, presiona el botón **`"Anexo 1 — Tabla para Compensación"`**.
+2. El sistema genera el documento oficial membretado de **Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.** (RFC **`MCR1002231B7`**, domicilio **`Vía Citadela #5710 Int 401, Fracc. Saucito, C.P. 31110, Chihuahua, Chih.`**) con **2 tantos en una sola hoja** (*Tanto 1: Empresa / Expediente* y *Tanto 2: Empleado*), línea punteada de corte, desglose de compensación quincenal y el **Folio de la Constancia NOM-151** pre-impreso para respaldo jurídico y contable.
+
 ### ✅ Checklist de Dominio del Día 2 (Fase 3)
 - [ ] Verifiqué que el sistema no permite firmar si falta alguno de los 3 consentimientos legales.
-- [ ] Completé la Prueba de Vida Activa y obtuve la Constancia Oficial NOM-151 del contrato.
+- [ ] Completé la Prueba de Vida Activa, obtuve la Constancia Oficial NOM-151 del contrato y descargué el **`"Anexo 1 — Tabla para Compensación"`** a 2 tantos.
 - [ ] Verifiqué en la **Bitácora Forense (5 Años)** el registro inmutable `Firma Digital de Contrato NOM-151 y Prueba de Vida (App Cruse)`.
 
 ---
 
-## 6. ☁️ DÍA 3 (ENTREGABLE 3.3): MIGRACIÓN HISTÓRICA DE EXCEL A LA NUBE Y PLAN DE REGRESO INSTANTÁNEO
+## 6. ☁️ DÍA 3 (ENTREGABLE 3.3): `"Migración Nube & Rollback"` Y PLAN DE REGRESO INSTANTÁNEO
 
-### Paso 1: Ingreso al Módulo de Migración Nube & Rollback
+### Paso 1: Ingreso al Módulo de `"Migración Nube & Rollback"`
 1. Inicia sesión en el Portal Administrativo con tu cuenta y código SMS de 6 dígitos.
-2. Haz clic en la pestaña **`Migración Nube & Rollback (Fase 3.3)`**.
+2. Haz clic en la pestaña **`"Migración Nube & Rollback"`**.
 3. Verás que por seguridad el sistema opera inicialmente en **`Modo: STAGING_PARALLEL`** (esquema paralelo seguro que no altera la operación diaria de las Fases 1 y 2).
 
 ### Paso 2: Ingesta, Saneamiento Automático y Cuadre Centavo a Centavo
@@ -149,10 +153,10 @@ Antes de activar la cámara, el cliente debe marcar personalmente las **3 casill
 
 ---
 
-## 7. 📊 DÍA 4 (ENTREGABLE 3.4 — PARTE A): TABLERO WEB DE OPERACIONES UNIFICADO (SINGLE PANE OF GLASS)
+## 7. 📊 DÍA 4 (ENTREGABLE 3.4 — PARTE A): `"Hub de Integración & Conciliación"` (SINGLE PANE OF GLASS)
 
 ### Paso 1: Consulta Consolidada de las Fases 1, 2 y 3 por Hub Nacional
-1. En el Portal Administrativo, abre la pestaña **`Tablero Operaciones & Hub Integración (Fase 3.4)`**.
+1. En el Portal Administrativo, abre la pestaña **`"Hub de Integración & Conciliación"`**.
 2. En la esquina superior derecha encontrarás los **4 botones de filtro geográfico**:
    - **`Nacional (3 Hubs)`** — Vista consolidada de toda la SOFOM.
    - **`Hub CHIHUAHUA`** — Convenios estatales, Supremo Tribunal y STSGECH.
