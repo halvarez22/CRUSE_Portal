@@ -3,7 +3,8 @@ import { BookOpen, CheckCircle2, ChevronDown, ChevronUp, FileCheck, HelpCircle, 
 
 export type AdminTabId =
   | 'dashboard' | 'pre_applications' | 'executive' | 'expedientes' | 'reconciliation'
-  | 'collections' | 'funding' | 'credit_bureau' | 'pld' | 'audit' | 'users';
+  | 'collections' | 'funding' | 'credit_bureau' | 'pld' | 'audit'
+  | 'cloud_migration' | 'operations_hub' | 'users';
 
 export interface ModuleFriendlyGuide {
   tabNumber: number;
@@ -144,9 +145,35 @@ export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
       'Paso 3: Cuando un auditor pida comprobar que ningún registro fue borrado ni alterado, presiona el botón verde superior derecho de verificación.',
     ],
   },
-  users: {
+  cloud_migration: {
     tabNumber: 11,
-    friendlyTitle: '11. Usuarios y Accesos por Celular',
+    friendlyTitle: '11. Migración Nube & Rollback (Fase 3.3)',
+    whatItDoes:
+      'Migra las sábanas históricas de Excel al sistema central en la nube limpiando automáticamente fechas y monedas, verificando que los saldos cuadren centavo a centavo ($0.00 de diferencia) e incluye un botón de Plan de Regreso (Rollback Instantáneo).',
+    contractDeliverable:
+      'Contrato Fase 3 — Entregable 3.3: Motor de Migración Histórica Excel a la Nube con saneamiento determinista, idempotencia total y Rollback criptográfico verificado por huella SHA-256.',
+    threeSimpleSteps: [
+      'Paso 1: Verifica en la parte superior el modo de operación ("STAGING_PARALLEL" o "PRODUCTION_CUTOVER_ACTIVE").',
+      'Paso 2: Haz clic en "Ingestar y Sanear Sábana Histórica Excel (Idempotente)" y revisa las transformaciones aplicadas en la tabla.',
+      'Paso 3: Si deseas revertir un lote migrado en menos de 1 segundo, presiona el botón rojo "Ejecutar Rollback" y comprueba su huella SHA-256.',
+    ],
+  },
+  operations_hub: {
+    tabNumber: 12,
+    friendlyTitle: '12. Tablero Operaciones & Hub Layouts (Fase 3.4)',
+    whatItDoes:
+      'Reúne en una sola pantalla gerencial (Single Pane of Glass) las métricas de las Fases 1, 2 y 3 filtrables por Chihuahua, León y Cancún, e integra el Hub de Layouts (.TXT de 60 caracteres y .CSV Pipe) para el Supremo Tribunal y Patrones.',
+    contractDeliverable:
+      'Contrato Fase 3 — Entregable 3.4: Tablero Web de Operaciones Unificado por 3 Hubs Nacionales, Hub de Integración por Layouts con aislamiento de líneas truncadas y Conectores Internos Zero-Trust.',
+    threeSimpleSteps: [
+      'Paso 1: Usa los botones superiores ("Nacional (3 Hubs)", "Chihuahua", "León" o "Cancún") para filtrar los indicadores de las 3 Fases.',
+      'Paso 2: En el Hub de Layouts selecciona el conector y formato (.TXT o .CSV) para generar un layout saliente o validar uno entrante.',
+      'Paso 3: En la tabla inferior prueba los Conectores Internos Zero-Trust con "Sync HMAC Válido" o "Simular Firma Alterada".',
+    ],
+  },
+  users: {
+    tabNumber: 13,
+    friendlyTitle: '13. Usuarios y Accesos por Celular',
     whatItDoes:
       'Exclusivo para Dirección / Administrador: permite dar de alta al equipo registrando su número celular para que reciban su código de acceso por mensaje SMS (sin instalar aplicaciones), cambiar permisos o cortar el acceso al instante si alguien causa baja.',
     contractDeliverable:
@@ -186,7 +213,7 @@ export const ModuleFriendlyGuideBanner: React.FC<ModuleFriendlyGuideBannerProps>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Ayuda en Línea · Módulo {guide.tabNumber} de 11
+                  Ayuda en Línea · Módulo {guide.tabNumber} de 13
                 </span>
                 <h2 className="text-sm md:text-base font-extrabold text-white">{guide.friendlyTitle}</h2>
               </div>
@@ -275,7 +302,7 @@ export const ModuleFriendlyGuideBanner: React.FC<ModuleFriendlyGuideBannerProps>
                 <div key={item.tabNumber} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                     <h4 className="text-sm font-extrabold text-[#00D1FF]">{item.friendlyTitle}</h4>
-                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300">Módulo {item.tabNumber} de 11</span>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300">Módulo {item.tabNumber} de 13</span>
                   </div>
                   <p className="text-xs text-slate-200 leading-relaxed"><strong className="text-white">¿Qué hace en tu día a día?: </strong>{item.whatItDoes}</p>
                   <p className="text-xs text-emerald-300 leading-relaxed"><strong className="text-white">Punto del Contrato Fase 1: </strong>{item.contractDeliverable}</p>

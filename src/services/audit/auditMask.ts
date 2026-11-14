@@ -112,6 +112,20 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return 'Pre-Solicitud Registrada desde Simulador Público (NO LEÍDO)';
     case 'PRE_APPLICATION_STATUS_UPDATED':
       return 'Actualización de Estatus en Buzón de Pre-Solicitudes';
+    case 'CLIENT_DOC_UPLOADED_ZERO_EXIF':
+      return 'Subida de Documento Digital con Purga Zero-EXIF (App Cruse)';
+    case 'CLIENT_FOLIO_LOCKED_2H':
+      return 'Bloqueo Temporal de 2 Horas por Intentos Fallidos (App Cruse)';
+    case 'NOM151_CONTRACT_SIGNED':
+      return 'Firma Digital de Contrato NOM-151 y Prueba de Vida (App Cruse)';
+    case 'CLOUD_MIGRATION_BATCH_EXECUTED':
+      return 'Ejecución de Lote de Migración Histórica Excel -> Nube (Fase 3.3)';
+    case 'CLOUD_MIGRATION_ROLLBACK_VERIFIED':
+      return 'Plan de Regreso (Rollback) Criptográfico Verificado (Fase 3.3)';
+    case 'INSTITUTIONAL_LAYOUT_EXCHANGED':
+      return 'Intercambio de Layout Institucional con Tercero (Fase 3.4)';
+    case 'CONNECTOR_ZEROTRUST_SYNC':
+      return 'Sincronización de Conector Interno Zero-Trust mTLS/HMAC (Fase 3.4)';
     case 'CONFIG_CHANGE':
       return 'Cambio de Configuración Operativa';
     case 'SCREEN_VIEW':

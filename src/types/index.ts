@@ -160,38 +160,17 @@ export interface AuthContext {
 
 /** Permisos de la matriz RBAC (fuente de verdad en src/config/rbacPolicy.ts). */
 export type RbacPermission =
-  | 'expedientes:create'
-  | 'expedientes:list'
-  | 'expedientes:activate'
-  | 'audit:read'
-  | 'reconciliation:process'
-  | 'reconciliation:read'
-  | 'reconciliation:sample-data'
-  | 'reconciliation:manual-override'
-  | 'special_credit:manage'
-  | 'notes:manage'
-  | 'funding:read'
-  | 'funding:manage'
-  | 'dashboard:read_kpis'
-  | 'dashboard:read'
-  | 'dashboard:read_pii'
-  | 'users:manage'
-  | 'credit_bureau:read'
-  | 'credit_bureau:generate'
-  | 'credit_bureau:catalogs_manage'
-  | 'collections:read'
-  | 'collections:manage'
-  | 'restructures:execute'
-  | 'pld:read'
-  | 'pld:screen'
-  | 'pld:manage_lists'
-  | 'pld:resolve_alert'
-  | 'executive:read'
-  | 'executive:scoring'
-  | 'executive:competitors_manage'
-  | 'executive:internal_ai'
-  | 'pre_applications:read'
-  | 'pre_applications:manage';
+  | 'expedientes:create' | 'expedientes:list' | 'expedientes:activate' | 'audit:read'
+  | 'reconciliation:process' | 'reconciliation:read' | 'reconciliation:sample-data' | 'reconciliation:manual-override'
+  | 'special_credit:manage' | 'notes:manage' | 'funding:read' | 'funding:manage'
+  | 'dashboard:read_kpis' | 'dashboard:read' | 'dashboard:read_pii' | 'users:manage'
+  | 'credit_bureau:read' | 'credit_bureau:generate' | 'credit_bureau:catalogs_manage'
+  | 'collections:read' | 'collections:manage' | 'restructures:execute'
+  | 'pld:read' | 'pld:screen' | 'pld:manage_lists' | 'pld:resolve_alert'
+  | 'executive:read' | 'executive:scoring' | 'executive:competitors_manage' | 'executive:internal_ai'
+  | 'pre_applications:read' | 'pre_applications:manage'
+  | 'migration:read' | 'migration:execute' | 'migration:rollback'
+  | 'operations_hub:read' | 'operations_hub:manage';
 
 /** Datos de enrolamiento 2FA: solo se entregan mientras el usuario NO está enrolado. */
 export interface TotpEnrollment {
@@ -231,41 +210,20 @@ export interface UserUpdateAuditDiff {
 }
 
 export type AuditAction =
-  | 'LOGIN_2FA_SUCCESS'
-  | 'LOGIN_FAILURE'
-  | 'SMS_RATE_LIMIT_EXCEEDED'
-  | 'LOGOUT'
-  | 'ACCESS_DENIED'
-  | 'EXPEDIENTE_CREATE'
-  | 'EXPEDIENTE_SYNC'
-  | 'EXPEDIENTE_PURGE'
-  | 'EXPEDIENTE_VIEW'
-  | 'EXPEDIENTE_ACTIVATE'
-  | 'LAYOUT_SIF_GENERATE'
-  | 'SCREEN_VIEW'
-  | 'RECONCILIATION_BATCH_SEALED'
-  | 'RECONCILIATION_BATCH_REJECTED'
-  | 'PAYMENT_APPLIED'
-  | 'USER_CREATE'
-  | 'USER_UPDATE'
-  | 'CONFIG_CHANGE'
-  | 'CREDIT_BUREAU_REPORT_GENERATED'
-  | 'CREDIT_BUREAU_CATALOG_UPDATED'
-  | 'LOAN_FROZEN_EXTRAJUDICIAL'
-  | 'LOAN_AGREEMENT_REGISTERED'
-  | 'LOAN_SUSPENSION_UPDATED'
-  | 'LOAN_RESTRUCTURED'
-  | 'PAYROLL_EMISSION_GENERATED'
-  | 'PAYROLL_FILE_PREVIEWED'
-  | 'PLD_LIST_INGESTED'
-  | 'PLD_PORTFOLIO_SCREENED'
-  | 'PLD_HIT_DETECTED'
-  | 'PLD_ALERT_RESOLVED'
-  | 'SCORING_EVALUATED'
-  | 'COMPETITOR_BENCHMARK_UPDATED'
-  | 'INTERNAL_AI_QUERY'
+  | 'LOGIN_2FA_SUCCESS' | 'LOGIN_FAILURE' | 'SMS_RATE_LIMIT_EXCEEDED' | 'LOGOUT' | 'ACCESS_DENIED'
+  | 'EXPEDIENTE_CREATE' | 'EXPEDIENTE_SYNC' | 'EXPEDIENTE_PURGE' | 'EXPEDIENTE_VIEW' | 'EXPEDIENTE_ACTIVATE'
+  | 'LAYOUT_SIF_GENERATE' | 'SCREEN_VIEW' | 'RECONCILIATION_BATCH_SEALED' | 'RECONCILIATION_BATCH_REJECTED'
+  | 'PAYMENT_APPLIED' | 'USER_CREATE' | 'USER_UPDATE' | 'CONFIG_CHANGE'
+  | 'CREDIT_BUREAU_REPORT_GENERATED' | 'CREDIT_BUREAU_CATALOG_UPDATED'
+  | 'LOAN_FROZEN_EXTRAJUDICIAL' | 'LOAN_AGREEMENT_REGISTERED' | 'LOAN_SUSPENSION_UPDATED' | 'LOAN_RESTRUCTURED'
+  | 'PAYROLL_EMISSION_GENERATED' | 'PAYROLL_FILE_PREVIEWED'
+  | 'PLD_LIST_INGESTED' | 'PLD_PORTFOLIO_SCREENED' | 'PLD_HIT_DETECTED' | 'PLD_ALERT_RESOLVED'
+  | 'SCORING_EVALUATED' | 'COMPETITOR_BENCHMARK_UPDATED' | 'INTERNAL_AI_QUERY'
   | 'TOOL_CALL_RATE_LIMIT_EXCEEDED' | 'CIB_BATCH_VALIDATED' | 'PLD_SLA_CLOCK_EVALUATED' | 'PLD_SITI_LAYOUT_GENERATED'
-  | 'PRE_APPLICATION_CREATED' | 'PRE_APPLICATION_STATUS_UPDATED';
+  | 'PRE_APPLICATION_CREATED' | 'PRE_APPLICATION_STATUS_UPDATED'
+  | 'CLIENT_DOC_UPLOADED_ZERO_EXIF' | 'CLIENT_FOLIO_LOCKED_2H' | 'NOM151_CONTRACT_SIGNED'
+  | 'CLOUD_MIGRATION_BATCH_EXECUTED' | 'CLOUD_MIGRATION_ROLLBACK_VERIFIED'
+  | 'INSTITUTIONAL_LAYOUT_EXCHANGED' | 'CONNECTOR_ZEROTRUST_SYNC';
 
 export interface AuditEvent {
   id: string;
@@ -584,3 +542,6 @@ export interface PldComplianceOverview {
 export * from './executive';
 export * from './phase2Compliance';
 export * from './preApplications';
+export * from './clientSelfService';
+export * from './cloudMigration';
+export * from './operationsIntegrationHub';

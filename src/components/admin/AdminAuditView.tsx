@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet, Presentation, Bot, Mail, BookOpen } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, FileText, Hash, Clock, Filter, FileCheck2, LayoutDashboard, Users, Landmark, FileSpreadsheet, Presentation, Bot, Mail, BookOpen, Database, Globe } from 'lucide-react';
 import { AuthSession, AuditEvent, ExpedienteItem } from '../../types';
 import { formatAuditActionLabel } from '../../services/audit/auditMask';
 import { ReconciliationView } from './ReconciliationView';
@@ -10,6 +10,8 @@ import { CreditBureauView } from './CreditBureauView';
 import { CollectionsAndAgreementsView } from './CollectionsAndAgreementsView';
 import { PldComplianceView } from './PldComplianceView';
 import { PreApplicationsInboxPanel } from './PreApplicationsInboxPanel';
+import { CloudMigrationAndRollbackView } from './CloudMigrationAndRollbackView';
+import { OperationsAndIntegrationHubView } from './OperationsAndIntegrationHubView';
 import { DashboardLayout } from '../dashboard/DashboardLayout';
 import { ExecutiveSuiteView } from '../executive/ExecutiveSuiteView';
 import { InternalAiAssistantDrawer } from '../executive/InternalAiAssistantDrawer';
@@ -265,6 +267,24 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
             <Hash className="w-4 h-4" />
             <span>10. Historial de Seguridad</span>
           </button>
+          <button
+            onClick={() => setActiveTab('cloud_migration')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'cloud_migration' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/30' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            <span>11. Migración Nube & Rollback (Fase 3.3)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('operations_hub')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'operations_hub' ? 'bg-gradient-to-r from-[#249E82] to-[#396CAE] text-white shadow-lg' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            <span>12. Tablero Operaciones & Hub (Fase 3.4)</span>
+          </button>
           {session.user.role === 'admin' && (
             <button
               onClick={() => setActiveTab('users')}
@@ -273,7 +293,7 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>11. Usuarios y Accesos</span>
+              <span>13. Usuarios y Accesos</span>
             </button>
           )}
         </div>
@@ -451,6 +471,10 @@ export const AdminAuditView: React.FC<AdminAuditViewProps> = ({
         {activeTab === 'collections' && <CollectionsAndAgreementsView session={session} />}
 
         {activeTab === 'pld' && <PldComplianceView session={session} />}
+
+        {activeTab === 'cloud_migration' && <CloudMigrationAndRollbackView session={session} />}
+
+        {activeTab === 'operations_hub' && <OperationsAndIntegrationHubView session={session} />}
 
         {activeTab === 'users' && session.user.role === 'admin' && <UserManagementView session={session} />}
       </main>

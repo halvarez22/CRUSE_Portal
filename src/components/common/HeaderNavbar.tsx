@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Menu, X, ShieldCheck } from 'lucide-react';
+import { Lock, Menu, X, ShieldCheck, Smartphone } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { ThemeMode } from '../../types';
 
@@ -7,12 +7,14 @@ interface HeaderNavbarProps {
   theme: ThemeMode;
   onToggleTheme: () => void;
   onOpenInstitutionalAccess?: () => void;
+  onOpenClientSelfService?: () => void;
 }
 
 export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   theme,
   onToggleTheme,
   onOpenInstitutionalAccess,
+  onOpenClientSelfService,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -65,6 +67,20 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Theme Toggle Button */}
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+
+            {/* App Cruse — Autoservicio Digital (Fase 3.1 y 3.2) */}
+            {onOpenClientSelfService && (
+              <button
+                onClick={onOpenClientSelfService}
+                type="button"
+                className="px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 border border-emerald-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
+                aria-label="Abrir App Cruse para Subir Documentos y Firmar Contrato con Folio"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-white" />
+                <span className="hidden lg:inline">Subir mis Documentos (Con Folio)</span>
+                <span className="lg:hidden">App Cruse</span>
+              </button>
+            )}
 
             {/* Institutional Access (2FA) Button */}
             <button

@@ -25,6 +25,10 @@ import { collectionsRouter } from './collectionsRouter';
 import { pldRouter } from './pldRouter';
 import { executiveRouter } from './executiveRouter';
 import { preApplicationsRouter } from './preApplicationsRouter';
+import { clientSelfServiceRouter } from './clientSelfServiceRouter';
+import { digitalSignatureRouter } from './digitalSignatureRouter';
+import { cloudMigrationRouter } from './cloudMigrationRouter';
+import { integrationHubRouter } from './integrationHubRouter';
 
 export const privateApiRouter = Router();
 
@@ -52,6 +56,12 @@ privateApiRouter.use('/collections', collectionsRouter);
 privateApiRouter.use('/pld', pldRouter);
 privateApiRouter.use('/executive', executiveRouter);
 privateApiRouter.use('/pre-applications', preApplicationsRouter);
+
+// Sub-enrutadores de Fase 3: Ecosistema Fintech (CRUSE-APO-2026-047 a 050 / CRUSE-APO-2026-062)
+privateApiRouter.use('/client-self-service', clientSelfServiceRouter);
+privateApiRouter.use('/digital-signature', digitalSignatureRouter);
+privateApiRouter.use('/cloud-migration', cloudMigrationRouter);
+privateApiRouter.use('/integration-hub', integrationHubRouter);
 
 // Sub-enrutador de línea abierta Crédito Especial (RN-01) y Block de Notas (RN-02, RN-04)
 privateApiRouter.use('/', specialCreditAndNotesRouter);

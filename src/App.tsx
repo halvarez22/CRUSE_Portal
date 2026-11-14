@@ -10,6 +10,7 @@ import { AiAssistantPublic } from './components/public/AiAssistantPublic';
 import { ContactEcosystemSlab } from './components/public/ContactEcosystemSlab';
 import { FooterPublic } from './components/public/FooterPublic';
 import { Login2FAModal } from './components/auth/Login2FAModal';
+import { ClientSelfServiceAppModal } from './components/public/ClientSelfServiceAppModal';
 import { PromotorScannerView } from './components/promotor/PromotorScannerView';
 import { AdminAuditView } from './components/admin/AdminAuditView';
 import { AuthSession } from './types';
@@ -38,6 +39,7 @@ function persistSessionStorage(sess: AuthSession): void {
 export default function App() {
   const { theme, toggleTheme } = useTheme();
   const [show2FaModal, setShow2FaModal] = useState(false);
+  const [showClientSelfServiceModal, setShowClientSelfServiceModal] = useState(false);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [currentView, setCurrentView] = useState<'public' | 'private'>('public');
 
@@ -165,6 +167,7 @@ export default function App() {
         <HeaderNavbar
           theme={theme}
           onToggleTheme={toggleTheme}
+          onOpenClientSelfService={() => setShowClientSelfServiceModal(true)}
           onOpenInstitutionalAccess={() => {
             if (session) {
               setCurrentView('private');
@@ -188,6 +191,12 @@ export default function App() {
 
       {/* Footer with Regulatory Seals */}
       <FooterPublic />
+
+      {/* Modal de Autoservicio Digital del Cliente (App Cruse PWA Fase 3.1 y Firma NOM-151 Fase 3.2) */}
+      <ClientSelfServiceAppModal
+        isOpen={showClientSelfServiceModal}
+        onClose={() => setShowClientSelfServiceModal(false)}
+      />
 
       {/* Modal Institucional 2FA vía Código SMS con Rate Limiting Anti-SMS-Pumping */}
       <Login2FAModal
