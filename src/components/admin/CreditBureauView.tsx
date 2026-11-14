@@ -120,7 +120,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
     URL.revokeObjectURL(url);
   };
 
-  const handleGenerateAndDownload = async (format: 'CSV_PF' | 'PIPE_PF' | 'CSV_PM') => {
+  const handleGenerateAndDownload = async (format: 'CSV_PF' | 'PIPE_PF' | 'CSV_PM' | 'TXT_PM_V5') => {
     setSealing(true);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -139,6 +139,8 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
       const base = data.result.officialFileNameBase;
       if (format === 'PIPE_PF' && data.result.pfPipeContent) {
         triggerBrowserDownload(`${base}_PF.txt`, data.result.pfPipeContent, 'text/plain;charset=utf-8');
+      } else if (format === 'TXT_PM_V5' && data.result.pmFixedTxtContent) {
+        triggerBrowserDownload(`${base}_PM_v5.txt`, data.result.pmFixedTxtContent, 'text/plain;charset=utf-8');
       } else if (format === 'CSV_PM' && data.result.pmCsvContent) {
         triggerBrowserDownload(`${base}_PM.csv`, data.result.pmCsvContent, 'text/csv;charset=utf-8');
       } else if (data.result.pfCsvContent) {
@@ -152,6 +154,31 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
       setErrorMsg(err instanceof Error ? err.message : 'Fallo en generación');
     } finally {
       setSealing(false);
+    }
+  };
+
+  const handleDownloadInsuranceOrCoi = async (kind: 'ROSTER' | 'COI_POLIZA') => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const endpoint = kind === 'ROSTER' ? '/api/insurance-coi/roster' : '/api/insurance-coi/poliza';
+      const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${session.token}` } });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        report?: { csvContent: string; totalInsuredCount: number };
+        poliza?: { csvContent: string; polizaFolio: string; totalDebits: string };
+      };
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Error al exportar reporte.');
+      if (kind === 'ROSTER' && data.report) {
+        triggerBrowserDownload('LISTA_SEGUROS_DE_VIDA_ADMON_35K.csv', data.report.csvContent, 'text/csv;charset=utf-8');
+        setSuccessMsg(`Padrón Aseguradora ($35,000) descargado (${data.report.totalInsuredCount} asegurados).`);
+      } else if (kind === 'COI_POLIZA' && data.poliza) {
+        triggerBrowserDownload(`${data.poliza.polizaFolio}.csv`, data.poliza.csvContent, 'text/csv;charset=utf-8');
+        setSuccessMsg(`Póliza Aspel COI ${data.poliza.polizaFolio} cuadrada ($${data.poliza.totalDebits} MXN) descargada.`);
+      }
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error en descarga contable/seguros');
     }
   };
 
@@ -325,6 +352,26 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
                 >
                   <Lock className="w-3.5 h-3.5" />
                   <span>Descargar Layout Pipe (`.txt`)</span>
+                </button>
+                <button
+                  onClick={() => handleGenerateAndDownload('TXT_PM_V5')}
+                  disabled={sealing || loading}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Layout PM v5 (`.txt`)</span>
+                </button>
+                <button
+                  onClick={() => handleDownloadInsuranceOrCoi('ROSTER')}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold transition-all"
+                >
+                  Padrón Seguro ($35k)
+                </button>
+                <button
+                  onClick={() => handleDownloadInsuranceOrCoi('COI_POLIZA')}
+                  className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-xs font-bold transition-all"
+                >
+                  Póliza Aspel COI
                 </button>
               </div>
             </div>

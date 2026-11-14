@@ -223,7 +223,9 @@ export type AuditAction =
   | 'PRE_APPLICATION_CREATED' | 'PRE_APPLICATION_STATUS_UPDATED'
   | 'CLIENT_DOC_UPLOADED_ZERO_EXIF' | 'CLIENT_FOLIO_LOCKED_2H' | 'NOM151_CONTRACT_SIGNED'
   | 'CLOUD_MIGRATION_BATCH_EXECUTED' | 'CLOUD_MIGRATION_ROLLBACK_VERIFIED'
-  | 'INSTITUTIONAL_LAYOUT_EXCHANGED' | 'CONNECTOR_ZEROTRUST_SYNC';
+  | 'INSTITUTIONAL_LAYOUT_EXCHANGED' | 'CONNECTOR_ZEROTRUST_SYNC'
+  | 'DTI_CAPACITY_RELEASED_FOR_RENEWAL' | 'LOAN_MARKED_BAJA_LABORAL_ACTIVA'
+  | 'COI_POLIZA_GENERATED' | 'COI_POLIZA_UNBALANCED' | 'INSURANCE_ROSTER_GENERATED';
 
 export interface AuditEvent {
   id: string;
@@ -476,13 +478,13 @@ export interface CreditBureauGenerateResult {
   reportId?: string; reportingMonth: string; cutoffDateIso: string; cutoffDateYyyyMmDd: string;
   officialFileNameBase: string; manifestHash: string; controlTotals: CreditBureauControlTotals;
   previewRows: CreditBureauPreviewRow[]; validationIssues: CreditBureauValidationIssue[];
-  pfCsvContent?: string; pfPipeContent?: string; pmCsvContent?: string;
+  pfCsvContent?: string; pfPipeContent?: string; pmCsvContent?: string; pmFixedTxtContent?: string;
 }
 
 
 // TIPOS DE CRUSE-APO-2026-025 & 027: COBRANZA, REESTRUCTURAS Y PLD/FT ZERO-PII
-export type ProjectedLoanOperationalStatus = 'ACTIVE' | 'SUSPENDED_LEAVE' | 'FROZEN_EXTRAJUDICIAL' | 'RESTRUCTURED' | 'PAID_OFF';
-export type SuspensionOrFreezeReason = 'LICENCIA_SIN_GOCE' | 'BAJA_LABORAL' | 'COBRANZA_EXTRAJUDICIAL' | 'DEMANDA_JUDICIAL' | 'CONVENIO_EXTRAJUDICIAL';
+export type ProjectedLoanOperationalStatus = 'ACTIVE' | 'SUSPENDED_LEAVE' | 'FROZEN_EXTRAJUDICIAL' | 'BAJA_LABORAL_ACTIVA' | 'RESTRUCTURED' | 'PAID_OFF';
+export type SuspensionOrFreezeReason = 'LICENCIA_SIN_GOCE' | 'BAJA_LABORAL' | 'BAJA_LABORAL_ACTIVA' | 'COBRANZA_EXTRAJUDICIAL' | 'DEMANDA_JUDICIAL' | 'CONVENIO_EXTRAJUDICIAL';
 export type InsuranceEnrollmentStatus = 'ACTIVE' | 'EXCLUDED_AGE_OVER_65' | 'EXCLUDED_DEMANDA' | 'EXCLUDED_CONVENIO' | 'CLOSED';
 
 export interface LoanPortfolioRiskRow {

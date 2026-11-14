@@ -29,6 +29,7 @@ import { clientSelfServiceRouter } from './clientSelfServiceRouter';
 import { digitalSignatureRouter } from './digitalSignatureRouter';
 import { cloudMigrationRouter } from './cloudMigrationRouter';
 import { integrationHubRouter } from './integrationHubRouter';
+import { insuranceAndCoiRouter } from './insuranceAndCoiRouter';
 
 export const privateApiRouter = Router();
 
@@ -62,6 +63,7 @@ privateApiRouter.use('/client-self-service', clientSelfServiceRouter);
 privateApiRouter.use('/digital-signature', digitalSignatureRouter);
 privateApiRouter.use('/cloud-migration', cloudMigrationRouter);
 privateApiRouter.use('/integration-hub', integrationHubRouter);
+privateApiRouter.use('/insurance-coi', insuranceAndCoiRouter);
 
 // Sub-enrutador de línea abierta Crédito Especial (RN-01) y Block de Notas (RN-02, RN-04)
 privateApiRouter.use('/', specialCreditAndNotesRouter);

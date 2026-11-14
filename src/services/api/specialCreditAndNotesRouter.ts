@@ -15,9 +15,12 @@ import { auditEventStore } from '../audit/auditEventStore';
 import {
   getSpecialCreditBalanceSummary,
   recordSpecialCreditMovement,
+  calculateSpecialCreditAccrualWithVatRegime,
+  evaluateAndAuditRenewalDtiCapacity,
   SpecialMovementType,
   SpecialDisbursementMethod,
   SpecialCreditMovementRow,
+  SpecialCreditVatRegime,
 } from '../reconciliation/specialCreditService';
 
 export const specialCreditAndNotesRouter = Router();
@@ -207,6 +210,57 @@ specialCreditAndNotesRouter.post(
       });
     } catch {
       return res.status(500).json({ error: 'Error al guardar nota operativa' });
+    }
+  }
+);
+
+specialCreditAndNotesRouter.post(
+  ['/special-credit/simulate-accrual', '/special-credits/simulate-accrual'],
+  requireAuth('special_credit:manage'),
+  async (req: Request, res: Response) => {
+    try {
+      const rawRegime = String(req.body?.vatRegime ?? 'ADDED').toUpperCase();
+      const vatRegime: SpecialCreditVatRegime =
+        rawRegime === 'EXEMPT' || rawRegime === 'INCLUDED' ? rawRegime : 'ADDED';
+
+      const result = calculateSpecialCreditAccrualWithVatRegime({
+        balanceMxn: req.body?.balanceMxn ?? 0,
+        monthlyRate: req.body?.monthlyRate ?? 0.03,
+        daysElapsed: req.body?.daysElapsed ?? 30.4,
+        vatRegime,
+      });
+      return res.json({ ok: true, result });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error calculando devengo de Crédito Especial';
+      return res.status(400).json({ error: message });
+    }
+  }
+);
+
+specialCreditAndNotesRouter.post(
+  ['/special-credit/evaluate-renewal-dti', '/special-credits/evaluate-renewal-dti'],
+  requireAuth('restructures:execute'),
+  async (req: Request, res: Response) => {
+    try {
+      const { user } = getAuth(req);
+      const sourceIp = extractClientIp(req.headers);
+
+      const result = await evaluateAndAuditRenewalDtiCapacity({
+        priorLoanId: String(req.body?.priorLoanId ?? ''),
+        priorLoanBalanceToLiquidate: req.body?.priorLoanBalanceToLiquidate ?? 0,
+        newPrincipalAmount: req.body?.newPrincipalAmount ?? 0,
+        newPeriodicPayment: req.body?.newPeriodicPayment ?? 0,
+        currentNetPeriodicIncome: req.body?.currentNetPeriodicIncome ?? 0,
+        oficioPrimerPago: req.body?.oficioPrimerPago ? String(req.body.oficioPrimerPago) : null,
+        oficioSuspension: req.body?.oficioSuspension ? String(req.body.oficioSuspension) : null,
+        actorEmail: user.email,
+        actorRole: user.role,
+        sourceIp,
+      });
+      return res.json({ ok: true, result });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error evaluando capacidad 30% LFT en renovación';
+      return res.status(400).json({ error: message });
     }
   }
 );

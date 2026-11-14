@@ -264,6 +264,7 @@ export async function listHistoricalCreditBureauReports(): Promise<CreditBureauR
 }
 
 function resolveObservationCodeForFrozenReason(reason: string | null, activeObsCodes: ReadonlySet<string>): string {
+  if (reason === 'BAJA_LABORAL_ACTIVA' && activeObsCodes.has('BL')) return 'BL';
   if (reason === 'DEMANDA_JUDICIAL' && activeObsCodes.has('SG')) return 'SG';
   if (reason === 'CONVENIO_EXTRAJUDICIAL' && activeObsCodes.has('CV')) return 'CV';
   if (activeObsCodes.has('CL')) return 'CL';
@@ -330,6 +331,7 @@ export async function executeCreditBureauReportWorkflow(options: {
          END AS projected_live_balance,
          CASE
            WHEN rl.new_loan_id IS NOT NULL THEN 'RESTRUCTURED'
+           WHEN asusp.active_suspension_reason = 'BAJA_LABORAL_ACTIVA' OR la.employment_status = 'BAJA_LABORAL_ACTIVA' THEN 'BAJA_LABORAL_ACTIVA'
            WHEN asusp.active_suspension_reason IN ('BAJA_LABORAL', 'COBRANZA_EXTRAJUDICIAL', 'DEMANDA_JUDICIAL', 'CONVENIO_EXTRAJUDICIAL') THEN 'FROZEN_EXTRAJUDICIAL'
            WHEN asusp.active_suspension_reason = 'LICENCIA_SIN_GOCE' THEN 'SUSPENDED_LEAVE'
            WHEN (CASE WHEN la.product_type = 'ESPECIAL' THEN la.principal_original + COALESCE(st.total_charges, 0) - COALESCE(st.total_credits, 0) ELSE la.principal_original - COALESCE(lt.total_applied_capital, 0) END) <= 0 THEN 'PAID_OFF'
@@ -429,10 +431,13 @@ export async function executeCreditBureauReportWorkflow(options: {
     let pastDueBalanceDec = new Decimal(0);
     let observationCode: string | null = null;
 
-    if (row.projected_status === 'FROZEN_EXTRAJUDICIAL') {
-      daysPastDue = 90;
+    if (row.projected_status === 'FROZEN_EXTRAJUDICIAL' || row.projected_status === 'BAJA_LABORAL_ACTIVA') {
+      daysPastDue = row.projected_status === 'BAJA_LABORAL_ACTIVA' ? 60 : 90;
       pastDueBalanceDec = currentBalDec;
-      observationCode = resolveObservationCodeForFrozenReason(row.active_suspension_reason, activeObsCodes);
+      observationCode = resolveObservationCodeForFrozenReason(
+        row.projected_status === 'BAJA_LABORAL_ACTIVA' ? 'BAJA_LABORAL_ACTIVA' : row.active_suspension_reason,
+        activeObsCodes
+      );
     } else if (row.projected_status === 'RESTRUCTURED') {
       observationCode = activeObsCodes.has('RV') ? 'RV' : 'CC';
     } else if (row.projected_status === 'PAID_OFF' || currentBalDec.isZero()) {
@@ -566,5 +571,6 @@ export async function executeCreditBureauReportWorkflow(options: {
     pfCsvContent: options.commitSeal ? built.pfCsvContent : undefined,
     pfPipeContent: options.commitSeal ? built.pfPipeContent : undefined,
     pmCsvContent: options.commitSeal ? built.pmCsvContent : undefined,
+    pmFixedTxtContent: options.commitSeal ? built.pmFixedTxtContent : undefined,
   };
 }

@@ -7,6 +7,11 @@
 import Decimal from 'decimal.js';
 import { AmortizationRow } from '../types';
 import { generateStyledAmortizationXlsxBytes } from './excelStyledTemplate';
+export {
+  buildAnexo1CompensationHtml,
+  exportAnexo1CompensationPDF,
+  type Anexo1CompensationParams,
+} from './anexo1CompensationPdf';
 
 export interface AmortizationExportParams {
   productName: string;

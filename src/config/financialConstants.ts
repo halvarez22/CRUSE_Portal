@@ -28,11 +28,13 @@ export const FINANCIAL_CONSTANTS = {
   NORMAL_FORTNIGHTLY_INTEREST_RATE: 0.0197916667,  // 47.50% / 24 = 1.979167% nominal quincenal
   NORMAL_MONTHLY_INTEREST_RATE: 0.0395833333,      // 47.50% / 12 = 3.958333% nominal mensual
 
-  // Crédito Especial
+  // Crédito Especial (Homologado a '1. CREDITO ESPECIAL.xlsx' — hasta 5.0% mensual)
   ESPECIAL_MONTHLY_RATE_MIN: 0.025,           // 2.5% mensual mínimo
-  ESPECIAL_MONTHLY_RATE_MAX: 0.040,           // 4.0% mensual máximo
+  ESPECIAL_MONTHLY_RATE_MAX: 0.050,           // 5.0% mensual máximo (CRUSE-APO-2026-063)
 
-  // Fondeo / Inversionistas
+  // Fondeo / Inversionistas (Convención 365 / 30.4 — '2. relacion y pago inversionistas 2026.xlsx')
+  INVESTOR_ANNUAL_DAYS_BASE: 365,             // Base 365 días reales
+  INVESTOR_AVG_MONTH_DAYS: 30.4,              // Factor 30.4 días promedio por mes
   INVESTOR_ISR_RETENTION_RATE_05: 0.005,      // 0.5% Retención ISR
   INVESTOR_ISR_RETENTION_RATE_09: 0.009,      // 0.9% Retención ISR
 
@@ -41,6 +43,25 @@ export const FINANCIAL_CONSTANTS = {
   LIFE_INSURANCE_FORTNIGHTLY_MXN: 22.85,      // $22.85 quincenal fijo (Crédito Normal Activos)
   LIFE_INSURANCE_MONTHLY_MXN: 45.70,          // $45.70 mensual fijo (Crédito Normal Activos)
   LIFE_INSURANCE_COVERAGE_MXN: 35000.0,       // $35,000.00 MXN suma asegurada (Siniestro)
+  INSURANCE_SUM_ASSURED_MXN: 35000.0,         // Alias explícito $35,000.00 Suma Asegurada Padrón
+
+  // Catálogo Oficial de Cuentas Contables Aspel COI (Caso 5 — Q. ACUMULADO / Reporte cartera mensual)
+  COI_ACCOUNTING_CATALOG: {
+    CAPITAL_CARTERA: '1104001001',
+    INTERES_ORDINARIO: '4101001001',
+    IVA_TRASLADADO: '2104001001',
+    SEGURO_VIDA: '4103000001',
+    BANCOS_COBRANZA: '1102001001',
+  },
+
+  // Membrete Fiscal Oficial Anexo 1 — Tabla para Compensación (Caso 6)
+  CRUSE_FISCAL_HEADER: {
+    legalName: 'MICROFINANCIERA CRUSE, S.A. DE C.V., SOFOM, E.N.R.',
+    rfc: 'MCR1002231B7',
+    addressLine1: 'Vía Citadela #5710 Int 401 Col. Saucito Plaza D1',
+    cityStateZip: 'Chihuahua, Chih., C.P. 31110',
+    phones: 'Tel. (614) 415.86.88 / 411.15.44',
+  },
 
   // Capacidad de Endeudamiento (Art. 110 Ley Federal del Trabajo: máximo 30% del sueldo neto)
   MAX_PAYMENT_CAPACITY_RATIO: 0.30,           // 30% del sueldo neto máximo legal (Art. 110 LFT)
@@ -68,25 +89,49 @@ export const FINANCIAL_CONSTANTS = {
   SCORING_MIN_SENIORITY_MONTHS_CRITICAL: 6,   // < 6 meses = alerta de antigüedad
 } as const;
 
+export interface RenewalCapacityOptions {
+  isRenewal?: boolean;
+  previousLoanPeriodicDiscountToRelease?: number | string | Decimal;
+  previousLoanBalanceToLiquidate?: number | string | Decimal;
+  requestedPrincipal?: number | string | Decimal;
+}
+
 export interface LegalPaymentCapacityCheck {
   isValid: boolean;
   ratioDecimal: string;
   ratioPercent: string;
   maxAllowedPayment: string;
   requiredMinNetIncome: string;
+  adjustedNetIncome: string;
+  capacityReleasedAmount: string;
+  netDisbursementCheckAmount: string;
   errorMessage: string | null;
 }
 
 /**
- * Guardrail 2: Validación hardcodeada del tope legal del 30% conforme al Art. 110 LFT.
- * Utiliza exclusivamente Decimal.js sin punto flotante nativo.
+ * Guardrail 2 y Guardrail 6 (CRUSE-APO-2026-063): Validación del tope legal del 30% conforme al Art. 110 LFT,
+ * con soporte retrocompatible para Renovaciones ('Q. EMISION simulador y carga.xlsx'):
+ * - Ingreso Neto Ajustado (T) = Ingreso Neto Actual + Descuento Cruse del Crédito Anterior Liquidado (S)
+ * - Cheque Neto a Dispersar (M) = Monto Nuevo Crédito (K) - Saldo Crédito Anterior a Liquidar (L)
  */
 export function validateLegalPaymentCapacityLft110(
   periodicPaymentInput: number | string | Decimal,
   netPeriodicIncomeInput: number | string | Decimal,
+  renewalOptions?: RenewalCapacityOptions,
 ): LegalPaymentCapacityCheck {
   const dPayment = new Decimal(periodicPaymentInput).toDP(2, Decimal.ROUND_HALF_UP);
-  const dIncome = new Decimal(netPeriodicIncomeInput).toDP(2, Decimal.ROUND_HALF_UP);
+  const dBaseIncome = new Decimal(netPeriodicIncomeInput).toDP(2, Decimal.ROUND_HALF_UP);
+  const isRenewal = Boolean(renewalOptions?.isRenewal);
+  const dReleasedDiscount = isRenewal
+    ? Decimal.max(new Decimal(0), new Decimal(renewalOptions?.previousLoanPeriodicDiscountToRelease ?? 0)).toDP(2, Decimal.ROUND_HALF_UP)
+    : new Decimal(0);
+  const dPriorBalance = isRenewal
+    ? Decimal.max(new Decimal(0), new Decimal(renewalOptions?.previousLoanBalanceToLiquidate ?? 0)).toDP(2, Decimal.ROUND_HALF_UP)
+    : new Decimal(0);
+  const dRequestedPrincipal = Decimal.max(new Decimal(0), new Decimal(renewalOptions?.requestedPrincipal ?? 0)).toDP(2, Decimal.ROUND_HALF_UP);
+  const dNetCheck = Decimal.max(new Decimal(0), dRequestedPrincipal.minus(dPriorBalance)).toDP(2, Decimal.ROUND_HALF_UP);
+
+  const dIncome = dBaseIncome.plus(dReleasedDiscount).toDP(2, Decimal.ROUND_HALF_UP);
   const maxRatio = new Decimal(FINANCIAL_CONSTANTS.MAX_PAYMENT_CAPACITY_RATIO);
   const requiredMinNetIncome = dPayment.div(maxRatio).toDP(2, Decimal.ROUND_HALF_UP);
 
@@ -97,6 +142,9 @@ export function validateLegalPaymentCapacityLft110(
       ratioPercent: '100.00',
       maxAllowedPayment: '0.00',
       requiredMinNetIncome: requiredMinNetIncome.toFixed(2),
+      adjustedNetIncome: '0.00',
+      capacityReleasedAmount: dReleasedDiscount.toFixed(2),
+      netDisbursementCheckAmount: dNetCheck.toFixed(2),
       errorMessage: 'Excede el límite legal de descuento del 30% conforme al Art. 110 LFT',
     };
   }
@@ -112,6 +160,9 @@ export function validateLegalPaymentCapacityLft110(
     ratioPercent: ratio.mul(100).toDP(2, Decimal.ROUND_HALF_UP).toFixed(2),
     maxAllowedPayment: maxAllowedPayment.toFixed(2),
     requiredMinNetIncome: requiredMinNetIncome.toFixed(2),
+    adjustedNetIncome: dIncome.toFixed(2),
+    capacityReleasedAmount: dReleasedDiscount.toFixed(2),
+    netDisbursementCheckAmount: dNetCheck.toFixed(2),
     errorMessage: exceedsLimit
       ? 'Excede el límite legal de descuento del 30% conforme al Art. 110 LFT'
       : null,

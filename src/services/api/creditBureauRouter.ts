@@ -191,3 +191,40 @@ creditBureauRouter.post(
     }
   }
 );
+
+/**
+ * GET /api/credit-bureau/export-pm
+ * Exporta directamente el layout de Personas Morales PM v5 validado en longitud fija (HD, EM, AC, CR).
+ */
+creditBureauRouter.get(
+  '/export-pm',
+  requireAuth('credit_bureau:generate'),
+  async (req: Request, res: Response) => {
+    try {
+      const { user } = getAuth(req);
+      const sourceIp = extractClientIp(req.headers);
+      const sourceSummary = buildSourceSummary(sourceIp, req.headers['user-agent']);
+      const result = await executeCreditBureauReportWorkflow({
+        cutoffDateIso: parseCutoffDateIso(req.query.cutoffDate),
+        scope: 'PM',
+        commitSeal: true,
+        actorEmail: user.email,
+        actorRole: user.role,
+        sourceIp,
+        sourceSummary,
+      });
+      return res.json({
+        ok: true,
+        officialFileName: `${result.officialFileNameBase}_PM_v5.txt`,
+        manifestHash: result.manifestHash,
+        pmFixedTxtContent: result.pmFixedTxtContent ?? '',
+        pmCsvContent: result.pmCsvContent ?? '',
+      });
+    } catch (err: unknown) {
+      return res.status(500).json({
+        error: 'Fallo al exportar layout PM v5 de Círculo de Crédito',
+        details: err instanceof Error ? err.message : 'Error desconocido',
+      });
+    }
+  }
+);

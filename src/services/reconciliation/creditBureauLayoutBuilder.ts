@@ -1,48 +1,45 @@
 /**
- * CONSTRUCTOR DETERMINISTA DE LAYOUTS OFICIALES PARA CÍRCULO DE CRÉDITO (SIC)
- * Expediente: CRUSE-APO-2026-024 (Guardrail Forense 1 / Directriz 1: Pureza Absoluta)
+ * CONSTRUCTOR DETERMINISTA DE LAYOUTS OFICIALES PARA CÍRCULO DE CRÉDITO (SIC — PF v4 y PM v5)
+ * Expedientes: CRUSE-APO-2026-024 y CRUSE-APO-2026-063 (Guardrail Forense 4 — Anti-God-Object < 580 líneas)
  *
  * - Cero importaciones de I/O (`fs`, `path`, `net`) y cero acceso a `Date.now()`.
  * - Cero `Math.round`, `Number.prototype.toFixed` ni `toLocaleString`.
- * - Todos los montos monetarios se formatean exclusivamente con `Decimal.js`:
- *   `new Decimal(amount).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toFixed(0)`.
+ * - Delegación del formato Personas Morales (PM v5 con validación de longitud fija por segmento HD, EM, AC, CR)
+ *   a `creditBureauPmLayoutBuilder.ts`.
  */
 
 import Decimal from 'decimal.js';
 import { CreditBureauControlTotals } from '../../types';
+import {
+  assertPmV5SegmentFixedLength,
+  buildPmV5AccountRowAndSegments,
+  CREDIT_BUREAU_SPEC,
+  EXPECTED_LENGTH_BY_SEGMENT,
+  formatIsoToDdMmYyyy,
+  formatIsoToMmYyyy,
+  formatIsoToYyyyMmDd,
+  formatSicIntegerAmount,
+  PM_LAYOUT_HEADERS,
+  PmSegmentType,
+  RawSicAccountInput,
+  sanitizeSicText,
+  splitSicPersonName,
+} from './creditBureauPmLayoutBuilder';
 
-/** Constantes tipadas oficiales del Otorgante y Especificación Círculo de Crédito (Cero Magic Strings) */
-export const CREDIT_BUREAU_SPEC = {
-  FILE_PREFIX_ID: '001496',
-  FILE_COMPANY_SLUG: 'MICROFINANCIERACRUSE',
-  OTORGANTE_CLAVE_PF: '0014960045',
-  OTORGANTE_CLAVE_PM: '1496',
-  OTORGANTE_NOMBRE: 'MICROFINANCIERA CRUSE',
-  INSTITUCION_PM: '005',
-  FORMATO_PM: '1',
-  VERSION_PF: '4',
-  VERSION_PM: '5',
-  NACIONALIDAD_DEFAULT: 'MX',
-  MONEDA_PF: 'MX',
-  MONEDA_PM: '001',
-  TIPO_RESPONSABILIDAD_INDIVIDUAL: 'I',
-  TIPO_CUENTA_PAGOS_FIJOS: 'F',
-  TIPO_CUENTA_REVOLVENTE: 'R',
-  TIPO_CONTRATO_CONSUMO: 'CC',
-  TIPO_CONTRATO_PM_COMERCIAL: '6280',
-  CALIFICACION_CARTERA_A1: 'a1',
-  SCIAN_DEFAULT_PM: '8519011',
-  PAGO_ACTUAL_VIGENTE: 'V',
-  MISSING_MATERNAL_SURNAME: 'SIN PROPORCIONAR',
-  DEFAULT_CITY: 'CHIHUAHUA',
-  DEFAULT_STATE_PF: 'CHIH',
-  DEFAULT_STATE_PM: 'CHI',
-  DEFAULT_ZIP: '31000',
-  DEFAULT_EMPLOYER_NAME: 'GOBIERNO DEL ESTADO DE CHIHUAHUA',
-  DEFAULT_EMPLOYER_STREET: 'TEOFILO BORUNDA 2219',
-  DEFAULT_EMPLOYER_COLONY: 'CENTRO',
-  DEFAULT_EMPLOYER_PHONE: '6144155754',
-} as const;
+export {
+  assertPmV5SegmentFixedLength,
+  buildPmV5AccountRowAndSegments,
+  CREDIT_BUREAU_SPEC,
+  EXPECTED_LENGTH_BY_SEGMENT,
+  formatIsoToDdMmYyyy,
+  formatIsoToMmYyyy,
+  formatIsoToYyyyMmDd,
+  formatSicIntegerAmount,
+  PM_LAYOUT_HEADERS,
+  sanitizeSicText,
+  splitSicPersonName,
+};
+export type { PmSegmentType, RawSicAccountInput };
 
 /** Encabezados oficiales de CI-04-0009-Formato de carga PF */
 export const PF_LAYOUT_HEADERS: readonly string[] = [
@@ -145,181 +142,6 @@ export const PF_LAYOUT_HEADERS: readonly string[] = [
   'NombreOtorganteControl',
 ] as const;
 
-/** Encabezados oficiales de Formato PM */
-export const PM_LAYOUT_HEADERS: readonly string[] = [
-  'Otorgante',
-  'NombreOtorgante',
-  'Institucion',
-  'Formato',
-  'FechaGeneracion',
-  'PeriodoQueReporta',
-  'Version',
-  'RFC_Empresa',
-  'Compania',
-  'Nacionalidad',
-  'CalificacionCartera',
-  'ClaveBanxicoSCIAN',
-  'Direccion1',
-  'Colonia',
-  'DelegMun',
-  'Ciudad',
-  'Estado',
-  'CP',
-  'Telefono',
-  'Pais',
-  'RFC_Accionista',
-  'Nombre1_Accionista',
-  'ApellidoPaterno_Accionista',
-  'ApellidoMaterno_Accionista',
-  'Porcentaje_Accionista',
-  'NumContrato',
-  'FechaApertura',
-  'PlazoMeses',
-  'TipoCredito',
-  'SaldoInicial',
-  'Moneda',
-  'NumPagos',
-  'FrecuenciaPagosDias',
-  'ImportePagos',
-  'FechaUltimoPago',
-  'FechaPrimerIncumplimiento',
-  'SaldoInsoluto',
-  'CreditoMaximoUtilizado',
-  'DiasVencidos',
-  'Cantidad',
-  'ClaveObservacion',
-] as const;
-
-export interface RawSicAccountInput {
-  contractNumber: string;
-  personType: 'FISICA' | 'MORAL';
-  fullNameCleartext: string;
-  rfcCleartext: string;
-  curpCleartext: string;
-  birthDateIso: string | null;
-  gender: string | null;
-  voterIdCleartext: string | null;
-  addressCleartext: string;
-  phoneCleartext: string;
-  convenioName: string;
-  productType: string;
-  loanStatus: string;
-  paymentFrequency: string;
-  termFortnights: number;
-  originalPrincipal: string | number;
-  currentPrincipalBalance: string | number;
-  scheduledPayment: string | number;
-  activatedAtIso: string;
-  lastPaymentDateIso: string | null;
-  lastPaymentAmount: string | number;
-  daysPastDue: number;
-  pastDueBalance: string | number;
-  observationCode: string | null;
-  shareholderRfc?: string | null;
-  shareholderName?: string | null;
-  shareholderPercent?: string | number | null;
-}
-
-/**
- * Formatea un monto monetario como entero exacto redondeado HALF_UP sin decimales ni comas.
- * Cumple Directriz 1: Uso explícito y exclusivo de Decimal.js.
- */
-export function formatSicIntegerAmount(amount: string | number | Decimal): string {
-  const dec = new Decimal(amount || 0);
-  if (!dec.isFinite() || dec.isNegative()) {
-    return '0';
-  }
-  return dec.toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toFixed(0);
-}
-
-/**
- * Convierte una cadena ISO (YYYY-MM-DD...) al formato oficial PF de 8 dígitos: YYYYMMDD.
- * Función 100% pura sin usar Date ni métodos dependientes del timezone del SO.
- */
-export function formatIsoToYyyyMmDd(isoDate: string | null | undefined, fallbackYyyyMmDd: string): string {
-  const clean = String(isoDate ?? '').trim().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    return fallbackYyyyMmDd;
-  }
-  return clean.replace(/-/g, '');
-}
-
-/**
- * Convierte una cadena ISO (YYYY-MM-DD...) al formato oficial PM de 8 dígitos: DDMMYYYY.
- */
-export function formatIsoToDdMmYyyy(isoDate: string | null | undefined, fallbackDdMmYyyy: string): string {
-  const clean = String(isoDate ?? '').trim().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    return fallbackDdMmYyyy;
-  }
-  const [yyyy, mm, dd] = clean.split('-');
-  return `${dd}${mm}${yyyy}`;
-}
-
-/**
- * Extrae el periodo MMYYYY (6 dígitos) desde una fecha ISO YYYY-MM-DD para reportes PM.
- */
-export function formatIsoToMmYyyy(isoDate: string): string {
-  const clean = String(isoDate).trim().slice(0, 10);
-  const [yyyy, mm] = clean.split('-');
-  return `${mm ?? '01'}${yyyy ?? '2026'}`;
-}
-
-/**
- * Normaliza cadenas alfanuméricas al estándar ASCII mayúsculas de Círculo de Crédito.
- */
-export function sanitizeSicText(input: string | null | undefined, maxLen = 100): string {
-  const raw = String(input ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .replace(/[|"\r\n\t]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return raw.slice(0, maxLen);
-}
-
-/**
- * Separa de forma determinista el nombre completo en Apellido Paterno, Apellido Materno y Nombres.
- */
-export function splitSicPersonName(fullName: string): {
-  paternalSurname: string;
-  maternalSurname: string;
-  givenNames: string;
-} {
-  const clean = sanitizeSicText(fullName, 120);
-  const tokens = clean.split(' ').filter(Boolean);
-  if (tokens.length === 0) {
-    return {
-      paternalSurname: 'SIN DATO',
-      maternalSurname: CREDIT_BUREAU_SPEC.MISSING_MATERNAL_SURNAME,
-      givenNames: 'SIN DATO',
-    };
-  }
-  if (tokens.length === 1) {
-    return {
-      paternalSurname: tokens[0]!,
-      maternalSurname: CREDIT_BUREAU_SPEC.MISSING_MATERNAL_SURNAME,
-      givenNames: tokens[0]!,
-    };
-  }
-  if (tokens.length === 2) {
-    return {
-      paternalSurname: tokens[0]!,
-      maternalSurname: CREDIT_BUREAU_SPEC.MISSING_MATERNAL_SURNAME,
-      givenNames: tokens[1]!,
-    };
-  }
-  return {
-    paternalSurname: tokens[0]!,
-    maternalSurname: tokens[1]!,
-    givenNames: tokens.slice(2).join(' '),
-  };
-}
-
-/**
- * Mapea la frecuencia de pago de PostgreSQL al código oficial de 1 carácter de Círculo de Crédito.
- */
 export function mapPaymentFrequencyToSicCode(frequency: string): 'Q' | 'M' | 'S' | 'C' | 'U' {
   const norm = String(frequency ?? '').trim().toUpperCase();
   if (norm === 'MENSUAL') return 'M';
@@ -329,20 +151,14 @@ export function mapPaymentFrequencyToSicCode(frequency: string): 'Q' | 'M' | 'S'
   return 'Q';
 }
 
-/**
- * Calcula el plazo en días o meses con Decimal.js sin usar flotantes nativos.
- */
 export function calculateSicTermDaysOrMonths(termPeriods: number, sicFreq: 'Q' | 'M' | 'S' | 'C' | 'U'): number {
   const periodsDec = new Decimal(Math.max(1, termPeriods));
   if (sicFreq === 'M') {
-    return Number(periodsDec.times(30).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toFixed(0));
+    return Number(periodsDec.times(30).toDP(0, Decimal.ROUND_HALF_UP).toFixed(0));
   }
-  return Number(periodsDec.times(15).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toFixed(0));
+  return Number(periodsDec.times(15).toDP(0, Decimal.ROUND_HALF_UP).toFixed(0));
 }
 
-/**
- * Calcula el estatus de PagoActual ('V' para vigente o '01'..'84' para periodos vencidos).
- */
 export function computeSicPaymentStatus(daysPastDue: number, sicFreq: 'Q' | 'M' | 'S' | 'C' | 'U'): {
   pagoActual: string;
   pagosVencidos: string;
@@ -354,7 +170,7 @@ export function computeSicPaymentStatus(daysPastDue: number, sicFreq: 'Q' | 'M' 
   const overduePeriods = Number(
     new Decimal(daysPastDue)
       .dividedBy(divisor)
-      .toDecimalPlaces(0, Decimal.ROUND_UP)
+      .toDP(0, Decimal.ROUND_UP)
       .toFixed(0)
   );
   const clamped = Math.min(84, Math.max(1, overduePeriods));
@@ -362,9 +178,6 @@ export function computeSicPaymentStatus(daysPastDue: number, sicFreq: 'Q' | 'M' 
   return { pagoActual: padded, pagosVencidos: String(clamped) };
 }
 
-/**
- * Construye el nombre oficial del archivo regulatorio: 001496_MICROFINANCIERACRUSE_YYYYMMDD
- */
 export function buildOfficialCreditBureauFileName(cutoffDateIso: string): {
   cutoffYyyyMmDd: string;
   baseFileName: string;
@@ -377,7 +190,7 @@ export function buildOfficialCreditBureauFileName(cutoffDateIso: string): {
 }
 
 /**
- * Ensambla de manera 100% pura y determinista los layouts PF y PM junto con las Cifras de Control.
+ * Ensambla de manera 100% pura y determinista los layouts PF (CSV y Pipe) y PM v5 (CSV y TXT de ancho fijo validado).
  */
 export function buildDeterministicCreditBureauLayouts(
   accounts: readonly RawSicAccountInput[],
@@ -389,6 +202,7 @@ export function buildDeterministicCreditBureauLayouts(
   pfCsvContent: string;
   pfPipeContent: string;
   pmCsvContent: string;
+  pmFixedTxtContent: string;
 } {
   const { cutoffYyyyMmDd, baseFileName } = buildOfficialCreditBureauFileName(cutoffDateIso);
   const cutoffDdMmYyyy = formatIsoToDdMmYyyy(cutoffDateIso, '31102026');
@@ -408,7 +222,7 @@ export function buildDeterministicCreditBureauLayouts(
     } else {
       pfCount++;
     }
-    if (acc.loanStatus === 'FROZEN_EXTRAJUDICIAL') {
+    if (acc.loanStatus === 'FROZEN_EXTRAJUDICIAL' || acc.loanStatus === 'BAJA_LABORAL_ACTIVA') {
       frozenCount++;
     }
   }
@@ -430,6 +244,7 @@ export function buildDeterministicCreditBureauLayouts(
 
   const pfRows: string[][] = [];
   const pmRows: string[][] = [];
+  const pmFixedLines: string[] = [];
 
   for (const acc of accounts) {
     const sicFreq = mapPaymentFrequencyToSicCode(acc.paymentFrequency);
@@ -445,56 +260,15 @@ export function buildDeterministicCreditBureauLayouts(
     const cleanAccountNo = sanitizeSicText(acc.contractNumber, 25).replace(/[^A-Z0-9]/g, '') || '000001';
 
     if (acc.personType === 'MORAL') {
-      const shParts = splitSicPersonName(acc.shareholderName || 'REPRESENTANTE LEGAL CRUSE');
-      pmRows.push([
-        CREDIT_BUREAU_SPEC.OTORGANTE_CLAVE_PM,
-        CREDIT_BUREAU_SPEC.OTORGANTE_NOMBRE,
-        CREDIT_BUREAU_SPEC.INSTITUCION_PM,
-        CREDIT_BUREAU_SPEC.FORMATO_PM,
-        cutoffDdMmYyyy,
-        periodMmYyyy,
-        CREDIT_BUREAU_SPEC.VERSION_PM,
-        sanitizeSicText(acc.rfcCleartext, 13),
-        sanitizeSicText(acc.fullNameCleartext, 100),
-        CREDIT_BUREAU_SPEC.NACIONALIDAD_DEFAULT,
-        CREDIT_BUREAU_SPEC.CALIFICACION_CARTERA_A1,
-        CREDIT_BUREAU_SPEC.SCIAN_DEFAULT_PM,
-        sanitizeSicText(acc.addressCleartext, 60) || 'DOMICILIO CONOCIDO',
-        CREDIT_BUREAU_SPEC.DEFAULT_EMPLOYER_COLONY,
-        CREDIT_BUREAU_SPEC.DEFAULT_CITY,
-        CREDIT_BUREAU_SPEC.DEFAULT_CITY,
-        CREDIT_BUREAU_SPEC.DEFAULT_STATE_PM,
-        CREDIT_BUREAU_SPEC.DEFAULT_ZIP,
-        sanitizeSicText(acc.phoneCleartext, 15) || CREDIT_BUREAU_SPEC.DEFAULT_EMPLOYER_PHONE,
-        CREDIT_BUREAU_SPEC.NACIONALIDAD_DEFAULT,
-        sanitizeSicText(acc.shareholderRfc || 'XAXX010101000', 13),
-        shParts.givenNames,
-        shParts.paternalSurname,
-        shParts.maternalSurname,
-        formatSicIntegerAmount(acc.shareholderPercent ?? 50),
-        cleanAccountNo,
-        formatIsoToDdMmYyyy(acc.activatedAtIso, cutoffDdMmYyyy),
-        String(Math.max(1, acc.termFortnights)),
-        CREDIT_BUREAU_SPEC.TIPO_CONTRATO_PM_COMERCIAL,
-        origPrincipalStr,
-        CREDIT_BUREAU_SPEC.MONEDA_PM,
-        String(Math.max(1, acc.termFortnights)),
-        sicFreq === 'M' ? '30' : '15',
-        scheduledPayStr,
-        formatIsoToDdMmYyyy(acc.lastPaymentDateIso, cutoffDdMmYyyy),
-        acc.daysPastDue > 0 ? cutoffDdMmYyyy : '00000000',
-        currentBalStr,
-        origPrincipalStr,
-        String(Math.max(0, acc.daysPastDue)),
-        currentBalStr,
-        sanitizeSicText(acc.observationCode, 10),
-      ]);
+      const builtPm = buildPmV5AccountRowAndSegments(acc, cutoffDdMmYyyy, periodMmYyyy, sicFreq);
+      pmRows.push(builtPm.csvRow);
+      pmFixedLines.push(...builtPm.fixedSegments);
     } else {
       const nameParts = splitSicPersonName(acc.fullNameCleartext);
       const termDaysOrMonths = calculateSicTermDaysOrMonths(acc.termFortnights, sicFreq);
       const closeDateYyyyMmDd = currentBalStr === '0' ? cutoffYyyyMmDd : '';
       const tipoCuenta =
-        acc.productType === 'CREDITO_ESPECIAL'
+        acc.productType === 'CREDITO_ESPECIAL' || acc.productType === 'ESPECIAL'
           ? CREDIT_BUREAU_SPEC.TIPO_CUENTA_REVOLVENTE
           : CREDIT_BUREAU_SPEC.TIPO_CUENTA_PAGOS_FIJOS;
 
@@ -617,6 +391,8 @@ export function buildDeterministicCreditBureauLayouts(
     ...pmRows.map((r) => r.map(escapeCsvCell).join(',')),
   ].join('\r\n');
 
+  const pmFixedTxtContent = pmFixedLines.join('\r\n');
+
   return {
     cutoffYyyyMmDd,
     officialFileNameBase: baseFileName,
@@ -624,5 +400,6 @@ export function buildDeterministicCreditBureauLayouts(
     pfCsvContent,
     pfPipeContent,
     pmCsvContent,
+    pmFixedTxtContent,
   };
 }

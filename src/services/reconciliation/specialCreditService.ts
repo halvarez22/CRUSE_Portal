@@ -11,10 +11,57 @@ import crypto from 'crypto';
 import Decimal from 'decimal.js';
 import { db, TxHandle } from '../db/connectionPool';
 import { auditEventStore } from '../audit/auditEventStore';
+import {
+  FINANCIAL_CONSTANTS,
+  LegalPaymentCapacityCheck,
+  validateLegalPaymentCapacityLft110,
+} from '../../config/financialConstants';
 import { UserRole } from '../../types';
 
 export type SpecialMovementType = 'DISPOSICION' | 'ABONO' | 'CARGO_INTERES';
 export type SpecialDisbursementMethod = 'SPEI' | 'CHEQUE' | 'EFECTIVO' | 'TRANSFERENCIA';
+export type SpecialCreditVatRegime = 'ADDED' | 'EXEMPT' | 'INCLUDED';
+
+export interface SpecialCreditAccrualInput {
+  balanceMxn: number | string | Decimal;
+  monthlyRate: number | string | Decimal;
+  daysElapsed: number | string | Decimal;
+  vatRegime: SpecialCreditVatRegime;
+}
+
+export interface SpecialCreditAccrualResult {
+  balanceMxn: string;
+  monthlyRate: string;
+  daysElapsed: string;
+  vatRegime: SpecialCreditVatRegime;
+  netInterest: string;
+  vatAmount: string;
+  totalInterestWithVat: string;
+}
+
+export interface RenewalDtiAuditInput {
+  priorLoanId: string;
+  priorLoanBalanceToLiquidate: number | string | Decimal;
+  newPrincipalAmount: number | string | Decimal;
+  newPeriodicPayment: number | string | Decimal;
+  currentNetPeriodicIncome: number | string | Decimal;
+  oficioPrimerPago?: string | null;
+  oficioSuspension?: string | null;
+  actorEmail: string;
+  actorRole: UserRole;
+  sourceIp?: string;
+}
+
+export interface RenewalDtiAuditResult {
+  priorLoanId: string;
+  priorContractNumber: string;
+  priorLoanBalanceLiquidated: string;
+  periodicDiscountReleased: string;
+  adjustedNetIncome: string;
+  netDisbursementCheckAmount: string;
+  priorLoanContractSha256: string;
+  dtiCheck: LegalPaymentCapacityCheck;
+}
 
 export interface SpecialCreditMovementRow {
   id: string;
@@ -248,6 +295,185 @@ export async function recordSpecialCreditMovement(
       reference_number: referenceNumber,
       recorded_by: input.actorEmail,
       created_at: createdAt,
+    };
+  });
+}
+
+/**
+ * Guardrail Forense 2 (CRUSE-APO-2026-063): Cálculo de devengo de Crédito Especial ('1. CREDITO ESPECIAL.xlsx')
+ * con tasa mensual de hasta 5.0% sobre base 30.4 días y soporte para los 3 regímenes de IVA del SAT:
+ * - 'ADDED':    +16% IVA adicional sobre interés bruto
+ * - 'EXEMPT':   0% IVA (Efectivo / Actividad Empresarial Art. 15 LIVA)
+ * - 'INCLUDED': Desglose inverso (/ 1.16) con redondeo ROUND_HALF_UP garantizando netInterest + vatAmount === totalInterestWithVat
+ */
+export function calculateSpecialCreditAccrualWithVatRegime(
+  input: SpecialCreditAccrualInput
+): SpecialCreditAccrualResult {
+  const balanceDec = new Decimal(input.balanceMxn).toDP(2, Decimal.ROUND_HALF_UP);
+  const rateDec = new Decimal(input.monthlyRate);
+  const daysDec = new Decimal(input.daysElapsed);
+  const maxRateDec = new Decimal(FINANCIAL_CONSTANTS.ESPECIAL_MONTHLY_RATE_MAX);
+
+  if (balanceDec.lte(0)) {
+    throw new Error('El saldo base del Crédito Especial debe ser mayor a $0.00 MXN.');
+  }
+  if (rateDec.lte(0) || rateDec.gt(maxRateDec)) {
+    throw new Error(
+      `La tasa mensual (${rateDec.times(100).toFixed(2)}%) excede el tope autorizado de ${maxRateDec.times(100).toFixed(2)}% para Crédito Especial.`
+    );
+  }
+  if (daysDec.lte(0)) {
+    throw new Error('Los días transcurridos deben ser mayores a 0.');
+  }
+
+  const avgMonthDays = new Decimal(String(FINANCIAL_CONSTANTS.INVESTOR_AVG_MONTH_DAYS));
+  const dailyRate = rateDec.dividedBy(avgMonthDays);
+  const rawInterest = balanceDec
+    .times(dailyRate)
+    .times(daysDec)
+    .toDP(2, Decimal.ROUND_HALF_UP);
+
+  let netInterest: Decimal;
+  let vatAmount: Decimal;
+  let totalInterestWithVat: Decimal;
+
+  if (input.vatRegime === 'INCLUDED') {
+    totalInterestWithVat = rawInterest;
+    netInterest = totalInterestWithVat
+      .dividedBy(new Decimal('1.16'))
+      .toDP(2, Decimal.ROUND_HALF_UP);
+    vatAmount = totalInterestWithVat.minus(netInterest).toDP(2, Decimal.ROUND_HALF_UP);
+  } else if (input.vatRegime === 'EXEMPT') {
+    netInterest = rawInterest;
+    vatAmount = new Decimal(0).toDP(2, Decimal.ROUND_HALF_UP);
+    totalInterestWithVat = netInterest;
+  } else {
+    netInterest = rawInterest;
+    vatAmount = netInterest
+      .times(new Decimal(FINANCIAL_CONSTANTS.VAT_RATE))
+      .toDP(2, Decimal.ROUND_HALF_UP);
+    totalInterestWithVat = netInterest.plus(vatAmount).toDP(2, Decimal.ROUND_HALF_UP);
+  }
+
+  return {
+    balanceMxn: balanceDec.toFixed(2),
+    monthlyRate: rateDec.toFixed(6),
+    daysElapsed: daysDec.toFixed(2),
+    vatRegime: input.vatRegime,
+    netInterest: netInterest.toFixed(2),
+    vatAmount: vatAmount.toFixed(2),
+    totalInterestWithVat: totalInterestWithVat.toFixed(2),
+  };
+}
+
+/**
+ * Guardrail Forense 3 (CRUSE-APO-2026-063): Evaluación y sellado WORM de liberación de capacidad 30% LFT
+ * para renovaciones ('Q. EMISION simulador y carga.xlsx' y 'M. EMISION MENSUAL.xlsx').
+ * Verifica que priorLoanId exista en BD, que el saldo a liquidar cuadre al centavo con el saldo insoluto real,
+ * y sella el evento WORM DTI_CAPACITY_RELEASED_FOR_RENEWAL con el hash SHA-256 del contrato anterior.
+ */
+export async function evaluateAndAuditRenewalDtiCapacity(
+  input: RenewalDtiAuditInput
+): Promise<RenewalDtiAuditResult> {
+  const cleanPriorId = String(input.priorLoanId ?? '').trim();
+  if (!cleanPriorId) {
+    throw new Error('Guardrail 3: Se requiere priorLoanId válido para procesar una renovación.');
+  }
+
+  return db.transaction(async (tx) => {
+    const loanRes = await tx.query<{
+      id: string;
+      contract_number: string;
+      expediente_id: string;
+      principal_original: string | number;
+      fortnightly_payment: string | number;
+      product_type: string;
+      activated_at: string | Date;
+    }>(
+      `SELECT id, contract_number, expediente_id, principal_original, fortnightly_payment, product_type, activated_at
+       FROM loan_accounts WHERE id = $1`,
+      [cleanPriorId]
+    );
+
+    const priorLoan = loanRes.rows[0];
+    if (!priorLoan) {
+      throw new Error(`Guardrail 3: El crédito anterior '${cleanPriorId}' no existe en la base de datos.`);
+    }
+
+    const paidRes = await tx.query<{ total_cap: string | number | null }>(
+      `SELECT COALESCE(SUM(applied_capital), 0) AS total_cap FROM loan_payment_applications WHERE loan_account_id = $1`,
+      [priorLoan.id]
+    );
+    const paidCapDec = new Decimal(paidRes.rows[0]?.total_cap ?? 0);
+    const realLiveBalanceDec = Decimal.max(
+      new Decimal(0),
+      new Decimal(priorLoan.principal_original).minus(paidCapDec)
+    ).toDP(2, Decimal.ROUND_HALF_UP);
+
+    const declaredBalanceDec = new Decimal(input.priorLoanBalanceToLiquidate).toDP(
+      2,
+      Decimal.ROUND_HALF_UP
+    );
+    if (!declaredBalanceDec.equals(realLiveBalanceDec)) {
+      throw new Error(
+        `Guardrail 3: El saldo a liquidar declarado ($${declaredBalanceDec.toFixed(2)}) no cuadra con el saldo insoluto real en BD ($${realLiveBalanceDec.toFixed(2)}) para el contrato ${priorLoan.contract_number}.`
+      );
+    }
+
+    const periodicDiscountReleasedDec = new Decimal(priorLoan.fortnightly_payment).toDP(
+      2,
+      Decimal.ROUND_HALF_UP
+    );
+    const priorLoanContractSha256 = crypto
+      .createHash('sha256')
+      .update(
+        `${priorLoan.id}|${priorLoan.contract_number}|${priorLoan.expediente_id}|${realLiveBalanceDec.toFixed(2)}`,
+        'utf8'
+      )
+      .digest('hex');
+
+    const dtiCheck = validateLegalPaymentCapacityLft110(
+      input.newPeriodicPayment,
+      input.currentNetPeriodicIncome,
+      {
+        isRenewal: true,
+        previousLoanPeriodicDiscountToRelease: periodicDiscountReleasedDec,
+        previousLoanBalanceToLiquidate: realLiveBalanceDec,
+        requestedPrincipal: input.newPrincipalAmount,
+      }
+    );
+
+    await auditEventStore.appendInTx(tx, {
+      action: 'DTI_CAPACITY_RELEASED_FOR_RENEWAL',
+      actorEmail: input.actorEmail,
+      actorRole: input.actorRole,
+      outcome: dtiCheck.isValid ? 'success' : 'denied',
+      sourceIp: input.sourceIp ?? '127.0.0.1',
+      sourceSummary: 'specialCreditService:evaluateAndAuditRenewalDtiCapacity',
+      expedienteId: priorLoan.expediente_id,
+      details: JSON.stringify({
+        priorLoanId: priorLoan.id,
+        priorContractNumber: priorLoan.contract_number,
+        priorLoanBalanceLiquidated: realLiveBalanceDec.toFixed(2),
+        periodicDiscountReleased: periodicDiscountReleasedDec.toFixed(2),
+        adjustedNetIncome: dtiCheck.adjustedNetIncome,
+        netDisbursementCheckAmount: dtiCheck.netDisbursementCheckAmount,
+        priorLoanContractSha256,
+        oficioPrimerPago: input.oficioPrimerPago ?? null,
+        oficioSuspension: input.oficioSuspension ?? null,
+        isValidLft110: dtiCheck.isValid,
+      }),
+    });
+
+    return {
+      priorLoanId: priorLoan.id,
+      priorContractNumber: priorLoan.contract_number,
+      priorLoanBalanceLiquidated: realLiveBalanceDec.toFixed(2),
+      periodicDiscountReleased: periodicDiscountReleasedDec.toFixed(2),
+      adjustedNetIncome: dtiCheck.adjustedNetIncome,
+      netDisbursementCheckAmount: dtiCheck.netDisbursementCheckAmount,
+      priorLoanContractSha256,
+      dtiCheck,
     };
   });
 }

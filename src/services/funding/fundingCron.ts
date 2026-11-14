@@ -13,7 +13,11 @@ import Decimal from 'decimal.js';
 import { getDaysInMonth, endOfMonth } from 'date-fns';
 import { db, DbInputValue } from '../db/connectionPool';
 import { kyselyBuilder } from '../db/kyselyConfig';
-import { calculateMonthlyYieldAndISR, computeCompoundCapitalization } from './fundingEngine';
+import {
+  calculateMonthlyYieldAndISR,
+  computeCompoundCapitalization,
+  resolveDayCountConvention,
+} from './fundingEngine';
 
 export interface FundingCronResult {
   processed: number;
@@ -34,6 +38,7 @@ interface ActiveInvestmentRow {
   start_date: string;
   isr_retention_rate: number;
   applies_isr: 0 | 1;
+  day_count_convention?: string | null;
 }
 
 export interface RecordCapitalMovementInput {
@@ -91,7 +96,8 @@ export async function runMonthlyFundingSettle(
         inv.annual_rate,
         inv.start_date,
         i.isr_retention_rate,
-        i.applies_isr
+        i.applies_isr,
+        COALESCE(inv.day_count_convention, i.day_count_convention) AS day_count_convention
       FROM investments inv
       JOIN investors i ON inv.investor_id = i.id
       WHERE inv.status = 'ACTIVE'
@@ -112,12 +118,14 @@ export async function runMonthlyFundingSettle(
       }
 
       const baseCapital = Number(inv.current_capital) > 0 ? inv.current_capital : inv.capital;
+      const convention = resolveDayCountConvention(inv.day_count_convention, 'THIRTY_360');
       const yieldResult = calculateMonthlyYieldAndISR(
         baseCapital,
         inv.annual_rate,
         inv.isr_retention_rate,
         daysInMonth,
-        inv.applies_isr
+        inv.applies_isr,
+        convention
       );
 
       const paymentId = `pmt_${crypto.randomUUID()}`;

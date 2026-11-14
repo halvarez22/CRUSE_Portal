@@ -1,20 +1,20 @@
 /**
- * MOTOR DE COBRANZA EXTRAJUDICIAL, CONGELAMIENTO DE MORA, SUSPENSIONES Y REESTRUCTURAS N-A-1
- * Expediente: CRUSE-APO-2026-025 (RN-05, RN-07, RN-08, RN-10, RN-11)
+ * MOTOR DE COBRANZA EXTRAJUDICIAL, CONGELAMIENTO DE MORA, BAJA LABORAL ACTIVA Y REESTRUCTURAS N-A-1
+ * Expedientes: CRUSE-APO-2026-025 y CRUSE-APO-2026-063 (Casos 2 y 4 — Guardrails 3 y 4)
  *
  * - Directriz 1: Proyección de estado mediante CTEs (`WITH`) en una sola pasada sin N+1.
  * - Directriz 2: Relación N-a-1 estricta en Reestructuras (`RN-11`), insertando N registros en
- *   `loan_restructures`, validando cero créditos `EXPRESS` y respetando el tope de 4 créditos activos.
- * - Directriz 3: Sincronización atómica de `loan_insurance_enrollments` (`EXCLUDED_DEMANDA`,
- *   `EXCLUDED_CONVENIO`, `CLOSED`, `ACTIVE`) en la misma transacción ACID con `pg_advisory_xact_lock(20260019)`.
- * - Directriz 4: Zero-PII absoluto (`blindCurpPrefix` 12 chars, `curpMasked`, `rfcMasked`, `maskedName`).
+ *   `loan_restructures` y sellando el evento WORM `DTI_CAPACITY_RELEASED_FOR_RENEWAL` (Guardrail 3).
+ * - Directriz 3: Sincronización atómica de `loan_insurance_enrollments` y soporte para `BAJA_LABORAL_ACTIVA`
+ *   (hoja `SUBIR A BURO DESPEDIDOS`).
+ * - Directriz 4: Zero-PII absoluto y cumplimiento estricto de techo Anti-God-Object (< 580 líneas).
  */
 
 import crypto from 'crypto';
 import Decimal from 'decimal.js';
 import { db, TxHandle } from '../db/connectionPool';
 import { auditEventStore } from '../audit/auditEventStore';
-import { calculateSimulation } from '../../config/financialConstants';
+import { calculateSimulation, validateLegalPaymentCapacityLft110 } from '../../config/financialConstants';
 import { maskPiiForPreview } from './creditBureauService';
 import {
   AuditAction,
@@ -27,31 +27,15 @@ import {
 } from '../../types';
 
 interface PortfolioRiskJoinDbRow {
-  loan_account_id: string;
-  contract_number: string;
-  expediente_id: string;
-  convenio: string;
-  product_type: 'NOMINA_NORMAL' | 'EXPRESS' | 'ESPECIAL';
-  payment_frequency: string;
-  term_fortnights: number;
-  blind_curp: string;
-  full_name_masked: string;
-  curp_masked: string;
-  rfc_masked: string | null;
-  principal_original: string | number;
-  projected_live_balance: string | number;
-  fortnightly_payment: string | number;
-  projected_status: ProjectedLoanOperationalStatus;
-  active_suspension_id: string | null;
-  active_suspension_reason: SuspensionOrFreezeReason | null;
-  active_suspension_start_period: string | null;
-  restructured_into_loan_id: string | null;
-  restructured_into_contract: string | null;
-  insurance_status: InsuranceEnrollmentStatus | null;
-  insured_amount: string | number | null;
-  period_premium: string | number | null;
-  latest_note_content: string | null;
-  activated_at: string | Date;
+  loan_account_id: string; contract_number: string; expediente_id: string; convenio: string;
+  product_type: 'NOMINA_NORMAL' | 'EXPRESS' | 'ESPECIAL'; payment_frequency: string; term_fortnights: number;
+  blind_curp: string; full_name_masked: string; curp_masked: string; rfc_masked: string | null;
+  principal_original: string | number; projected_live_balance: string | number; fortnightly_payment: string | number;
+  projected_status: ProjectedLoanOperationalStatus; active_suspension_id: string | null;
+  active_suspension_reason: SuspensionOrFreezeReason | null; active_suspension_start_period: string | null;
+  restructured_into_loan_id: string | null; restructured_into_contract: string | null;
+  insurance_status: InsuranceEnrollmentStatus | null; insured_amount: string | number | null;
+  period_premium: string | number | null; latest_note_content: string | null; activated_at: string | Date;
 }
 
 export interface RegisterSuspensionOrAgreementInput {
@@ -61,6 +45,7 @@ export interface RegisterSuspensionOrAgreementInput {
   startPeriod: string;
   endPeriod?: string | null;
   agreementNotes: string;
+  oficioSuspension?: string | null;
   actorEmail: string;
   actorRole: UserRole;
   sourceIp: string;
@@ -74,6 +59,9 @@ export interface ExecuteLoanRestructureInput {
   newTermFortnights: number;
   firstDeductionPeriod: string;
   paymentFrequency?: 'QUINCENAL' | 'MENSUAL';
+  currentNetPeriodicIncome?: number | string;
+  oficioPrimerPago?: string | null;
+  oficioSuspension?: string | null;
   notes?: string;
   actorEmail: string;
   actorRole: UserRole;
@@ -89,11 +77,13 @@ export interface ExecuteLoanRestructureResult {
   newFortnightlyPayment: string;
   totalAbsorbedPayoff: string;
   netCashDisbursed: string;
+  periodicDiscountReleased: string;
   absorbedLoans: Array<{
     restructureId: string;
     previousLoanId: string;
     previousContractNumber: string;
     absorbedPayoffAmount: string;
+    priorLoanContractSha256: string;
   }>;
 }
 
@@ -103,6 +93,9 @@ function mapProjectedSicObservation(
 ): string | null {
   if (status === 'RESTRUCTURED') return 'RV (Reestructurado)';
   if (status === 'PAID_OFF') return 'CC (Cuenta Cerrada Saldo $0)';
+  if (status === 'BAJA_LABORAL_ACTIVA' || reason === 'BAJA_LABORAL_ACTIVA') {
+    return 'BL (Baja Laboral Activa — Subir a Buró Despedidos)';
+  }
   if (status === 'FROZEN_EXTRAJUDICIAL') {
     if (reason === 'DEMANDA_JUDICIAL') return 'SG (Demanda / Cobranza Judicial)';
     if (reason === 'CONVENIO_EXTRAJUDICIAL') return 'CV (Convenio Extrajudicial)';
@@ -129,9 +122,7 @@ async function syncInsuranceEnrollmentInTx(
     return;
   }
 
-  const policyRes = await tx.query<{ id: string }>(
-    `SELECT id FROM insurance_policies ORDER BY start_date DESC LIMIT 1`
-  );
+  const policyRes = await tx.query<{ id: string }>(`SELECT id FROM insurance_policies ORDER BY start_date DESC LIMIT 1`);
   let policyId = policyRes.rows[0]?.id;
   if (!policyId) {
     policyId = 'pol_colectiva_2026';
@@ -143,17 +134,12 @@ async function syncInsuranceEnrollmentInTx(
   }
 
   await tx.execute(
-    `INSERT INTO loan_insurance_enrollments (
-       id, policy_id, loan_account_id, insured_amount, period_premium, first_payment_date, status
-     ) VALUES ($1, $2, $3, 35000.00, 22.85, '2026-01-15', $4)`,
+    `INSERT INTO loan_insurance_enrollments (id, policy_id, loan_account_id, insured_amount, period_premium, first_payment_date, status)
+     VALUES ($1, $2, $3, 35000.00, 22.85, '2026-01-15', $4)`,
     [`lie_${crypto.randomUUID()}`, policyId, loanAccountId, targetStatus]
   );
 }
 
-/**
- * Directriz 1 y Directriz 4: Consulta Zero-PII optimizada con CTEs (`WITH`) sobre aislamiento
- * `REPEATABLE READ READ ONLY`. Jamás selecciona ni desencripta `encrypted_pii_payload`.
- */
 export async function listPortfolioRiskAndCollections(): Promise<{
   summary: PortfolioRiskSummary;
   rows: LoanPortfolioRiskRow[];
@@ -165,8 +151,7 @@ export async function listPortfolioRiskAndCollections(): Promise<{
 
     const res = await tx.query<PortfolioRiskJoinDbRow>(
       `WITH lpa_totals AS (
-         SELECT loan_account_id, SUM(applied_capital) AS total_applied_capital
-         FROM loan_payment_applications GROUP BY loan_account_id
+         SELECT loan_account_id, SUM(applied_capital) AS total_applied_capital FROM loan_payment_applications GROUP BY loan_account_id
        ),
        scm_totals AS (
          SELECT loan_account_id,
@@ -175,37 +160,27 @@ export async function listPortfolioRiskAndCollections(): Promise<{
          FROM special_credit_movements GROUP BY loan_account_id
        ),
        active_suspensions AS (
-         SELECT s1.loan_account_id, s1.id AS active_suspension_id,
-           s1.reason AS active_suspension_reason, s1.start_period AS active_suspension_start_period
+         SELECT s1.loan_account_id, s1.id AS active_suspension_id, s1.reason AS active_suspension_reason, s1.start_period AS active_suspension_start_period
          FROM loan_suspension_periods s1
-         INNER JOIN (
-           SELECT loan_account_id, MAX(created_at) AS max_ts FROM loan_suspension_periods
-           WHERE status = 'ACTIVE_SUSPENSION' GROUP BY loan_account_id
-         ) s2 ON s1.loan_account_id = s2.loan_account_id AND s1.created_at = s2.max_ts
+         INNER JOIN (SELECT loan_account_id, MAX(created_at) AS max_ts FROM loan_suspension_periods WHERE status = 'ACTIVE_SUSPENSION' GROUP BY loan_account_id) s2
+           ON s1.loan_account_id = s2.loan_account_id AND s1.created_at = s2.max_ts
          WHERE s1.status = 'ACTIVE_SUSPENSION'
        ),
        restructured_loans AS (
-         SELECT lr.previous_loan_id AS loan_account_id,
-           MAX(lr.new_loan_id) AS restructured_into_loan_id,
-           MAX(la_new.contract_number) AS restructured_into_contract
-         FROM loan_restructures lr
-         INNER JOIN loan_accounts la_new ON la_new.id = lr.new_loan_id
-         GROUP BY lr.previous_loan_id
+         SELECT lr.previous_loan_id AS loan_account_id, MAX(lr.new_loan_id) AS restructured_into_loan_id, MAX(la_new.contract_number) AS restructured_into_contract
+         FROM loan_restructures lr INNER JOIN loan_accounts la_new ON la_new.id = lr.new_loan_id GROUP BY lr.previous_loan_id
        ),
        latest_insurance AS (
          SELECT i1.loan_account_id, i1.status AS insurance_status, i1.insured_amount, i1.period_premium
          FROM loan_insurance_enrollments i1
-         INNER JOIN (
-           SELECT loan_account_id, MAX(created_at) AS max_ts FROM loan_insurance_enrollments GROUP BY loan_account_id
-         ) i2 ON i1.loan_account_id = i2.loan_account_id AND i1.created_at = i2.max_ts
+         INNER JOIN (SELECT loan_account_id, MAX(created_at) AS max_ts FROM loan_insurance_enrollments GROUP BY loan_account_id) i2
+           ON i1.loan_account_id = i2.loan_account_id AND i1.created_at = i2.max_ts
        ),
        latest_notes AS (
          SELECT n1.entity_id AS loan_account_id, n1.note_content AS latest_note_content
          FROM operational_notes n1
-         INNER JOIN (
-           SELECT entity_id, MAX(created_at) AS max_ts FROM operational_notes
-           WHERE entity_type = 'LOAN_ACCOUNT' GROUP BY entity_id
-         ) n2 ON n1.entity_id = n2.entity_id AND n1.created_at = n2.max_ts
+         INNER JOIN (SELECT entity_id, MAX(created_at) AS max_ts FROM operational_notes WHERE entity_type = 'LOAN_ACCOUNT' GROUP BY entity_id) n2
+           ON n1.entity_id = n2.entity_id AND n1.created_at = n2.max_ts
          WHERE n1.entity_type = 'LOAN_ACCOUNT'
        )
        SELECT
@@ -220,6 +195,7 @@ export async function listPortfolioRiskAndCollections(): Promise<{
          la.fortnightly_payment,
          CASE
            WHEN rl.restructured_into_loan_id IS NOT NULL THEN 'RESTRUCTURED'
+           WHEN asusp.active_suspension_reason = 'BAJA_LABORAL_ACTIVA' OR la.employment_status = 'BAJA_LABORAL_ACTIVA' THEN 'BAJA_LABORAL_ACTIVA'
            WHEN asusp.active_suspension_reason IN ('BAJA_LABORAL', 'COBRANZA_EXTRAJUDICIAL', 'DEMANDA_JUDICIAL', 'CONVENIO_EXTRAJUDICIAL') THEN 'FROZEN_EXTRAJUDICIAL'
            WHEN asusp.active_suspension_reason = 'LICENCIA_SIN_GOCE' THEN 'SUSPENDED_LEAVE'
            WHEN (CASE WHEN la.product_type = 'ESPECIAL' THEN la.principal_original + COALESCE(st.total_charges, 0) - COALESCE(st.total_credits, 0) ELSE la.principal_original - COALESCE(lt.total_applied_capital, 0) END) <= 0 THEN 'PAID_OFF'
@@ -258,11 +234,11 @@ export async function listPortfolioRiskAndCollections(): Promise<{
       blindCurp: r.blind_curp,
     });
 
-    const liveBalDec = Decimal.max(0, new Decimal(r.projected_live_balance || 0)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const liveBalDec = Decimal.max(0, new Decimal(r.projected_live_balance || 0)).toDP(2, Decimal.ROUND_HALF_UP);
     totalLiveBalanceDec = totalLiveBalanceDec.plus(liveBalDec);
 
     if (r.projected_status === 'ACTIVE') activeCount++;
-    else if (r.projected_status === 'FROZEN_EXTRAJUDICIAL') {
+    else if (r.projected_status === 'FROZEN_EXTRAJUDICIAL' || r.projected_status === 'BAJA_LABORAL_ACTIVA') {
       frozenExtrajudicialCount++;
       totalFrozenBalanceDec = totalFrozenBalanceDec.plus(liveBalDec);
     } else if (r.projected_status === 'SUSPENDED_LEAVE') suspendedLeaveCount++;
@@ -273,7 +249,9 @@ export async function listPortfolioRiskAndCollections(): Promise<{
     if (!r.insurance_status) {
       if (r.projected_status === 'RESTRUCTURED' || r.projected_status === 'PAID_OFF') effectiveInsStatus = 'CLOSED';
       else if (r.active_suspension_reason === 'CONVENIO_EXTRAJUDICIAL') effectiveInsStatus = 'EXCLUDED_CONVENIO';
-      else if (r.projected_status === 'FROZEN_EXTRAJUDICIAL') effectiveInsStatus = 'EXCLUDED_DEMANDA';
+      else if (r.projected_status === 'FROZEN_EXTRAJUDICIAL' || r.projected_status === 'BAJA_LABORAL_ACTIVA') {
+        effectiveInsStatus = 'EXCLUDED_DEMANDA';
+      }
     }
 
     if (
@@ -331,11 +309,6 @@ export async function listPortfolioRiskAndCollections(): Promise<{
   };
 }
 
-/**
- * Directriz 3: Registra atómicamente el congelamiento por mora/demanda (`RN-05`), convenio de pago (`RN-07`)
- * o suspensión/reactivación por licencia sin goce (`RN-10`), sincronizando `loan_insurance_enrollments` (`RN-08`)
- * dentro de la misma transacción ACID con `pg_advisory_xact_lock(20260019)`.
- */
 export async function registerSuspensionOrAgreement(
   input: RegisterSuspensionOrAgreementInput
 ): Promise<{ suspensionId: string; projectedStatus: ProjectedLoanOperationalStatus; insuranceStatus: InsuranceEnrollmentStatus }> {
@@ -370,9 +343,8 @@ export async function registerSuspensionOrAgreement(
 
     if (input.action === 'SUSPEND_OR_FREEZE') {
       await tx.execute(
-        `INSERT INTO loan_suspension_periods (
-           id, loan_account_id, start_period, end_period, reason, status, approved_by, created_at
-         ) VALUES ($1, $2, $3, $4, $5, 'ACTIVE_SUSPENSION', $6, CURRENT_TIMESTAMP)`,
+        `INSERT INTO loan_suspension_periods (id, loan_account_id, start_period, end_period, reason, status, approved_by, created_at)
+         VALUES ($1, $2, $3, $4, $5, 'ACTIVE_SUSPENSION', $6, CURRENT_TIMESTAMP)`,
         [suspensionId, loan.id, cleanPeriod, input.endPeriod ?? null, input.reason, input.actorEmail]
       );
 
@@ -380,6 +352,10 @@ export async function registerSuspensionOrAgreement(
         projectedStatus = 'SUSPENDED_LEAVE';
         targetInsuranceStatus = 'ACTIVE';
         auditAction = 'LOAN_SUSPENSION_UPDATED';
+      } else if (input.reason === 'BAJA_LABORAL_ACTIVA') {
+        projectedStatus = 'BAJA_LABORAL_ACTIVA';
+        targetInsuranceStatus = 'EXCLUDED_DEMANDA';
+        auditAction = 'LOAN_MARKED_BAJA_LABORAL_ACTIVA';
       } else if (input.reason === 'CONVENIO_EXTRAJUDICIAL') {
         projectedStatus = 'FROZEN_EXTRAJUDICIAL';
         targetInsuranceStatus = 'EXCLUDED_CONVENIO';
@@ -391,11 +367,11 @@ export async function registerSuspensionOrAgreement(
       }
     }
 
-    // Directriz 3 (RN-08): Sincronización atómica de la póliza de seguro de vida en la misma transacción ACID
     await syncInsuranceEnrollmentInTx(tx, loan.id, targetInsuranceStatus);
 
     const noteId = `note_${crypto.randomUUID()}`;
-    const noteText = `[${input.action === 'REACTIVATE' ? 'REACTIVADO' : input.reason} · ${cleanPeriod}] ${cleanNotes}`;
+    const oficioTag = input.oficioSuspension ? ` · Oficio: ${input.oficioSuspension}` : '';
+    const noteText = `[${input.action === 'REACTIVATE' ? 'REACTIVADO' : input.reason} · ${cleanPeriod}${oficioTag}] ${cleanNotes}`;
     await tx.execute(
       `INSERT INTO operational_notes (id, entity_type, entity_id, note_content, is_pinned, author_email, created_at)
        VALUES ($1, 'LOAN_ACCOUNT', $2, $3, 1, $4, CURRENT_TIMESTAMP)`,
@@ -416,6 +392,7 @@ export async function registerSuspensionOrAgreement(
         action: input.action,
         reason: input.reason,
         startPeriod: cleanPeriod,
+        oficioSuspension: input.oficioSuspension ?? null,
         projectedStatus,
         insuranceStatus: targetInsuranceStatus,
         noteId,
@@ -426,11 +403,6 @@ export async function registerSuspensionOrAgreement(
   });
 }
 
-/**
- * Directriz 2: Ejecuta una Reestructura N-a-1 (`RN-11`), absorbiendo de 1 hasta 4 créditos
- * `NOMINA_NORMAL` activos hacia un nuevo contrato, bloqueando cualquier crédito `EXPRESS`,
- * insertando N filas individuales en `loan_restructures` y sincronizando el seguro de vida (`RN-08`).
- */
 export async function executeLoanRestructure(
   input: ExecuteLoanRestructureInput
 ): Promise<ExecuteLoanRestructureResult> {
@@ -439,7 +411,7 @@ export async function executeLoanRestructure(
     throw new Error('REGLA DE NEGOCIO RN-11: Debe seleccionar entre 1 y 4 créditos normales activos para reestructurar.');
   }
 
-  const newPrincipalDec = new Decimal(input.newPrincipalAmount || 0).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  const newPrincipalDec = new Decimal(input.newPrincipalAmount || 0).toDP(2, Decimal.ROUND_HALF_UP);
   if (!newPrincipalDec.isFinite() || newPrincipalDec.lte(0)) {
     throw new Error('El monto principal del nuevo crédito reestructurado debe ser mayor a $0.00.');
   }
@@ -456,17 +428,16 @@ export async function executeLoanRestructure(
 
     const absorbedLoans: ExecuteLoanRestructureResult['absorbedLoans'] = [];
     let totalAbsorbedDec = new Decimal(0);
+    let totalPeriodicDiscountReleasedDec = new Decimal(0);
 
     for (const prevId of uniquePrevIds) {
       const loanRes = await tx.query<{
-        id: string;
-        contract_number: string;
-        expediente_id: string;
-        principal_original: string | number;
-        product_type: string;
-      }>(`SELECT id, contract_number, expediente_id, principal_original, product_type FROM loan_accounts WHERE id = $1`, [
-        prevId,
-      ]);
+        id: string; contract_number: string; expediente_id: string;
+        principal_original: string | number; fortnightly_payment: string | number; product_type: string;
+      }>(
+        `SELECT id, contract_number, expediente_id, principal_original, fortnightly_payment, product_type FROM loan_accounts WHERE id = $1`,
+        [prevId]
+      );
 
       const prevLoan = loanRes.rows[0];
       if (!prevLoan) throw new Error(`El crédito origen '${prevId}' no existe.`);
@@ -474,15 +445,10 @@ export async function executeLoanRestructure(
         throw new Error(`El crédito '${prevLoan.contract_number}' no pertenece al expediente '${input.expedienteId}'.`);
       }
       if (prevLoan.product_type === 'EXPRESS') {
-        throw new Error(
-          `REGLA DE NEGOCIO RN-11: El crédito '${prevLoan.contract_number}' es de tipo EXPRESS. Los créditos Express no son sujetos de reestructura.`
-        );
+        throw new Error(`REGLA DE NEGOCIO RN-11: El crédito '${prevLoan.contract_number}' es de tipo EXPRESS. Los créditos Express no son sujetos de reestructura.`);
       }
 
-      const alreadyRestructured = await tx.query<{ id: string }>(
-        `SELECT id FROM loan_restructures WHERE previous_loan_id = $1`,
-        [prevId]
-      );
+      const alreadyRestructured = await tx.query<{ id: string }>(`SELECT id FROM loan_restructures WHERE previous_loan_id = $1`, [prevId]);
       if (alreadyRestructured.rowCount > 0) {
         throw new Error(`El crédito '${prevLoan.contract_number}' ya fue absorbido previamente en otra reestructura.`);
       }
@@ -492,22 +458,55 @@ export async function executeLoanRestructure(
         [prevId]
       );
       const paidCapDec = new Decimal(paidRes.rows[0]?.total_cap ?? 0);
-      const liveBalDec = Decimal.max(0, new Decimal(prevLoan.principal_original).minus(paidCapDec)).toDecimalPlaces(
-        2,
-        Decimal.ROUND_HALF_UP
-      );
+      const liveBalDec = Decimal.max(0, new Decimal(prevLoan.principal_original).minus(paidCapDec)).toDP(2, Decimal.ROUND_HALF_UP);
+      const prevDiscountDec = new Decimal(prevLoan.fortnightly_payment || 0).toDP(2, Decimal.ROUND_HALF_UP);
+      const priorLoanContractSha256 = crypto
+        .createHash('sha256')
+        .update(`${prevLoan.id}|${prevLoan.contract_number}|${prevLoan.expediente_id}|${liveBalDec.toFixed(2)}`, 'utf8')
+        .digest('hex');
 
       totalAbsorbedDec = totalAbsorbedDec.plus(liveBalDec);
+      totalPeriodicDiscountReleasedDec = totalPeriodicDiscountReleasedDec.plus(prevDiscountDec);
       absorbedLoans.push({
         restructureId: `lr_${crypto.randomUUID()}`,
         previousLoanId: prevLoan.id,
         previousContractNumber: prevLoan.contract_number,
         absorbedPayoffAmount: liveBalDec.toFixed(2),
+        priorLoanContractSha256,
       });
     }
 
     const sim = calculateSimulation(newPrincipalDec.toNumber(), termFortnights, 'normal');
-    const fortnightlyPaymentDec = new Decimal(sim.fortnightlyPayment).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const fortnightlyPaymentDec = new Decimal(sim.fortnightlyPayment).toDP(2, Decimal.ROUND_HALF_UP);
+    const netCashDec = Decimal.max(0, newPrincipalDec.minus(totalAbsorbedDec)).toDP(2, Decimal.ROUND_HALF_UP);
+
+    // Guardrail Forense 3: Sellar evento WORM DTI_CAPACITY_RELEASED_FOR_RENEWAL
+    const baseNetIncomeDec = new Decimal(input.currentNetPeriodicIncome ?? sim.requiredNetIncome);
+    const dtiCheck = validateLegalPaymentCapacityLft110(fortnightlyPaymentDec, baseNetIncomeDec, {
+      isRenewal: true,
+      previousLoanPeriodicDiscountToRelease: totalPeriodicDiscountReleasedDec,
+      previousLoanBalanceToLiquidate: totalAbsorbedDec,
+      requestedPrincipal: newPrincipalDec,
+    });
+
+    const primaryPrior = absorbedLoans[0]!;
+    await auditEventStore.appendInTx(tx, {
+      actorEmail: input.actorEmail,
+      actorRole: input.actorRole,
+      action: 'DTI_CAPACITY_RELEASED_FOR_RENEWAL',
+      outcome: 'success',
+      sourceIp: input.sourceIp,
+      sourceSummary: input.sourceSummary,
+      expedienteId: input.expedienteId,
+      details: JSON.stringify({
+        priorLoanId: primaryPrior.previousLoanId,
+        priorLoanBalanceLiquidated: totalAbsorbedDec.toFixed(2),
+        periodicDiscountReleased: totalPeriodicDiscountReleasedDec.toFixed(2),
+        adjustedNetIncome: dtiCheck.adjustedNetIncome,
+        priorLoanContractSha256: primaryPrior.priorLoanContractSha256,
+        netDisbursementCheckAmount: netCashDec.toFixed(2),
+      }),
+    });
 
     const countRes = await tx.query<{ total: string | number }>('SELECT COUNT(*) AS total FROM loan_accounts');
     const nextSeq = Number(countRes.rows[0]?.total ?? 0) + 1;
@@ -518,27 +517,23 @@ export async function executeLoanRestructure(
       `INSERT INTO loan_accounts (
          id, contract_number, expediente_id, principal_original, current_principal_balance,
          fortnightly_payment, payment_frequency, first_deduction_period, activated_at,
-         activated_by, product_type, insurance_required, status, reports_to_credit_bureau
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, 'NOMINA_NORMAL', 1, 'ACTIVE', 1)`,
+         activated_by, product_type, insurance_required, status, reports_to_credit_bureau,
+         is_renewal, prior_loan_id, prior_loan_liquidated_amount_cents, net_disbursed_amount_cents,
+         oficio_primer_pago, oficio_suspension
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, 'NOMINA_NORMAL', 1, 'ACTIVE', 1, 1, $10, $11, $12, $13, $14)`,
       [
-        newLoanAccountId,
-        newContractNumber,
-        input.expedienteId,
-        newPrincipalDec.toNumber(),
-        newPrincipalDec.toNumber(),
-        fortnightlyPaymentDec.toNumber(),
-        frequency,
-        firstPeriod,
-        input.actorEmail,
+        newLoanAccountId, newContractNumber, input.expedienteId,
+        newPrincipalDec.toNumber(), newPrincipalDec.toNumber(), fortnightlyPaymentDec.toNumber(),
+        frequency, firstPeriod, input.actorEmail, primaryPrior.previousLoanId,
+        totalAbsorbedDec.times(100).toDP(0).toNumber(), netCashDec.times(100).toDP(0).toNumber(),
+        input.oficioPrimerPago ?? null, input.oficioSuspension ?? null,
       ]
     );
 
-    // Directriz 2: Inserción de N registros distintos en loan_restructures (relación N-a-1) y cierre de seguros previos
     for (const item of absorbedLoans) {
       await tx.execute(
-        `INSERT INTO loan_restructures (
-           id, new_loan_id, previous_loan_id, absorbed_payoff_amount, authorized_by, restructured_at
-         ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
+        `INSERT INTO loan_restructures (id, new_loan_id, previous_loan_id, absorbed_payoff_amount, authorized_by, restructured_at)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
         [item.restructureId, newLoanAccountId, item.previousLoanId, Number(item.absorbedPayoffAmount), input.actorEmail]
       );
       await syncInsuranceEnrollmentInTx(tx, item.previousLoanId, 'CLOSED');
@@ -546,10 +541,9 @@ export async function executeLoanRestructure(
 
     await syncInsuranceEnrollmentInTx(tx, newLoanAccountId, 'ACTIVE');
 
-    const netCashDec = Decimal.max(0, newPrincipalDec.minus(totalAbsorbedDec)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
     const noteId = `note_${crypto.randomUUID()}`;
     const absorbedSummary = absorbedLoans.map((a) => `${a.previousContractNumber} ($${a.absorbedPayoffAmount})`).join(', ');
-    const noteContent = `[REESTRUCTURA N-A-1 (${absorbedLoans.length} -> 1)] Absorbió: ${absorbedSummary}. Total absorbido: $${totalAbsorbedDec.toFixed(2)}. Remanente neto: $${netCashDec.toFixed(2)}. ${input.notes?.trim() || ''}`.trim();
+    const noteContent = `[REESTRUCTURA N-A-1 (${absorbedLoans.length} -> 1)] Absorbió: ${absorbedSummary}. Total absorbido: $${totalAbsorbedDec.toFixed(2)}. Remanente neto (Cheque): $${netCashDec.toFixed(2)}. ${input.notes?.trim() || ''}`.trim();
 
     await tx.execute(
       `INSERT INTO operational_notes (id, entity_type, entity_id, note_content, is_pinned, author_email, created_at)
@@ -566,25 +560,17 @@ export async function executeLoanRestructure(
       sourceSummary: input.sourceSummary,
       expedienteId: input.expedienteId,
       details: JSON.stringify({
-        newLoanAccountId,
-        newContractNumber,
-        absorbedCount: absorbedLoans.length,
-        absorbedLoans,
-        newPrincipalAmount: newPrincipalDec.toFixed(2),
-        totalAbsorbedPayoff: totalAbsorbedDec.toFixed(2),
-        netCashDisbursed: netCashDec.toFixed(2),
+        newLoanAccountId, newContractNumber, absorbedCount: absorbedLoans.length, absorbedLoans,
+        newPrincipalAmount: newPrincipalDec.toFixed(2), totalAbsorbedPayoff: totalAbsorbedDec.toFixed(2),
+        netCashDisbursed: netCashDec.toFixed(2), periodicDiscountReleased: totalPeriodicDiscountReleasedDec.toFixed(2),
       }),
     });
 
     return {
-      newLoanAccountId,
-      newContractNumber,
-      expedienteId: input.expedienteId,
-      newPrincipalAmount: newPrincipalDec.toFixed(2),
-      newFortnightlyPayment: fortnightlyPaymentDec.toFixed(2),
-      totalAbsorbedPayoff: totalAbsorbedDec.toFixed(2),
-      netCashDisbursed: netCashDec.toFixed(2),
-      absorbedLoans,
+      newLoanAccountId, newContractNumber, expedienteId: input.expedienteId,
+      newPrincipalAmount: newPrincipalDec.toFixed(2), newFortnightlyPayment: fortnightlyPaymentDec.toFixed(2),
+      totalAbsorbedPayoff: totalAbsorbedDec.toFixed(2), netCashDisbursed: netCashDec.toFixed(2),
+      periodicDiscountReleased: totalPeriodicDiscountReleasedDec.toFixed(2), absorbedLoans,
     };
   });
 }

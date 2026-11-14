@@ -18,6 +18,10 @@ import {
   runMonthlyFundingSettle,
   recordInvestmentCapitalMovement,
 } from '../funding/fundingCron';
+import {
+  calculateSplitTrancheInvestorYield,
+  resolveDayCountConvention,
+} from '../funding/fundingEngine';
 
 export const fundingRouter = Router();
 
@@ -130,6 +134,10 @@ fundingRouter.post('/investors', requireAuth('funding:manage'), async (req: Requ
     const interestType = req.body?.interestType === 'COMPOUND' ? 'COMPOUND' : 'SIMPLE';
     const appliesIsr = req.body?.appliesIsr === false || req.body?.appliesIsr === 0 ? 0 : 1;
     const isrRetentionRate = Number(req.body?.isrRetentionRate ?? 0.009);
+    const dayCountConvention = resolveDayCountConvention(
+      typeof req.body?.dayCountConvention === 'string' ? req.body.dayCountConvention : 'ACTUAL_365_30_4',
+      'ACTUAL_365_30_4'
+    );
 
     if (!rawName || rawName.length < 3) {
       return res.status(400).json({ error: 'El nombre del inversionista es obligatorio (mínimo 3 caracteres).' });
@@ -154,14 +162,14 @@ fundingRouter.post('/investors', requireAuth('funding:manage'), async (req: Requ
 
     await db.transaction(async (tx) => {
       await tx.execute(
-        `INSERT INTO investors (id, blind_name, encrypted_name, isr_retention_rate, applies_isr, requires_invoice)
-         VALUES ($1, $2, $3, $4, $5, 0)`,
-        [investorId, blindName, maskedLabel, appliesIsr === 1 ? isrRetentionRate : 0, appliesIsr]
+        `INSERT INTO investors (id, blind_name, encrypted_name, isr_retention_rate, applies_isr, requires_invoice, day_count_convention)
+         VALUES ($1, $2, $3, $4, $5, 0, $6)`,
+        [investorId, blindName, maskedLabel, appliesIsr === 1 ? isrRetentionRate : 0, appliesIsr, dayCountConvention]
       );
       await tx.execute(
-        `INSERT INTO investments (id, investor_id, capital, current_capital, annual_rate, start_date, status, interest_type)
-         VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', $7)`,
-        [investmentId, investorId, capital, capital, normalizedAnnualRate, todayStr, interestType]
+        `INSERT INTO investments (id, investor_id, capital, current_capital, annual_rate, start_date, status, interest_type, day_count_convention)
+         VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', $7, $8)`,
+        [investmentId, investorId, capital, capital, normalizedAnnualRate, todayStr, interestType, dayCountConvention]
       );
     });
 
@@ -293,6 +301,26 @@ fundingRouter.post('/capital-movement', requireAuth('funding:manage'), async (re
     return res.json({ ok: true, movement });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Error registrando movimiento de capital';
+    return res.status(400).json({ error: message });
+  }
+});
+
+fundingRouter.post('/simulate-split-tranche', requireAuth('funding:read'), async (req: Request, res: Response) => {
+  try {
+    const result = calculateSplitTrancheInvestorYield({
+      capitalBefore: req.body?.capitalBefore ?? 0,
+      capitalAfter: req.body?.capitalAfter ?? 0,
+      annualRate: req.body?.annualRate ?? 0.12,
+      annualIsrRate: req.body?.annualIsrRate ?? 0.009,
+      periodStartDate: String(req.body?.periodStartDate ?? '2026-01-01'),
+      movementDate: String(req.body?.movementDate ?? '2026-01-19'),
+      periodEndDate: String(req.body?.periodEndDate ?? '2026-01-31'),
+      appliesIsr: req.body?.appliesIsr !== false,
+      dayCountConvention: resolveDayCountConvention(req.body?.dayCountConvention, 'ACTUAL_365_30_4'),
+    });
+    return res.json({ ok: true, result });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error simulando corte dividido 365/30.4';
     return res.status(400).json({ error: message });
   }
 });
