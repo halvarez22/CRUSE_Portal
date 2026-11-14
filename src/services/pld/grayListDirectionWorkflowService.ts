@@ -216,6 +216,32 @@ export async function listGrayListAndExceptionWorkflowData(): Promise<{
   const tentativeAndRegulatoryReports: CnbvReportAndWhistleblowingItem[] = repRes.rows.map((row) => {
     const deadlineMs = new Date(row.investigation_deadline_at).getTime();
     const diffDays = Math.max(0, Math.ceil((deadlineMs - nowMs) / (1000 * 60 * 60 * 24)));
+    const uifTransmissionDeadlineAt: string | null = row.uif_transmission_deadline_at
+      ? String(row.uif_transmission_deadline_at)
+      : null;
+    const isEscalated24h = Number((row as Record<string, unknown>).is_escalated_24h ?? 0) === 1;
+    const submissionDeadline24hAt = (row as Record<string, unknown>).submission_deadline_24h_at
+      ? String((row as Record<string, unknown>).submission_deadline_24h_at)
+      : null;
+    const extraordinaryExtensionGranted =
+      Number((row as Record<string, unknown>).extraordinary_extension_granted ?? 0) === 1;
+    const originalInvestigationDeadlineAt = (row as Record<string, unknown>).original_investigation_deadline_at
+      ? String((row as Record<string, unknown>).original_investigation_deadline_at)
+      : null;
+    const extensionJustificationNotes = (row as Record<string, unknown>).extension_justification_notes
+      ? String((row as Record<string, unknown>).extension_justification_notes)
+      : null;
+    const extensionGrantedBy = (row as Record<string, unknown>).extension_granted_by
+      ? String((row as Record<string, unknown>).extension_granted_by)
+      : null;
+    const extensionGrantedAt = (row as Record<string, unknown>).extension_granted_at
+      ? String((row as Record<string, unknown>).extension_granted_at)
+      : null;
+    const cccNextSessionNotified =
+      Number((row as Record<string, unknown>).ccc_next_session_notified ?? 0) === 1;
+    const cancelled24hByAuthority =
+      Number((row as Record<string, unknown>).cancelled_24h_by_authority ?? 0) === 1;
+
     return {
       id: row.id,
       reportCategory: row.report_category,
@@ -239,10 +265,19 @@ export async function listGrayListAndExceptionWorkflowData(): Promise<{
       cccSessionAt: row.ccc_session_at ? String(row.ccc_session_at) : null,
       cccDecision: row.ccc_decision,
       cccJustificationNotes: row.ccc_justification_notes,
-      uifTransmissionDeadlineAt: row.uif_transmission_deadline_at ? String(row.uif_transmission_deadline_at) : null,
+      uifTransmissionDeadlineAt,
       slaClockStatus: row.sla_clock_status,
       remainingCalendarDaysForCcc: diffDays,
       retentionUntilYear: row.retention_until_year,
+      extraordinaryExtensionGranted,
+      originalInvestigationDeadlineAt,
+      extensionJustificationNotes,
+      extensionGrantedBy,
+      extensionGrantedAt,
+      isEscalated24h,
+      submissionDeadline24hAt,
+      cccNextSessionNotified,
+      cancelled24hByAuthority,
       createdAt: String(row.created_at),
     };
   });

@@ -19,46 +19,10 @@ export interface PldSitiReportsAndCccPanelProps {
 }
 
 const DEMO_FRACTIONED_OPS = [
-  {
-    operationId: 'sim_frac_01',
-    blindCurp: 'blind_demo_frac_oct_2026',
-    subjectMaskedName: 'JUAN P*** D*** (DEMO)',
-    subjectCurpMasked: 'PEDJ8204********04',
-    subjectRfcMasked: 'PEDJ820410***',
-    hubCode: 'HUB-CUU',
-    amountMxn: '40000.00',
-    operationDateIso: '2026-10-04',
-  },
-  {
-    operationId: 'sim_frac_02',
-    blindCurp: 'blind_demo_frac_oct_2026',
-    subjectMaskedName: 'JUAN P*** D*** (DEMO)',
-    subjectCurpMasked: 'PEDJ8204********04',
-    subjectRfcMasked: 'PEDJ820410***',
-    hubCode: 'HUB-CUU',
-    amountMxn: '40000.00',
-    operationDateIso: '2026-10-11',
-  },
-  {
-    operationId: 'sim_frac_03',
-    blindCurp: 'blind_demo_frac_oct_2026',
-    subjectMaskedName: 'JUAN P*** D*** (DEMO)',
-    subjectCurpMasked: 'PEDJ8204********04',
-    subjectRfcMasked: 'PEDJ820410***',
-    hubCode: 'HUB-CUU',
-    amountMxn: '40000.00',
-    operationDateIso: '2026-10-19',
-  },
-  {
-    operationId: 'sim_frac_04',
-    blindCurp: 'blind_demo_frac_oct_2026',
-    subjectMaskedName: 'JUAN P*** D*** (DEMO)',
-    subjectCurpMasked: 'PEDJ8204********04',
-    subjectRfcMasked: 'PEDJ820410***',
-    hubCode: 'HUB-CUU',
-    amountMxn: '40000.00',
-    operationDateIso: '2026-10-26',
-  },
+  { operationId: 'sim_frac_01', blindCurp: 'blind_demo_frac_oct_2026', subjectMaskedName: 'JUAN P*** D*** (DEMO)', subjectCurpMasked: 'PEDJ8204********04', subjectRfcMasked: 'PEDJ820410***', hubCode: 'HUB-CUU', amountMxn: '40000.00', operationDateIso: '2026-10-04' },
+  { operationId: 'sim_frac_02', blindCurp: 'blind_demo_frac_oct_2026', subjectMaskedName: 'JUAN P*** D*** (DEMO)', subjectCurpMasked: 'PEDJ8204********04', subjectRfcMasked: 'PEDJ820410***', hubCode: 'HUB-CUU', amountMxn: '40000.00', operationDateIso: '2026-10-11' },
+  { operationId: 'sim_frac_03', blindCurp: 'blind_demo_frac_oct_2026', subjectMaskedName: 'JUAN P*** D*** (DEMO)', subjectCurpMasked: 'PEDJ8204********04', subjectRfcMasked: 'PEDJ820410***', hubCode: 'HUB-CUU', amountMxn: '40000.00', operationDateIso: '2026-10-19' },
+  { operationId: 'sim_frac_04', blindCurp: 'blind_demo_frac_oct_2026', subjectMaskedName: 'JUAN P*** D*** (DEMO)', subjectCurpMasked: 'PEDJ8204********04', subjectRfcMasked: 'PEDJ820410***', hubCode: 'HUB-CUU', amountMxn: '40000.00', operationDateIso: '2026-10-26' },
 ];
 
 export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps> = ({
@@ -74,6 +38,8 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
     'REPORT_TO_UIF'
   );
   const [cccJustificationNotes, setCccJustificationNotes] = useState('');
+  const [extensionNotes, setExtensionNotes] = useState('');
+  const [escalate24hNotes, setEscalate24hNotes] = useState('');
   const [lastDryRunPreview, setLastDryRunPreview] = useState<{
     accumulatedAmountMxn: string;
     accumulatedAmountUsd: string;
@@ -298,6 +264,71 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
     }
   };
 
+  const handleGrantCccExtension30d = async () => {
+    if (!selectedReportForCcc) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/pld/reports/${selectedReportForCcc.id}/ccc-extension-30d`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ justificationText: extensionNotes || cccJustificationNotes }),
+      });
+      const data = (await res.json()) as {
+        originalDeadline?: string;
+        newDeadline?: string;
+        expedienteSha256?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || 'Error concediendo prórroga extraordinaria CCC');
+      onNotifyFeedback({
+        type: 'success',
+        message: `Prórroga Extraordinaria CCC (+30 días naturales) sellada en WORM (CCC_EXTRAORDINARY_EXTENSION_GRANTED). Plazo 60d (${data.originalDeadline?.slice(0, 10)}) -> Nuevo Plazo 90d (${data.newDeadline?.slice(0, 10)}) | Hash Expediente: ${data.expedienteSha256?.slice(0, 16)}...`,
+      });
+      setSelectedReportForCcc(null);
+      setExtensionNotes('');
+      await onRefreshRequested();
+    } catch (err: unknown) {
+      onNotifyFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Error en prórroga CCC',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEscalateTo24Hours = async () => {
+    if (!selectedReportForCcc) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/pld/reports/${selectedReportForCcc.id}/escalate-24h`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ justificationNotes: escalate24hNotes || cccJustificationNotes }),
+      });
+      const data = (await res.json()) as {
+        submissionDeadline24hAt?: string;
+        col40Formatted?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || 'Error escalando a Reporte de 24 Horas');
+      onNotifyFeedback({
+        type: 'success',
+        message: `Escalado inmutable a Reporte de 24 Horas (SITI_24H_REPORT_ESCALATED). Vencimiento fatal (+24h): ${data.submissionDeadline24hAt?.slice(0, 16).replace('T', ' ')} | Columna 40: "${data.col40Formatted?.slice(0, 65)}..."`,
+      });
+      setSelectedReportForCcc(null);
+      setEscalate24hNotes('');
+      await onRefreshRequested();
+    } catch (err: unknown) {
+      onNotifyFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Error escalando a 24 Horas',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="glass-panel rounded-2xl p-5 border border-white/10 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -399,6 +430,16 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
                     <Clock className="w-3 h-3" />
                     {rep.slaClockStatus} ({rep.remainingCalendarDaysForCcc}d CCC)
                   </span>
+                  {rep.extraordinaryExtensionGranted && (
+                    <div className="text-[10px] text-amber-300 font-mono mt-0.5">
+                      Prórroga +30d activa (90d total)
+                    </div>
+                  )}
+                  {rep.isEscalated24h && (
+                    <div className="text-[10px] text-rose-300 font-mono mt-0.5">
+                      Vía 24h ({rep.submissionDeadline24hAt?.slice(0, 16).replace('T', ' ')})
+                    </div>
+                  )}
                   {rep.uifTransmissionDeadlineAt && (
                     <div className="text-[10px] text-[#00D1FF] font-mono mt-0.5">
                       Límite 3d UIF: {rep.uifTransmissionDeadlineAt.slice(0, 10)}
@@ -480,22 +521,46 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
             placeholder="Asiente el acuerdo del Comité (CCC) y el dictamen del Oficial de Cumplimiento (Lic. Gerardo Olvera)..."
             className="w-full p-2.5 rounded-xl bg-slate-950 border border-white/15 text-white"
           />
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedReportForCcc(null)}
-              className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-300"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSubmitCccDecision()}
-              disabled={submitting}
-              className="px-3.5 py-1.5 rounded-lg bg-[#249E82] text-white font-bold"
-            >
-              Firmar Acta CCC y Calcular 3 Días Hábiles CNBV
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/10">
+            <div className="flex flex-wrap items-center gap-2">
+              {!selectedReportForCcc.extraordinaryExtensionGranted && (
+                <button
+                  type="button"
+                  onClick={() => void handleGrantCccExtension30d()}
+                  disabled={submitting}
+                  className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-bold text-[11px]"
+                >
+                  Prórroga Extraordinaria +30 Días (90d WORM)
+                </button>
+              )}
+              {!selectedReportForCcc.isEscalated24h && (
+                <button
+                  type="button"
+                  onClick={() => void handleEscalateTo24Hours()}
+                  disabled={submitting}
+                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/50 text-rose-200 font-bold text-[11px]"
+                >
+                  Escalar a Reporte de 24 Horas (Col. 40 + Bypass CCC)
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedReportForCcc(null)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-300"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSubmitCccDecision()}
+                disabled={submitting}
+                className="px-3.5 py-1.5 rounded-lg bg-[#249E82] text-white font-bold"
+              >
+                Firmar Acta CCC y Calcular 3 Días Hábiles CNBV
+              </button>
+            </div>
           </div>
         </div>
       )}

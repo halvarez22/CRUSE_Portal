@@ -192,6 +192,13 @@ async function main(): Promise<void> {
       syncTrainingAlias: true,
     },
     {
+      baseName: 'MANUAL_FASE2_IA_CUMPLIMIENTO_ASISTIDO_CRUSE',
+      sourceMdPath: path.join(publicDocsDir, 'MANUAL_FASE2_IA_CUMPLIMIENTO_ASISTIDO_CRUSE.md'),
+      title: 'Manual Oficial de Usuario, Cumplimiento Asistido CNBV/UIF y Entrenamiento (Fase 2) — CRUSE Fintech Portal',
+      subtitle: 'Documento Oficial Fase 2 Homologado (CRUSE-APO-2026-065) • Revisión Semestral 180d • GAFI/ReFiPres • Prórroga CCC +30d • Reporte 24h',
+      badge: 'FASE 2 CERTIFICADA',
+    },
+    {
       baseName: 'MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE',
       sourceMdPath: path.join(publicDocsDir, 'MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE.md'),
       title: 'Manual Oficial de Usuario, Operación Digital y Entrenamiento (Fase 3) — CRUSE Fintech Portal',
@@ -227,7 +234,10 @@ async function main(): Promise<void> {
     fs.copyFileSync(publicHtmlPath, path.join(rootDir, `${spec.baseName}.html`));
     fs.copyFileSync(publicPdfPath, path.join(rootDir, `${spec.baseName}.pdf`));
 
-    if (spec.baseName === 'MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE') {
+    if (
+      spec.baseName === 'MANUAL_FASE3_ECOSISTEMA_FINTECH_CRUSE' ||
+      spec.baseName === 'MANUAL_FASE2_IA_CUMPLIMIENTO_ASISTIDO_CRUSE'
+    ) {
       fs.copyFileSync(spec.sourceMdPath, path.join(docsDir, `${spec.baseName}.md`));
     }
 

@@ -16,9 +16,9 @@
    - *Incluye: ✅ Checklist de Dominio del Día 1 (Fase 2)*
 5. **DÍA 2 (ENTREGABLE 2): Flujo de Excepción Documental (Confianza < 80%), Revisión Asistida y Detección de Duplicados**
    - *Incluye: ✅ Checklist de Dominio del Día 2 (Fase 2)*
-6. **DÍA 3 (ENTREGABLE 3 — PARTE A): Tablero de Control de Lista Gris (¿Autoriza Dirección?), Reportes Tentativos 24h y Buzón ROIP**
+6. **DÍA 3 (ENTREGABLE 3 — PARTE A): Tablero de Control de Lista Gris (¿Autoriza Dirección?), Revisión Semestral de Perfil Transaccional (180 Días), Catálogo GAFI/ReFiPres, Reportes Tentativos 24h y Buzón ROIP**
    - *Incluye: ✅ Checklist de Dominio del Día 3 (Fase 2)*
-7. **DÍA 4 (ENTREGABLE 3 — PARTE B): Detector de Operaciones Fraccionadas ($500 a $7,500 USD), Sesión del Comité (CCC), Reloj 60+3 Días Hábiles y Layout SITI de 41 Columnas**
+7. **DÍA 4 (ENTREGABLE 3 — PARTE B): Detector de Operaciones Fraccionadas ($500 a $7,500 USD), Sesión del Comité (CCC), Prórroga Extraordinaria (+30 Días WORM), Reportes de 24 Horas, Reloj 60+3 Días Hábiles y Layout SITI de 41 Columnas**
    - *Incluye: ✅ Checklist de Dominio del Día 4 (Fase 2)*
 8. **DÍA 5 (ENTREGABLES 4 Y 5): Procedimiento Documentado de 3 Pasos para Carga Controlada a CIB (Logic Systems)**
    - *Incluye: ✅ Checklist de Dominio del Día 5 (Fase 2)*
@@ -144,6 +144,29 @@ Conforme al Capítulo X de las Disposiciones de la CNBV, cualquier colaborador p
 
 ---
 
+## 6.3 Guía Paso a Paso: Revisión Semestral de Perfil Transaccional (Cada 6 Meses / 180 Días — Diagrama CNBV Lic. Gerardo)
+Una vez establecida la relación comercial, las Disposiciones de Carácter General del Art. 115 LIC (Capítulo X, Fracción VIII) y el diagrama del Oficial de Cumplimiento exigen actualizar cada **6 meses (180 días)** el perfil transaccional del cliente respondiendo dos preguntas secuenciales obligatorias:
+
+1. En la sección **"Control de Lista Gris (¿Autoriza Dirección?), Excepciones OCR y Reportes Tentativos"**, ubica la fila del expediente y haz clic en el botón cyan **`Revisión 6M (YYYY-MM-DD)`**.
+2. Se abrirá el modal interactivo **"Revisión Semestral de Perfil Transaccional (Cada 6 Meses / 180 Días)"**, el cual muestra también el **Historial Inmutable WORM de Revisiones Semestrales** previas del mismo expediente.
+3. **Pregunta 1 Obligatoria — `¿Cambió algo en el perfil transaccional del cliente en los últimos 6 meses?`:**
+   - **Si respondes `NO — Sin cambios en el perfil`:** El sistema renueva automáticamente la fecha de próxima revisión por **`+180 días`**, conserva el Grado de Riesgo actual y sella en la bitácora el evento inmutable **`SEMESTER_REVIEW_NO_CHANGES`**.
+   - **Si respondes `SÍ — Se detectó desviación / cambio en el perfil`:** Se habilita de inmediato la **Pregunta 2 Obligatoria**.
+4. **Pregunta 2 Obligatoria — `¿El cambio detectado amerita Reporte de Operación Inusual (ROI)?`:**
+   - **Opción A (`SÍ SE REPORTA — ROI + Cambio Grado de Riesgo`):** El sistema ejecuta **tres acciones atómicas simultáneas**: **(1)** genera el Reporte de Operación Inusual (`ROI_OPERACION`, SITI Tipo `2`) con el monto en la Columna 11 y el criterio en la Columna 40, **(2)** actualiza el Perfil Transaccional y el Grado de Riesgo (`MEDIO` o `ALTO`), y **(3)** sella el evento WORM **`SEMESTER_REVIEW_ESCALATED_TO_ROI`**.
+   - **Opción B (`NO SE REPORTA — Solo Perfil + Grado de Riesgo`):** Actualiza únicamente el Perfil Transaccional quincenal y el Grado de Riesgo EBR sin generar reporte Inusual, y sella el evento WORM **`SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI`**.
+5. Ingresa el sustento del Oficial de Cumplimiento (mínimo 10 caracteres) y presiona **`Firmar y Sellar Revisión Semestral WORM`**.
+
+---
+
+## 6.4 Guía Paso a Paso: Catálogo Oficial de Listas GAFI y Regímenes Fiscales Preferentes (`SHCP ReFiPres`)
+Conforme al Capítulo X Fracción X de las Disposiciones CNBV, el portal incorpora en el selector **`Tipo de Lista Oficial`** dos catálogos internacionales con trazabilidad obligatoria de fuente oficial:
+- **`GAFI_HIGH_RISK_JURISDICTIONS` (`Listas GAFI — Jurisdicciones de Alto Riesgo`):** Países o jurisdicciones con deficiencias estratégicas en PLD/FT sujetos a llamado a la acción o monitoreo reforzado del GAFI.
+- **`SHCP_REFIPRES_TAX_HAVENS` (`SHCP ReFiPres — Regímenes Fiscales Preferentes / Paraísos Fiscales`):** Territorios publicados por la SHCP / DOF como Regímenes Fiscales Preferentes.
+- Al seleccionar cualquiera de estas dos listas en la pestaña **10. Prevención PLD/FT**, el sistema despliega los campos obligatorios **`ISO 3166-1 Alpha-2`** (ej. `KP`, `IR`, `KY`), **`Jurisdicción / País`**, **`URL Fuente Oficial (GAFI / DOF)`** y **`Fecha Publicación Oficial`**, validando **cero duplicidad** por país, tipo de lista y fecha de publicación, y sellando el evento WORM **`GAFI_REFIPRES_JURISDICTION_INGESTED`**.
+
+---
+
 ### ✅ Checklist de Dominio del Día 3 (Fase 2)
 - [ ] Dirección y el Oficial de Cumplimiento abrieron el modal **`Dictaminar Dirección`** de un expediente en Lista Gris y probaron tanto la ruta de **Autorización con Riesgo Alto** como la de **Rechazo con generación de Reporte Inusual Tentativo SITI Tipo 2**.
 - [ ] El Oficial de Cumplimiento verificó que en los rechazos de Lista Gris la Columna 40 inicia automáticamente con el prefijo **`"Lista de Personas Bloqueadas. "`**.
@@ -172,7 +195,20 @@ Todo reporte Inusual o Preocupante cuenta con un plazo máximo de **60 días nat
 
 ---
 
-## 7.3 Guía Paso a Paso: Descarga del Layout Oficial `.TXT` de 41 Columnas para SITI CNBV/UIF
+## 7.3 Guía Paso a Paso: Prórroga Extraordinaria CCC (+30 Días Naturales = 90 Días) y Escalamiento a Reportes de 24 Horas
+Conforme a las Disposiciones del Art. 115 LIC (Capítulo VI y VII), dentro del panel **`Sesionar CCC`** de cualquier reporte en investigación, el Oficial de Cumplimiento dispone de dos herramientas regulatorias especiales:
+
+1. **Prórroga Extraordinaria de `+30 Días Naturales` (`Prórroga Extraordinaria +30 Días (90d WORM)`):**
+   - En casos extraordinarios que requieran mayor investigación, amplía el plazo normativo de **60 a 90 días naturales** desde la fecha de detección.
+   - Genera un sello criptográfico inmutable **`CCC_EXTRAORDINARY_EXTENSION_GRANTED`** en la tabla WORM `pld_ccc_extension_worm_events` registrando el plazo original (60d), el nuevo plazo (90d), el hash `SHA-256` del expediente al momento de la prórroga y la justificación del Oficial de Cumplimiento. Una prórroga concedida no puede editarse (cualquier revocación requiere un evento compensatorio WORM `CCC_EXTENSION_REVOKED`).
+2. **Escalamiento Urgente a `"Reporte de 24 Horas"` (`Escalar a Reporte de 24 Horas (Col. 40 + Bypass CCC)`):**
+   - Cuando existan indicios o hechos concretos de recursos vinculados a LD/FT (tanto en Operaciones Inusuales como en Internas Preocupantes de 24 horas), fija inmutablemente el vencimiento de transmisión a **`detected_at + 24 horas naturales exactas`**.
+   - Inyecta determinísticamente al inicio de la **Columna 40** del layout SITI el prefijo obligatorio **`"Reporte de 24 Horas. "`**.
+   - Exime el reporte de dictamen previo del CCC (`DIRECT_24H_BYPASS_CCC`), agendando notificación para la próxima sesión ordinaria del CCC, y sella en la bitácora el evento WORM **`SITI_24H_REPORT_ESCALATED`**.
+
+---
+
+## 7.4 Guía Paso a Paso: Descarga del Layout Oficial `.TXT` de 41 Columnas para SITI CNBV/UIF
 1. Una vez dictaminados los reportes, presiona el botón azul/verde **`Descargar Layout .TXT SITI (41 Cols · ;)`** en la esquina superior derecha de la bandeja.
 2. El portal descargará el archivo **`.TXT` oficial** con exactamente **41 columnas separadas por punto y coma (`;`)**, saltos de línea de Windows (`CRLF`), montos en la Columna 11 con dos decimales exactos sin signos de pesos ni comas (`0.00`) y descripciones limpias en las Columnas 40 y 41, listo para que el Oficial de Cumplimiento lo cargue en el portal SITI de la autoridad.
 

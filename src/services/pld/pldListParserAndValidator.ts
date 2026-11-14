@@ -43,6 +43,8 @@ const VALID_LIST_TYPES: ReadonlySet<PldListType> = new Set<PldListType>([
   'UIF_PERSONAS_BLOQUEADAS',
   'OFAC_SDN',
   'PEP_NACIONAL',
+  'GAFI_HIGH_RISK_JURISDICTIONS',
+  'SHCP_REFIPRES_TAX_HAVENS',
 ]);
 
 /**
@@ -83,9 +85,11 @@ export function resolveRiskLevelForList(listType: PldListType): PldRiskLevel {
     case 'SAT_69B_DEFINITIVO':
     case 'UIF_PERSONAS_BLOQUEADAS':
     case 'OFAC_SDN':
+    case 'GAFI_HIGH_RISK_JURISDICTIONS':
       return 'CRITICAL_BLOCK';
     case 'SAT_69B_PRESUNTO':
     case 'PEP_NACIONAL':
+    case 'SHCP_REFIPRES_TAX_HAVENS':
       return 'HIGH_EDD_REQUIRED';
   }
 }
@@ -195,11 +199,14 @@ export async function parseAndValidatePldCsvZeroPii(
       } else if (STRICT_RFC_REGEX.test(rawId)) {
         idType = 'RFC';
         isValid = true;
+      } else if (/^[A-Z]{2}$/.test(rawId)) {
+        idType = 'ISO_PAIS';
+        isValid = true;
       } else {
         idType = 'CURP';
         isValid = false;
       }
-    } else if (rawName.length >= 6 && /^[A-ZÑÁÉÍÓÚÜ\s.,&-]+$/.test(rawName)) {
+    } else if (rawName.length >= 2 && /^[A-ZÑÁÉÍÓÚÜ\s.,&()-]+$/.test(rawName)) {
       idType = 'NOMBRE';
       isValid = true;
     } else {

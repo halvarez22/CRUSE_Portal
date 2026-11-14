@@ -204,6 +204,53 @@ export interface CnbvReportAndWhistleblowingItem {
   readonly slaClockStatus: CnbvSlaClockStatus;
   readonly remainingCalendarDaysForCcc: number;
   readonly retentionUntilYear: number; // +10 años conforme a Cap. VI Slide 12
+  readonly extraordinaryExtensionGranted?: boolean;
+  readonly originalInvestigationDeadlineAt?: string | null;
+  readonly extensionJustificationNotes?: string | null;
+  readonly extensionGrantedBy?: string | null;
+  readonly extensionGrantedAt?: string | null;
+  readonly isEscalated24h?: boolean;
+  readonly submissionDeadline24hAt?: string | null;
+  readonly cccNextSessionNotified?: boolean;
+  readonly cancelled24hByAuthority?: boolean;
+  readonly createdAt: string;
+}
+
+export type SemesterReviewWormAction =
+  | 'SEMESTER_REVIEW_NO_CHANGES'
+  | 'SEMESTER_REVIEW_ESCALATED_TO_ROI'
+  | 'SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI';
+
+export interface SemesterTransactionalReviewHistoryItem {
+  readonly id: string;
+  readonly expedienteId: string;
+  readonly profileChanged: boolean;
+  readonly requiresInusualReport: boolean | null;
+  readonly previousTransactionalProfileMxn: string;
+  readonly updatedTransactionalProfileMxn: string;
+  readonly previousRiskGrade: CnbvRiskGrade;
+  readonly updatedRiskGrade: CnbvRiskGrade;
+  readonly generatedReportId: string | null;
+  readonly reviewJustificationNotes: string;
+  readonly wormAction: SemesterReviewWormAction;
+  readonly recordSha256Hash: string;
+  readonly reviewedByEmail: string;
+  readonly reviewedByRole: string;
+  readonly sourceIp: string;
+  readonly nextSemesterReviewAt: string;
+  readonly createdAt: string;
+}
+
+export interface GafiRefipresJurisdictionItem {
+  readonly id: string;
+  readonly listType: 'GAFI_HIGH_RISK_JURISDICTIONS' | 'SHCP_REFIPRES_TAX_HAVENS';
+  readonly jurisdictionIso3166Alpha2: string;
+  readonly jurisdictionName: string;
+  readonly sourceUrl: string;
+  readonly officialPublicationDate: string;
+  readonly riskClassificationNote: string;
+  readonly recordedBy: string;
+  readonly recordSha256Hash: string;
   readonly createdAt: string;
 }
 

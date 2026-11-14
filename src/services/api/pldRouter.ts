@@ -8,7 +8,7 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth, getAuth } from '../auth/authMiddleware';
 import { extractClientIp } from '../audit/auditMask';
-import { PldListType, TentativeAmountReportingMode } from '../../types';
+import { CnbvRiskGrade, PldListType, TentativeAmountReportingMode } from '../../types';
 import {
   getPldComplianceOverview,
   ingestPldRiskListEntries,
@@ -27,6 +27,16 @@ import {
   recordCccSessionDecision,
   submitInternalWhistleblowingReport,
 } from '../pld/cnbvAssistedComplianceService';
+import {
+  cancel24HoursReportByAuthority,
+  escalateReportTo24HoursUrgent,
+  executeSemesterTransactionalReview,
+  grantCccExtraordinaryExtension30Days,
+  ingestGafiOrRefipresJurisdiction,
+  listGafiAndRefipresJurisdictions,
+  listSemesterTransactionalReviews,
+  revokeCccExtraordinaryExtensionWorm,
+} from '../pld/cnbvComplianceFineHomologationService';
 
 export const pldRouter = Router();
 
@@ -36,6 +46,8 @@ const VALID_LIST_TYPES: ReadonlySet<PldListType> = new Set<PldListType>([
   'UIF_PERSONAS_BLOQUEADAS',
   'OFAC_SDN',
   'PEP_NACIONAL',
+  'GAFI_HIGH_RISK_JURISDICTIONS',
+  'SHCP_REFIPRES_TAX_HAVENS',
 ]);
 
 /**
@@ -405,29 +417,129 @@ pldRouter.post('/siti-layout', requireAuth('pld:read'), async (req: Request, res
   try {
     const { user } = getAuth(req);
     const ip = extractClientIp(req.headers);
-    const body = req.body as {
-      reportIds?: unknown;
-      sitiReportTypeFilter?: unknown;
-    };
-
-    const reportIds = Array.isArray(body.reportIds)
-      ? body.reportIds.map((id) => String(id))
-      : undefined;
+    const body = req.body as { reportIds?: unknown; sitiReportTypeFilter?: unknown };
+    const reportIds = Array.isArray(body.reportIds) ? body.reportIds.map((id) => String(id)) : undefined;
     const rawType = typeof body.sitiReportTypeFilter === 'string' ? body.sitiReportTypeFilter.trim() : '';
-    const sitiReportTypeFilter =
-      rawType === '1' || rawType === '2' || rawType === '3' ? rawType : undefined;
-
+    const sitiReportTypeFilter = rawType === '1' || rawType === '2' || rawType === '3' ? rawType : undefined;
     const result = await generateOfficialSiti41ColumnTxtLayout({
-      reportIds,
-      sitiReportTypeFilter,
-      actorEmail: user.email,
-      actorRole: user.role,
-      sourceIp: ip,
+      reportIds, sitiReportTypeFilter, actorEmail: user.email, actorRole: user.role, sourceIp: ip,
     });
-
     return res.json({ ok: true, ...result });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error generando layout SITI de 41 columnas';
-    return res.status(500).json({ error: msg });
+    return res.status(500).json({ error: err instanceof Error ? err.message : 'Error generando layout SITI de 41 columnas' });
+  }
+});
+
+/** POST /api/pld/reports/:reportId/ccc-extension-30d (Guardrail 1: Prórroga Extraordinaria CCC +30d o Revocación WORM) */
+pldRouter.post('/reports/:reportId/ccc-extension-30d', requireAuth('pld:resolve_alert'), async (req: Request, res: Response) => {
+  try {
+    const { user } = getAuth(req);
+    const ip = extractClientIp(req.headers);
+    const reportId = String(req.params.reportId ?? '').trim();
+    const body = req.body as { justificationText?: unknown; actionType?: unknown };
+    const justificationText = typeof body.justificationText === 'string' ? body.justificationText : '';
+    if (body.actionType === 'REVOKE') {
+      const revoked = await revokeCccExtraordinaryExtensionWorm({
+        reportId, justificationText, actorEmail: user.email, actorRole: user.role, sourceIp: ip,
+      });
+      return res.json({ ok: true, ...revoked });
+    }
+    const granted = await grantCccExtraordinaryExtension30Days({
+      reportId, justificationText, actorEmail: user.email, actorRole: user.role, sourceIp: ip,
+    });
+    return res.json({ ok: true, ...granted });
+  } catch (err: unknown) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Error en prórroga CCC' });
+  }
+});
+
+/** POST /api/pld/reports/:reportId/escalate-24h (Guardrail 2: Escalamiento Inmutable 24h o Cancelación por Autoridad) */
+pldRouter.post('/reports/:reportId/escalate-24h', requireAuth('pld:resolve_alert'), async (req: Request, res: Response) => {
+  try {
+    const { user } = getAuth(req);
+    const ip = extractClientIp(req.headers);
+    const reportId = String(req.params.reportId ?? '').trim();
+    const body = req.body as { justificationNotes?: unknown; cancelByAuthority?: unknown };
+    const justificationNotes = typeof body.justificationNotes === 'string' ? body.justificationNotes : '';
+    if (Boolean(body.cancelByAuthority)) {
+      const cancelled = await cancel24HoursReportByAuthority({
+        reportId, justificationNotes, actorEmail: user.email, actorRole: user.role, sourceIp: ip,
+      });
+      return res.json({ ok: true, ...cancelled });
+    }
+    const escalated = await escalateReportTo24HoursUrgent({
+      reportId, justificationNotes, actorEmail: user.email, actorRole: user.role, sourceIp: ip,
+    });
+    return res.json({ ok: true, ...escalated });
+  } catch (err: unknown) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Error en escalamiento 24h' });
+  }
+});
+
+/** GET & POST /api/pld/gafi-refipres (Guardrail 3: Catálogo GAFI y SHCP ReFiPres) */
+pldRouter.get('/gafi-refipres', requireAuth('pld:read'), async (_req: Request, res: Response) => {
+  try {
+    const items = await listGafiAndRefipresJurisdictions();
+    return res.json({ ok: true, items });
+  } catch (err: unknown) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : 'Error listando GAFI/ReFiPres' });
+  }
+});
+
+pldRouter.post('/gafi-refipres', requireAuth('pld:manage_lists'), async (req: Request, res: Response) => {
+  try {
+    const { user } = getAuth(req);
+    const ip = extractClientIp(req.headers);
+    const b = req.body as Record<string, unknown>;
+    const listType = b.listType === 'SHCP_REFIPRES_TAX_HAVENS' ? 'SHCP_REFIPRES_TAX_HAVENS' : 'GAFI_HIGH_RISK_JURISDICTIONS';
+    const item = await ingestGafiOrRefipresJurisdiction({
+      listType,
+      jurisdictionIso3166Alpha2: String(b.jurisdictionIso3166Alpha2 ?? ''),
+      jurisdictionName: String(b.jurisdictionName ?? ''),
+      sourceUrl: String(b.sourceUrl ?? ''),
+      officialPublicationDate: String(b.officialPublicationDate ?? ''),
+      riskClassificationNote: String(b.riskClassificationNote ?? ''),
+      actorEmail: user.email, actorRole: user.role, sourceIp: ip,
+    });
+    return res.status(201).json({ ok: true, item });
+  } catch (err: unknown) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Error ingiriendo jurisdicción GAFI/ReFiPres' });
+  }
+});
+
+/** GET /api/pld/semester-reviews & POST /api/pld/semester-reviews/:expedienteId (Guardrail 4: Revisión Semestral 180d) */
+pldRouter.get('/semester-reviews', requireAuth('pld:read'), async (req: Request, res: Response) => {
+  try {
+    const expId = typeof req.query.expedienteId === 'string' ? req.query.expedienteId.trim() : undefined;
+    const reviews = await listSemesterTransactionalReviews(expId);
+    return res.json({ ok: true, reviews });
+  } catch (err: unknown) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : 'Error consultando revisiones semestrales' });
+  }
+});
+
+pldRouter.post('/semester-reviews/:expedienteId', requireAuth('pld:resolve_alert'), async (req: Request, res: Response) => {
+  try {
+    const { user } = getAuth(req);
+    const ip = extractClientIp(req.headers);
+    const expedienteId = String(req.params.expedienteId ?? '').trim();
+    const b = req.body as Record<string, unknown>;
+    const rawGrade = typeof b.newRiskGrade === 'string' ? b.newRiskGrade.trim().toUpperCase() : undefined;
+    const newRiskGrade: CnbvRiskGrade | undefined =
+      rawGrade === 'BAJO' || rawGrade === 'MEDIO' || rawGrade === 'ALTO' ? rawGrade : undefined;
+    const result = await executeSemesterTransactionalReview({
+      expedienteId,
+      profileChanged: Boolean(b.profileChanged),
+      requiresInusualReport: typeof b.requiresInusualReport === 'boolean' ? b.requiresInusualReport : undefined,
+      newTransactionalProfileMxn: typeof b.newTransactionalProfileMxn === 'string' ? b.newTransactionalProfileMxn : undefined,
+      newRiskGrade,
+      roiOperationAmountMxn: typeof b.roiOperationAmountMxn === 'string' ? b.roiOperationAmountMxn : undefined,
+      roiCol40CriteriaDescription: typeof b.roiCol40CriteriaDescription === 'string' ? b.roiCol40CriteriaDescription : undefined,
+      reviewJustificationNotes: String(b.reviewJustificationNotes ?? ''),
+      actorEmail: user.email, actorRole: user.role, sourceIp: ip,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (err: unknown) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Error ejecutando revisión semestral' });
   }
 });

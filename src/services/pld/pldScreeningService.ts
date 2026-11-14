@@ -111,11 +111,12 @@ export async function getPldComplianceOverview(): Promise<PldComplianceOverview>
       recordedBy: r.recorded_by, createdAt: String(r.created_at),
     }));
 
-    let sat69bCount = 0; let uifOfacCount = 0; let pepCount = 0;
+    let sat69bCount = 0; let uifOfacCount = 0; let pepCount = 0; let gafiRefipresCount = 0;
     for (const entry of riskEntries) {
       if (entry.listType === 'SAT_69B_DEFINITIVO' || entry.listType === 'SAT_69B_PRESUNTO') sat69bCount++;
       else if (entry.listType === 'UIF_PERSONAS_BLOQUEADAS' || entry.listType === 'OFAC_SDN') uifOfacCount++;
       else if (entry.listType === 'PEP_NACIONAL') pepCount++;
+      else if (entry.listType === 'GAFI_HIGH_RISK_JURISDICTIONS' || entry.listType === 'SHCP_REFIPRES_TAX_HAVENS') gafiRefipresCount++;
     }
 
     let pendingAlertsCount = 0; let confirmedBlockedCount = 0; let clearedOrFalsePositiveCount = 0;
@@ -163,7 +164,7 @@ export async function getPldComplianceOverview(): Promise<PldComplianceOverview>
 
     return {
       kpis: {
-        totalRiskEntries: riskEntries.length, sat69bCount, uifOfacCount, pepCount,
+        totalRiskEntries: riskEntries.length, sat69bCount, uifOfacCount, pepCount, gafiRefipresCount,
         pendingAlertsCount, confirmedBlockedCount, clearedOrFalsePositiveCount,
         totalExposureBlockedOrPending: totalExposureBlockedOrPending.toFixed(2),
       },

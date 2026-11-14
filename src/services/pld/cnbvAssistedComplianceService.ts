@@ -21,37 +21,20 @@ import { addCnbvBusinessDays } from './cnbvComplianceCron';
 import { CibBatchWorkflowStatus, CibExportBatchItem, UserRole } from '../../types';
 
 export interface CashOperationCandidateInput {
-  readonly operationId: string;
-  readonly expedienteId?: string | null;
-  readonly blindCurp: string;
-  readonly subjectMaskedName: string;
-  readonly subjectCurpMasked: string;
-  readonly subjectRfcMasked?: string;
-  readonly hubCode?: string;
-  readonly amountMxn: string;
-  readonly operationDateIso: string; // YYYY-MM-DD
+  readonly operationId: string; readonly expedienteId?: string | null; readonly blindCurp: string;
+  readonly subjectMaskedName: string; readonly subjectCurpMasked: string; readonly subjectRfcMasked?: string;
+  readonly hubCode?: string; readonly amountMxn: string; readonly operationDateIso: string; // YYYY-MM-DD
 }
 
 export interface FractionedCashEvaluationSummary {
-  readonly dryRun?: boolean;
-  readonly evaluatedOperationsCount: number;
-  readonly fxRateUsdMxn: string;
-  readonly singleMinUsd: string;
-  readonly monthlyAccumThresholdUsd: string;
-  readonly relevantThresholdUsd: string;
+  readonly dryRun?: boolean; readonly evaluatedOperationsCount: number; readonly fxRateUsdMxn: string;
+  readonly singleMinUsd: string; readonly monthlyAccumThresholdUsd: string; readonly relevantThresholdUsd: string;
   readonly triggeredFractionedReports: ReadonlyArray<{
-    readonly reportId: string;
-    readonly blindCurp: string;
-    readonly calendarMonth: string;
-    readonly qualifyingOperationsCount: number;
-    readonly accumulatedAmountMxn: string;
-    readonly accumulatedAmountUsd: string;
+    readonly reportId: string; readonly blindCurp: string; readonly calendarMonth: string;
+    readonly qualifyingOperationsCount: number; readonly accumulatedAmountMxn: string; readonly accumulatedAmountUsd: string;
   }>;
   readonly triggeredRelevantReports: ReadonlyArray<{
-    readonly reportId: string;
-    readonly blindCurp: string;
-    readonly operationAmountMxn: string;
-    readonly operationAmountUsd: string;
+    readonly reportId: string; readonly blindCurp: string; readonly operationAmountMxn: string; readonly operationAmountUsd: string;
   }>;
 }
 

@@ -5,6 +5,7 @@ import {
   XCircle,
   RefreshCw,
   Scale,
+  CalendarClock,
 } from 'lucide-react';
 import {
   AuthSession,
@@ -13,6 +14,7 @@ import {
   TentativeAmountReportingMode,
 } from '../../types';
 import { PldSitiReportsAndCccPanel } from './PldSitiReportsAndCccPanel';
+import { SemesterReviewModal } from './SemesterReviewModal';
 
 interface PldGrayListDirectionPanelProps {
   session: AuthSession;
@@ -30,6 +32,8 @@ export const PldGrayListDirectionPanel: React.FC<PldGrayListDirectionPanelProps>
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [selectedProfile, setSelectedProfile] = useState<ExpedienteComplianceProfileItem | null>(null);
+  const [selectedProfileForSemesterReview, setSelectedProfileForSemesterReview] =
+    useState<ExpedienteComplianceProfileItem | null>(null);
   const [decision, setDecision] = useState<'AUTHORIZED_CONTINUE' | 'REJECTED_GENERATE_INUSUAL'>(
     'REJECTED_GENERATE_INUSUAL'
   );
@@ -234,16 +238,25 @@ export const PldGrayListDirectionPanel: React.FC<PldGrayListDirectionPanelProps>
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-right">
-                    <button
-                      onClick={() => {
-                        setSelectedProfile(p);
-                        setDecision('REJECTED_GENERATE_INUSUAL');
-                        setJustificationNotes('');
-                      }}
-                      className="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-bold transition-colors"
-                    >
-                      Dictaminar Dirección
-                    </button>
+                    <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => {
+                          setSelectedProfile(p);
+                          setDecision('REJECTED_GENERATE_INUSUAL');
+                          setJustificationNotes('');
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-bold transition-colors"
+                      >
+                        Dictaminar Dirección
+                      </button>
+                      <button
+                        onClick={() => setSelectedProfileForSemesterReview(p)}
+                        className="px-2.5 py-1 rounded-xl bg-[#00D1FF]/15 hover:bg-[#00D1FF]/25 border border-[#00D1FF]/40 text-[#00D1FF] text-[11px] font-bold inline-flex items-center gap-1 transition-colors"
+                      >
+                        <CalendarClock className="w-3 h-3" />
+                        <span>Revisión 6M ({p.nextSemesterReviewAt.slice(0, 10)})</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -366,6 +379,20 @@ export const PldGrayListDirectionPanel: React.FC<PldGrayListDirectionPanelProps>
             </div>
           </div>
         </div>
+      )}
+
+      {selectedProfileForSemesterReview && (
+        <SemesterReviewModal
+          token={session.token}
+          profile={selectedProfileForSemesterReview}
+          onClose={() => setSelectedProfileForSemesterReview(null)}
+          onCompleted={async (msg) => {
+            setFeedback({ type: 'success', message: msg });
+            await fetchData();
+            if (onDecisionCompleted) onDecisionCompleted();
+          }}
+          onError={(errMsg) => setFeedback({ type: 'error', message: errMsg })}
+        />
       )}
     </div>
   );

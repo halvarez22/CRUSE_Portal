@@ -1,23 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  ShieldAlert,
-  ShieldCheck,
-  Search,
-  Upload,
-  Download,
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
-  Lock,
-  FileText,
-  X,
-} from 'lucide-react';
-import {
-  AuthSession,
-  PldComplianceOverview,
-  PldHitAlertItem,
-  PldListType,
-} from '../../types';
+import { ShieldAlert, ShieldCheck, Search, Upload, Download, RefreshCw, CheckCircle2, AlertTriangle, Lock, FileText, X } from 'lucide-react';
+import { AuthSession, PldComplianceOverview, PldHitAlertItem, PldListType } from '../../types';
 import { PldGrayListDirectionPanel } from './PldGrayListDirectionPanel';
 
 interface PldComplianceViewProps {
@@ -30,6 +13,8 @@ const LIST_TYPE_LABELS: Record<PldListType, string> = {
   UIF_PERSONAS_BLOQUEADAS: 'UIF Lista de Personas Bloqueadas',
   OFAC_SDN: 'OFAC SDN (Tesoro EE.UU.)',
   PEP_NACIONAL: 'Persona Políticamente Expuesta (PEP)',
+  GAFI_HIGH_RISK_JURISDICTIONS: 'Listas GAFI — Jurisdicciones de Alto Riesgo (Cap. X Fracc. X)',
+  SHCP_REFIPRES_TAX_HAVENS: 'SHCP ReFiPres — Regímenes Fiscales Preferentes / Paraísos Fiscales',
 };
 
 export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session }) => {
@@ -42,6 +27,10 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
   const [selectedListType, setSelectedListType] = useState<PldListType>('SAT_69B_DEFINITIVO');
   const [officialReference, setOfficialReference] = useState('DOF-SAT-69B-2026-Q4');
   const [csvContent, setCsvContent] = useState('');
+  const [jurisdictionIso2, setJurisdictionIso2] = useState('KP');
+  const [jurisdictionName, setJurisdictionName] = useState('REPUBLICA POPULAR DEMOCRATICA DE COREA');
+  const [sourceUrl, setSourceUrl] = useState('https://www.fatf-gafi.org/en/publications/High-risk-and-other-monitored-jurisdictions.html');
+  const [officialPubDate, setOfficialPubDate] = useState('2026-10-25');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [selectedAlert, setSelectedAlert] = useState<PldHitAlertItem | null>(null);
@@ -82,6 +71,47 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
   };
 
   const handleIngestList = async () => {
+    const isJurisdictionList =
+      selectedListType === 'GAFI_HIGH_RISK_JURISDICTIONS' ||
+      selectedListType === 'SHCP_REFIPRES_TAX_HAVENS';
+
+    if (isJurisdictionList && !csvContent.trim()) {
+      setIngestLoading(true);
+      setFeedback(null);
+      try {
+        const res = await fetch('/api/pld/gafi-refipres', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+          body: JSON.stringify({
+            listType: selectedListType,
+            jurisdictionIso3166Alpha2: jurisdictionIso2,
+            jurisdictionName,
+            sourceUrl,
+            officialPublicationDate: officialPubDate,
+            riskClassificationNote: `Alta Oficial ${selectedListType} (${officialReference})`,
+          }),
+        });
+        const data = (await res.json()) as {
+          item?: { jurisdictionIso3166Alpha2: string; recordSha256Hash: string; officialPublicationDate: string };
+          error?: string;
+        };
+        if (!res.ok || !data.item) throw new Error(data.error || 'Error al ingerir jurisdicción GAFI/ReFiPres');
+        setFeedback({
+          type: 'success',
+          message: `Jurisdicción ${data.item.jurisdictionIso3166Alpha2} ingerida en ${selectedListType} (Pub: ${data.item.officialPublicationDate}) con validación anti-duplicados y Fuente Oficial verificada. SHA-256: ${data.item.recordSha256Hash.slice(0, 16)}...`,
+        });
+        await fetchOverview();
+      } catch (err: unknown) {
+        setFeedback({
+          type: 'error',
+          message: err instanceof Error ? err.message : 'Error registrando jurisdicción GAFI/ReFiPres',
+        });
+      } finally {
+        setIngestLoading(false);
+      }
+      return;
+    }
+
     if (!csvContent.trim()) {
       setFeedback({
         type: 'error',
@@ -240,24 +270,12 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
       </div>
 
       {feedback && (
-        <div
-          className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${
-            feedback.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-              : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-          }`}
-        >
+        <div className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${feedback.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'}`}>
           <div className="flex items-center gap-2.5">
-            {feedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            ) : (
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-            )}
+            {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
             <span className="font-medium">{feedback.message}</span>
           </div>
-          <button onClick={() => setFeedback(null)} className="text-slate-400 hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={() => setFeedback(null)} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -266,7 +284,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
           <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Índices Ciegos en Listas PLD/FT</p>
           <p className="text-2xl font-extrabold text-white mt-1">{kpis?.totalRiskEntries ?? 0}</p>
           <p className="text-[11px] text-slate-400 mt-1">
-            69-B: {kpis?.sat69bCount ?? 0} · UIF/OFAC: {kpis?.uifOfacCount ?? 0} · PEPs: {kpis?.pepCount ?? 0}
+            69-B: {kpis?.sat69bCount ?? 0} · UIF/OFAC: {kpis?.uifOfacCount ?? 0} · PEPs: {kpis?.pepCount ?? 0} · GAFI/ReFiPres: {kpis?.gafiRefipresCount ?? 0}
           </p>
         </div>
 
@@ -341,6 +359,28 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
           </div>
         </div>
 
+        {(selectedListType === 'GAFI_HIGH_RISK_JURISDICTIONS' ||
+          selectedListType === 'SHCP_REFIPRES_TAX_HAVENS') && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 rounded-2xl bg-slate-900/80 border border-[#00D1FF]/30 text-xs">
+            <div>
+              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">ISO 3166-1 Alpha-2</label>
+              <input type="text" maxLength={2} value={jurisdictionIso2} onChange={(e) => setJurisdictionIso2(e.target.value.toUpperCase())} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white font-mono" />
+            </div>
+            <div>
+              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">Jurisdicción / País</label>
+              <input type="text" value={jurisdictionName} onChange={(e) => setJurisdictionName(e.target.value)} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white" />
+            </div>
+            <div>
+              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">URL Fuente Oficial (GAFI / DOF)</label>
+              <input type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white font-mono" />
+            </div>
+            <div>
+              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">Fecha Publicación Oficial</label>
+              <input type="date" value={officialPubDate} onChange={(e) => setOfficialPubDate(e.target.value)} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white font-mono" />
+            </div>
+          </div>
+        )}
+
         <textarea
           rows={3}
           value={csvContent}
@@ -413,9 +453,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
             <tbody className="divide-y divide-white/5">
               {(overview?.alerts ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
-                    No existen alertas PLD/FT registradas.
-                  </td>
+                  <td colSpan={7} className="py-8 text-center text-slate-400">No existen alertas PLD/FT registradas.</td>
                 </tr>
               ) : (
                 (overview?.alerts ?? []).map((alert) => (
@@ -437,15 +475,13 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
                       ${Number(alert.exposureAmount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 px-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                          alert.projectedStatus === 'PENDING_REVIEW'
-                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                            : alert.projectedStatus === 'CONFIRMED_BLOCKED'
-                              ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                        }`}
-                      >
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                        alert.projectedStatus === 'PENDING_REVIEW'
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                          : alert.projectedStatus === 'CONFIRMED_BLOCKED'
+                            ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                            : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      }`}>
                         {alert.projectedStatus}
                       </span>
                       {alert.latestResolutionNotes && (
@@ -473,10 +509,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
       </div>
 
       {/* Fase 2.3: Rama Lista Gris (¿Autoriza Dirección?), Matriz de Riesgo Inicial y Reportes Tentativos */}
-      <PldGrayListDirectionPanel
-        session={session}
-        onDecisionCompleted={() => void fetchOverview()}
-      />
+      <PldGrayListDirectionPanel session={session} onDecisionCompleted={() => void fetchOverview()} />
 
       {selectedAlert && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
@@ -490,13 +523,11 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
                 <X className="w-4 h-4" />
               </button>
             </div>
-
             <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1">
               <p className="text-slate-300"><span className="text-slate-400">Alerta:</span> <span className="font-mono font-bold">{selectedAlert.id}</span></p>
               <p className="text-slate-300"><span className="text-slate-400">Sujeto Protegido:</span> {selectedAlert.entityMaskedName} ({selectedAlert.entityMaskedId})</p>
               <p className="text-slate-300"><span className="text-slate-400">Lista Coincidente:</span> {selectedAlert.listType} ({selectedAlert.officialReference})</p>
             </div>
-
             <div>
               <label className="block text-xs text-slate-300 mb-1 font-semibold">Resolución Regulatoria</label>
               <select
@@ -509,7 +540,6 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
                 <option value="FALSE_POSITIVE" className="bg-slate-900">FALSE_POSITIVE — Descartar por Homonimia / Falso Positivo (Liberar)</option>
               </select>
             </div>
-
             <div>
               <label className="block text-xs text-slate-300 mb-1 font-semibold">Justificación Forense Obligatoria (mínimo 10 caracteres)</label>
               <textarea
@@ -520,11 +550,8 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
                 className="w-full p-3 rounded-xl glass-input text-xs text-slate-100 placeholder-slate-500"
               />
             </div>
-
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setSelectedAlert(null)} className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-slate-300 font-semibold">
-                Cancelar
-              </button>
+              <button onClick={() => setSelectedAlert(null)} className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-slate-300 font-semibold">Cancelar</button>
               <button
                 onClick={handleResolveAlert}
                 disabled={resolveLoading}

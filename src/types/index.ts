@@ -225,7 +225,11 @@ export type AuditAction =
   | 'CLOUD_MIGRATION_BATCH_EXECUTED' | 'CLOUD_MIGRATION_ROLLBACK_VERIFIED'
   | 'INSTITUTIONAL_LAYOUT_EXCHANGED' | 'CONNECTOR_ZEROTRUST_SYNC'
   | 'DTI_CAPACITY_RELEASED_FOR_RENEWAL' | 'LOAN_MARKED_BAJA_LABORAL_ACTIVA'
-  | 'COI_POLIZA_GENERATED' | 'COI_POLIZA_UNBALANCED' | 'INSURANCE_ROSTER_GENERATED';
+  | 'COI_POLIZA_GENERATED' | 'COI_POLIZA_UNBALANCED' | 'INSURANCE_ROSTER_GENERATED'
+  | 'CCC_EXTRAORDINARY_EXTENSION_GRANTED' | 'CCC_EXTENSION_REVOKED'
+  | 'SITI_24H_REPORT_ESCALATED' | 'SITI_24H_REPORT_CANCELLED_BY_AUTHORIY'
+  | 'SEMESTER_REVIEW_NO_CHANGES' | 'SEMESTER_REVIEW_ESCALATED_TO_ROI'
+  | 'SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI' | 'GAFI_REFIPRES_JURISDICTION_INGESTED';
 
 export interface AuditEvent {
   id: string;
@@ -505,8 +509,15 @@ export interface PortfolioRiskSummary {
   totalLiveBalance: string; totalFrozenBalance: string;
 }
 
-export type PldListType = 'SAT_69B_DEFINITIVO' | 'SAT_69B_PRESUNTO' | 'UIF_PERSONAS_BLOQUEADAS' | 'OFAC_SDN' | 'PEP_NACIONAL';
-export type PldIdentifierType = 'CURP' | 'RFC' | 'NOMBRE';
+export type PldListType =
+  | 'SAT_69B_DEFINITIVO'
+  | 'SAT_69B_PRESUNTO'
+  | 'UIF_PERSONAS_BLOQUEADAS'
+  | 'OFAC_SDN'
+  | 'PEP_NACIONAL'
+  | 'GAFI_HIGH_RISK_JURISDICTIONS'
+  | 'SHCP_REFIPRES_TAX_HAVENS';
+export type PldIdentifierType = 'CURP' | 'RFC' | 'NOMBRE' | 'ISO_PAIS';
 export type PldRiskLevel = 'CRITICAL_BLOCK' | 'HIGH_EDD_REQUIRED' | 'MEDIUM_MONITORING';
 export type PldAlertStatus = 'PENDING_REVIEW' | 'CONFIRMED_BLOCKED' | 'CLEARED_EDD' | 'FALSE_POSITIVE';
 
@@ -515,6 +526,9 @@ export interface PldRiskEntryItem {
   blindIndexPrefix: string; identifierMasked: string; subjectMaskedName: string;
   riskLevel: PldRiskLevel; officialReference: string; publicationDate: string;
   sourceFileHash: string; recordedBy: string; createdAt: string;
+  sourceUrl?: string | null;
+  officialPublicationDate?: string | null;
+  jurisdictionIso3166Alpha2?: string | null;
 }
 
 export interface PldHitAlertItem {
@@ -535,6 +549,7 @@ export interface PldScreeningBatchSummary {
 export interface PldComplianceOverview {
   kpis: {
     totalRiskEntries: number; sat69bCount: number; uifOfacCount: number; pepCount: number;
+    gafiRefipresCount?: number;
     pendingAlertsCount: number; confirmedBlockedCount: number; clearedOrFalsePositiveCount: number;
     totalExposureBlockedOrPending: string;
   };
