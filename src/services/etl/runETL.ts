@@ -1,4 +1,3 @@
-import xlsx from 'xlsx';
 import crypto from 'crypto';
 import { db } from '../db/connectionPool';
 import { computeServerBlindIndex, getServerKms } from '../crypto/serverKeyring';
@@ -37,6 +36,8 @@ function toDeductionPeriod(dateStr: string | null): string | null {
 
 export async function runLoansETL(filePath: string) {
   console.log(`[ETL] Extrayendo datos de: ${filePath}`);
+  const xlsxModule = await import('xlsx');
+  const xlsx = xlsxModule.default ?? xlsxModule;
   const wb = xlsx.readFile(filePath);
   const sheetName = wb.SheetNames[0]!;
 

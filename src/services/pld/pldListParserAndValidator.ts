@@ -1,8 +1,8 @@
 /**
- * PARSER MULTI-DELIMITADOR, VALIDADOR ZERO-PII Y GENERADOR DE ACTA CNBV/UIF PARA LISTAS PLD/FT
+ * PARSER INTELIGENTE AGNÓSTICO AL LAYOUT, VALIDADOR ZERO-PII Y GENERADOR DE ACTA CNBV/UIF
  *
- * @implements CRUSE-APO-2026-027 (Directriz 3: Deduplicación e idempotencia por blind_index + list_type)
- * @implements CRUSE-APO-2026-027 (Directriz 4: Sello SHA-256 inmediato sourceFileHash, Zero-PII en errores y Acta Determinista)
+ * @implements CRUSE-APO-2026-027 (Directrices 3 y 4)
+ * @implements CRUSE-APO-2026-056 (Guardrails Forenses 1, 2, 3, 4, 5, 6 y 8)
  */
 
 import crypto from 'crypto';
@@ -11,9 +11,24 @@ import {
   PldListType,
   PldRiskLevel,
 } from '../../types';
+import {
+  CanonicalPldColumnRole,
+  PldColumnMappingOverride,
+  SmartPldFileAnalysisResult,
+  ZeroPiiStructuralPromptPayload,
+} from '../../types/pldSmartIngestion';
 import { computeBlindIndex } from '../crypto/cryptoService';
 import { getServerEnv } from '../../config/serverEnv';
-import { COMPANY_INFO } from '../../data/cruseData';
+import {
+  COMPANY_INFO,
+  PLD_EMPTY_ID_PLACEHOLDERS,
+  PLD_SAT_69B_CLEARED_KEYWORDS,
+} from '../../data/cruseData';
+import {
+  discoverTableStructure,
+  inferPldColumnsHybridZeroPii,
+  normalizeHeaderToken,
+} from '../ai/pldSmartColumnInferer';
 
 export interface ValidatedPldRiskRow {
   listType: PldListType;
@@ -30,12 +45,33 @@ export interface ValidatedPldRiskRow {
 
 export interface ParsedPldManifestResult {
   sourceFileHash: string;
+  canonicalPayloadHash: string;
   delimiter: ',' | ';' | '\t' | '|';
   entries: ValidatedPldRiskRow[];
+  analysis: SmartPldFileAnalysisResult;
 }
 
-const STRICT_CURP_REGEX = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/;
-const STRICT_RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/;
+export interface ParsePldSmartOptions {
+  readonly originalFileSha256?: string;
+  readonly fileExtensionHint?: string;
+  readonly columnMappingOverride?: PldColumnMappingOverride;
+  readonly enableGroqSemanticAssist?: boolean;
+  readonly allowPartialValidRowsInPreview?: boolean;
+  readonly onPromptInspectedAuditHook?: (
+    serializedPrompt: string,
+    payload: ZeroPiiStructuralPromptPayload
+  ) => void;
+}
+
+export const MAX_PLD_WATCHLIST_ROWS = 25_000;
+export const MAX_PLD_WATCHLIST_TEXT_BYTES = 5 * 1024 * 1024;
+
+const STRICT_CURP_REGEX = /^[A-Z]{4}\d{6}[HMX][A-Z]{5}[A-Z\d]\d$/;
+const STRICT_RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}(?:[A-Z\d]{3})?$/;
+const GENERIC_RFC_SET = new Set(['XAXX010101000', 'XEXX010101000', 'XXXX010101000']);
+const EMPTY_ID_SET = new Set<string>(PLD_EMPTY_ID_PLACEHOLDERS);
+const LEGAL_NAME_REGEX = /^[A-Z0-9ÑÁÉÍÓÚÜ\s.,&()/'"+-]+$/;
+const FOOTER_NOISE_REGEX = /^(?:TOTAL|SUBTOTAL|FIN DE LISTA|FIN DEL REPORTE|---+|\*\*\*+)$/;
 
 const VALID_LIST_TYPES: ReadonlySet<PldListType> = new Set<PldListType>([
   'SAT_69B_DEFINITIVO',
@@ -47,12 +83,28 @@ const VALID_LIST_TYPES: ReadonlySet<PldListType> = new Set<PldListType>([
   'SHCP_REFIPRES_TAX_HAVENS',
 ]);
 
+export function computeRawPldFileSha256(rawContent: string | Buffer | Uint8Array): string {
+  const hash = crypto.createHash('sha256');
+  if (typeof rawContent === 'string') {
+    hash.update(rawContent, 'utf8');
+  } else {
+    hash.update(rawContent);
+  }
+  return hash.digest('hex');
+}
+
 /**
- * Calcula inmediatamente el SHA-256 sobre el buffer/string crudo de la lista oficial PLD/FT
- * antes de cualquier transformación o parsing.
+ * Guardrail 4 (CRUSE-APO-2026-056): Normalización canónica de nombres para Blind Index:
+ * NFD -> eliminar diacríticos -> UPPERCASE -> eliminar no alfabéticos -> colapsar espacios múltiples.
  */
-export function computeRawPldFileSha256(rawContent: string): string {
-  return crypto.createHash('sha256').update(rawContent, 'utf8').digest('hex');
+export function normalizePldNameForBlindIndex(rawName: string): string {
+  return String(rawName ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function maskPldSubjectName(rawName: string): string {
@@ -70,12 +122,14 @@ export function maskPldSubjectName(rawName: string): string {
 
 export function maskPldIdentifierImmediate(rawId: string, idType: PldIdentifierType): string {
   const cleaned = String(rawId ?? '').trim().toUpperCase().replace(/\s+/g, '');
-  if (cleaned.length < 5) return '****';
+  if (cleaned.length < 5) {
+    return idType === 'ISO_PAIS' && cleaned.length === 2 ? cleaned : '****';
+  }
   if (idType === 'CURP' && cleaned.length >= 18) {
     return `${cleaned.slice(0, 4)}${'*'.repeat(12)}${cleaned.slice(-2)}`;
   }
-  if (idType === 'RFC' && cleaned.length >= 12) {
-    return `${cleaned.slice(0, 4)}${'*'.repeat(cleaned.length - 6)}${cleaned.slice(-2)}`;
+  if (idType === 'RFC' && cleaned.length >= 10) {
+    return `${cleaned.slice(0, 4)}${'*'.repeat(Math.max(4, cleaned.length - 6))}${cleaned.slice(-2)}`;
   }
   return maskPldSubjectName(rawId);
 }
@@ -94,51 +148,59 @@ export function resolveRiskLevelForList(listType: PldListType): PldRiskLevel {
   }
 }
 
-function detectDelimiter(headerLine: string): ',' | ';' | '\t' | '|' {
-  const candidates: Array<{ sep: ',' | ';' | '\t' | '|'; count: number }> = [
-    { sep: ',', count: (headerLine.match(/,/g) || []).length },
-    { sep: ';', count: (headerLine.match(/;/g) || []).length },
-    { sep: '\t', count: (headerLine.match(/\t/g) || []).length },
-    { sep: '|', count: (headerLine.match(/\|/g) || []).length },
-  ];
-  candidates.sort((a, b) => b.count - a.count);
-  return candidates[0] && candidates[0].count > 0 ? candidates[0].sep : ',';
+function maskSampleForRole(rawSample: string, role: CanonicalPldColumnRole): string {
+  const clean = String(rawSample ?? '').trim();
+  if (!clean) return '—';
+  if (role === 'CURP') return maskPldIdentifierImmediate(clean.replace(/[\s-]+/g, ''), 'CURP');
+  if (role === 'RFC') return maskPldIdentifierImmediate(clean.replace(/[\s-]+/g, ''), 'RFC');
+  if (
+    role === 'FULL_NAME' ||
+    role === 'FIRST_NAME' ||
+    role === 'PATERNAL_SURNAME' ||
+    role === 'MATERNAL_SURNAME' ||
+    role === 'CORPORATE_NAME'
+  ) {
+    return maskPldSubjectName(clean);
+  }
+  if (role === 'OFFICIAL_REF' || role === 'PUBLICATION_DATE' || role === 'SAT_69B_STATUS' || role === 'LIST_TYPE') {
+    return clean.slice(0, 28);
+  }
+  return maskPldSubjectName(clean);
 }
 
-function splitDelimitedLine(line: string, separator: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === separator && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
+function normalizePublicationDate(raw: string, fallbackIso: string): string {
+  const clean = String(raw ?? '').trim();
+  if (!clean) return fallbackIso;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  const dmy = /^(\d{2})[/-](\d{2})[/-](\d{4})$/.exec(clean);
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+  if (/^(?:3[5-9]\d{3}|[45]\d{4})$/.test(clean)) {
+    const serial = parseInt(clean, 10);
+    const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   }
-  result.push(current.trim());
-  return result;
+  return clean.slice(0, 20);
 }
 
 /**
- * Parsea y valida un archivo CSV/TXT de listas de riesgo PLD/FT garantizando
- * Zero-PII absoluto en las rutas de éxito y de error.
+ * Parsea, infiere columnas y valida cualquier archivo tabular PLD/FT garantizando Zero-PII absoluto.
  */
 export async function parseAndValidatePldCsvZeroPii(
   csvContent: string,
   defaultListType: PldListType = 'SAT_69B_DEFINITIVO',
-  defaultOfficialRef: string = 'DOF-SAT-69B-2026'
+  defaultOfficialRef: string = 'DOF-SAT-69B-2026',
+  options?: ParsePldSmartOptions
 ): Promise<ParsedPldManifestResult> {
-  const sourceFileHash = computeRawPldFileSha256(csvContent);
+  if (Buffer.byteLength(csvContent, 'utf8') > MAX_PLD_WATCHLIST_TEXT_BYTES) {
+    throw new Error('El archivo excede el límite máximo permitido de 5 MB por lote.');
+  }
+
+  const canonicalPayloadHash = computeRawPldFileSha256(csvContent);
+  const sourceFileHash =
+    options?.originalFileSha256 && /^[a-f0-9]{64}$/i.test(options.originalFileSha256)
+      ? options.originalFileSha256.toLowerCase()
+      : canonicalPayloadHash;
+
   let content = csvContent;
   if (content.charCodeAt(0) === 0xfeff) {
     content = content.slice(1);
@@ -148,115 +210,271 @@ export async function parseAndValidatePldCsvZeroPii(
   if (lines.length === 0) {
     throw new Error('El archivo de lista de riesgo PLD/FT está vacío.');
   }
+  if (lines.length > MAX_PLD_WATCHLIST_ROWS + 30) {
+    throw new Error(`El archivo excede el máximo de ${MAX_PLD_WATCHLIST_ROWS} filas por lote.`);
+  }
 
-  const headerLine = lines[0]!;
-  const delimiter = detectDelimiter(headerLine);
-  const headers = splitDelimitedLine(headerLine, delimiter).map((h) =>
-    h.replace(/^["']|["']$/g, '').trim().toUpperCase()
-  );
+  const structure = discoverTableStructure(lines);
+  const inferred = await inferPldColumnsHybridZeroPii({
+    structure,
+    fileExtensionHint: options?.fileExtensionHint,
+    columnMappingOverride: options?.columnMappingOverride,
+    enableGroqSemanticAssist: options?.enableGroqSemanticAssist,
+    maskSampleCallback: maskSampleForRole,
+    onPromptInspectedAuditHook: options?.onPromptInspectedAuditHook,
+  });
 
-  const colId = headers.findIndex((h) =>
-    ['CURP', 'RFC', 'IDENTIFICADOR', 'CLAVE', 'ID_SUJETO', 'CURP_RFC'].includes(h)
-  );
-  const colName = headers.findIndex((h) =>
-    ['NOMBRE', 'CONTRIBUYENTE', 'SUJETO', 'RAZON_SOCIAL', 'PERSONA'].includes(h)
-  );
-  const colList = headers.findIndex((h) => ['LISTA', 'TIPO_LISTA', 'LIST_TYPE'].includes(h));
-  const colRef = headers.findIndex((h) => ['OFICIO', 'REFERENCIA', 'DOF', 'OFFICIAL_REFERENCE'].includes(h));
-  const colDate = headers.findIndex((h) => ['FECHA', 'PUBLICACION', 'FECHA_PUBLICACION'].includes(h));
+  const roleIndices = (target: CanonicalPldColumnRole): number[] =>
+    inferred.columns.filter((c) => c.assignedRole === target).map((c) => c.columnIndex);
 
-  if (colId === -1 && colName === -1) {
+  const curpCols = roleIndices('CURP');
+  const rfcCols = roleIndices('RFC');
+  const genIdCols = roleIndices('GENERIC_ID');
+  const fullNameCols = roleIndices('FULL_NAME');
+  const corpCols = roleIndices('CORPORATE_NAME');
+  const firstNameCols = roleIndices('FIRST_NAME');
+  const patCols = roleIndices('PATERNAL_SURNAME');
+  const matCols = roleIndices('MATERNAL_SURNAME');
+  const listCols = roleIndices('LIST_TYPE');
+  const refCols = roleIndices('OFFICIAL_REF');
+  const dateCols = roleIndices('PUBLICATION_DATE');
+  const satStatusCols = roleIndices('SAT_69B_STATUS');
+
+  const hasAnyIdentityColumn =
+    curpCols.length > 0 ||
+    rfcCols.length > 0 ||
+    genIdCols.length > 0 ||
+    fullNameCols.length > 0 ||
+    corpCols.length > 0 ||
+    firstNameCols.length > 0 ||
+    patCols.length > 0;
+
+  if (!hasAnyIdentityColumn) {
+    const detectedLabels = inferred.columns.slice(0, 6).map((c) => c.rawHeaderLabel).join(', ');
     throw new Error(
-      `El layout PLD/FT debe incluir al menos una columna de identificador (CURP, RFC, IDENTIFICADOR) o NOMBRE. Encabezados detectados: ${headers.slice(0, 6).join(', ')}`
+      `No se detectaron columnas con patrones válidos de CURP, RFC o Nombre/Razón Social. Columnas inspeccionadas: ${detectedLabels}`
     );
   }
 
   const env = getServerEnv();
   const errors: string[] = [];
   const deduped = new Map<string, ValidatedPldRiskRow>();
+  const previewRows: SmartPldFileAnalysisResult['maskedPreviewRows'][number][] = [];
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = splitDelimitedLine(lines[i]!, delimiter);
-    const lineNo = i + 1;
-    const rawId = colId !== -1 ? (cols[colId] ?? '').trim().toUpperCase() : '';
-    const rawName = colName !== -1 ? (cols[colName] ?? '').trim().toUpperCase() : '';
-    const rawListCandidate = colList !== -1 ? (cols[colList] ?? '').trim().toUpperCase() : '';
-    const rawRef = colRef !== -1 ? (cols[colRef] ?? '').trim() : defaultOfficialRef;
-    const rawDate = colDate !== -1 ? (cols[colDate] ?? '').trim() : todayIso;
+  let curpCount = 0;
+  let rfcCount = 0;
+  let nameOnlyCount = 0;
+  let isoCountryCount = 0;
+  let excludedCleared69bCount = 0;
+  let skippedEmptyOrBannerRowsCount = structure.skippedBannerCount;
 
-    const primaryInput = rawId || rawName || `EMPTY_LINE_${lineNo}`;
-    const immediateBlindHash = await computeBlindIndex(primaryInput, env.blindIndexKey);
-    const blindIndexPrefix = immediateBlindHash.slice(0, 12);
-
-    let idType: PldIdentifierType;
-    let isValid = false;
-
-    if (rawId.length > 0) {
-      if (STRICT_CURP_REGEX.test(rawId)) {
-        idType = 'CURP';
-        isValid = true;
-      } else if (STRICT_RFC_REGEX.test(rawId)) {
-        idType = 'RFC';
-        isValid = true;
-      } else if (/^[A-Z]{2}$/.test(rawId)) {
-        idType = 'ISO_PAIS';
-        isValid = true;
-      } else {
-        idType = 'CURP';
-        isValid = false;
-      }
-    } else if (rawName.length >= 2 && /^[A-ZÑÁÉÍÓÚÜ\s.,&()-]+$/.test(rawName)) {
-      idType = 'NOMBRE';
-      isValid = true;
-    } else {
-      idType = 'CURP';
-      isValid = false;
+  const firstCellOf = (cols: ReadonlyArray<string>, indices: ReadonlyArray<number>): string => {
+    for (const idx of indices) {
+      const val = String(cols[idx] ?? '').trim();
+      if (val.length > 0) return val;
     }
+    return '';
+  };
 
-    // Sanitización temprana Zero-PII: jamás interpolar rawId ni rawName en el mensaje de error
-    if (!isValid) {
-      errors.push(
-        `Fila ${lineNo}: Formato de identificador PLD/FT inválido (Hash: ${blindIndexPrefix})`
-      );
+  for (let i = 0; i < structure.dataRows.length; i++) {
+    const cols = structure.dataRows[i]!;
+    const lineNo = (structure.hasHeaderRow ? structure.headerLineIndex + 2 : structure.skippedBannerCount + 1) + i;
+
+    const nonEmptyCells = cols.filter((c) => c.trim().length > 0);
+    if (nonEmptyCells.length === 0) {
+      skippedEmptyOrBannerRowsCount++;
+      continue;
+    }
+    const firstNorm = normalizeHeaderToken(nonEmptyCells[0]!);
+    if (nonEmptyCells.length === 1 && FOOTER_NOISE_REGEX.test(firstNorm)) {
+      skippedEmptyOrBannerRowsCount++;
       continue;
     }
 
-    const resolvedListType: PldListType = VALID_LIST_TYPES.has(rawListCandidate as PldListType)
+    // Filtro Regulatorio Automático Art. 69-B CFF: excluir Desvirtuados / Sentencia Favorable
+    const rawSatStatus = normalizeHeaderToken(firstCellOf(cols, satStatusCols));
+    if (rawSatStatus && PLD_SAT_69B_CLEARED_KEYWORDS.some((kw) => rawSatStatus.includes(kw))) {
+      excludedCleared69bCount++;
+      continue;
+    }
+
+    const rawCurpCell = firstCellOf(cols, curpCols).toUpperCase().replace(/[\s-]+/g, '');
+    const rawRfcCell = firstCellOf(cols, rfcCols).toUpperCase().replace(/[\s-]+/g, '');
+    const rawGenCell = firstCellOf(cols, genIdCols).toUpperCase().replace(/[\s-]+/g, '');
+
+    const corpName = firstCellOf(cols, corpCols);
+    const fullName = firstCellOf(cols, fullNameCols);
+    const splitParts = [
+      firstCellOf(cols, firstNameCols),
+      firstCellOf(cols, patCols),
+      firstCellOf(cols, matCols),
+    ].filter((p) => p.length > 0);
+
+    const assembledRawName = (corpName || fullName || splitParts.join(' ')).trim().toUpperCase();
+    const normalizedAlphaName = normalizePldNameForBlindIndex(assembledRawName);
+
+    const curpCandidate = !EMPTY_ID_SET.has(rawCurpCell)
+      ? rawCurpCell
+      : STRICT_CURP_REGEX.test(rawGenCell)
+        ? rawGenCell
+        : '';
+
+    const rfcCandidate = !EMPTY_ID_SET.has(rawRfcCell)
+      ? rawRfcCell
+      : STRICT_RFC_REGEX.test(rawGenCell) && !STRICT_CURP_REGEX.test(rawGenCell)
+        ? rawGenCell
+        : '';
+
+    const isoCandidate = /^[A-Z]{2}$/.test(rawGenCell) ? rawGenCell : '';
+
+    // Guardrail 4: Prioridad estricta CURP > RFC > ISO_PAIS > NOMBRE (con fallback limpio cuando ID es N/A o genérico)
+    let idType: PldIdentifierType = 'CURP';
+    let keyForBlindIndex = '';
+    let rawDisplayId = '';
+    let isValid = false;
+
+    if (curpCandidate && STRICT_CURP_REGEX.test(curpCandidate)) {
+      idType = 'CURP';
+      keyForBlindIndex = curpCandidate;
+      rawDisplayId = curpCandidate;
+      isValid = true;
+    } else if (
+      rfcCandidate &&
+      STRICT_RFC_REGEX.test(rfcCandidate) &&
+      !(GENERIC_RFC_SET.has(rfcCandidate) && normalizedAlphaName.length >= 2)
+    ) {
+      idType = 'RFC';
+      keyForBlindIndex = rfcCandidate;
+      rawDisplayId = rfcCandidate;
+      isValid = true;
+    } else if (isoCandidate && normalizedAlphaName.length < 2) {
+      idType = 'ISO_PAIS';
+      keyForBlindIndex = isoCandidate;
+      rawDisplayId = isoCandidate;
+      isValid = true;
+    } else if (
+      assembledRawName.length >= 2 &&
+      normalizedAlphaName.length >= 2 &&
+      LEGAL_NAME_REGEX.test(assembledRawName)
+    ) {
+      idType = 'NOMBRE';
+      keyForBlindIndex = normalizedAlphaName;
+      rawDisplayId = assembledRawName;
+      isValid = true;
+    }
+
+    const fallbackAuditSeed = keyForBlindIndex || rawCurpCell || rawRfcCell || rawGenCell || `ROW_${lineNo}`;
+    const immediateBlindHash = await computeBlindIndex(fallbackAuditSeed, env.blindIndexKey);
+    const blindIndexPrefix = immediateBlindHash.slice(0, 12);
+
+    if (!isValid) {
+      errors.push(`Fila ${lineNo}: Formato de identificador PLD/FT inválido (Hash: ${blindIndexPrefix})`);
+      continue;
+    }
+
+    const rawListCandidate = firstCellOf(cols, listCols).toUpperCase();
+    let resolvedListType: PldListType = VALID_LIST_TYPES.has(rawListCandidate as PldListType)
       ? (rawListCandidate as PldListType)
       : defaultListType;
 
+    if (!VALID_LIST_TYPES.has(rawListCandidate as PldListType) && rawSatStatus) {
+      if (rawSatStatus.includes('PRESUNTO')) resolvedListType = 'SAT_69B_PRESUNTO';
+      else if (rawSatStatus.includes('DEFINITIVO')) resolvedListType = 'SAT_69B_DEFINITIVO';
+    }
+
+    const rawRef = firstCellOf(cols, refCols) || defaultOfficialRef;
+    const rawDate = normalizePublicationDate(firstCellOf(cols, dateCols), todayIso);
+    const riskLevel = resolveRiskLevelForList(resolvedListType);
+    const identifierMasked = maskPldIdentifierImmediate(rawDisplayId, idType);
+    const subjectMaskedName = maskPldSubjectName(assembledRawName || rawDisplayId);
+
     const dedupKey = `${immediateBlindHash}::${resolvedListType}`;
     if (!deduped.has(dedupKey)) {
+      if (idType === 'CURP') curpCount++;
+      else if (idType === 'RFC') rfcCount++;
+      else if (idType === 'ISO_PAIS') isoCountryCount++;
+      else nameOnlyCount++;
+
       deduped.set(dedupKey, {
         listType: resolvedListType,
         identifierType: idType,
         blindIndex: immediateBlindHash,
         blindIndexPrefix,
-        identifierMasked: maskPldIdentifierImmediate(rawId || rawName, idType),
-        subjectMaskedName: maskPldSubjectName(rawName || rawId),
-        riskLevel: resolveRiskLevelForList(resolvedListType),
-        officialReference: rawRef || defaultOfficialRef,
-        publicationDate: rawDate || todayIso,
+        identifierMasked,
+        subjectMaskedName,
+        riskLevel,
+        officialReference: rawRef.slice(0, 120),
+        publicationDate: rawDate,
         sourceFileHash,
       });
+
+      if (previewRows.length < 5) {
+        previewRows.push({
+          rowNumber: lineNo,
+          resolvedListType,
+          identifierType: idType,
+          identifierMasked,
+          subjectMaskedName,
+          riskLevel,
+          officialReference: rawRef.slice(0, 120),
+          publicationDate: rawDate,
+          blindIndexPrefix,
+        });
+      }
     }
   }
 
-  if (errors.length > 0) {
+  if (errors.length > 0 && !options?.allowPartialValidRowsInPreview) {
     throw new Error(`Errores de validación Zero-PII en lista PLD/FT:\n${errors.slice(0, 15).join('\n')}`);
   }
 
+  const entries = Array.from(deduped.values());
+  const headerMsg = structure.hasHeaderRow
+    ? `Encabezado detectado automáticamente en fila ${structure.headerLineIndex + 1}${structure.skippedBannerCount > 0 ? ` (${structure.skippedBannerCount} fila(s) de título omitidas)` : ''}.`
+    : 'Archivo sin fila de encabezados: columnas inferidas directamente por contenido criptográfico/estadístico.';
+  const clearedMsg =
+    excludedCleared69bCount > 0
+      ? ` Se excluyeron automáticamente ${excludedCleared69bCount} registro(s) con estatus Desvirtuado/Sentencia Favorable.`
+      : '';
+
+  const analysis: SmartPldFileAnalysisResult = {
+    sourceFileHash,
+    canonicalPayloadHash,
+    delimiter: structure.delimiter,
+    hasHeaderRow: structure.hasHeaderRow,
+    detectedHeaderLineNumber: structure.hasHeaderRow ? structure.headerLineIndex + 1 : 0,
+    skippedTopBannerRowsCount: structure.skippedBannerCount,
+    inferenceEngineUsed: inferred.inferenceEngineUsed,
+    overallConfidencePct: inferred.overallConfidencePct,
+    humanFriendlyExplanation: `${headerMsg} Se identificaron ${entries.length} sujeto(s) únicos listos para sellado Zero-PII (CURP: ${curpCount}, RFC: ${rfcCount}, Nombre/Razón Social: ${nameOnlyCount}).${clearedMsg}${inferred.groqSummaryNote ? ` Nota IA: ${inferred.groqSummaryNote}` : ''}`,
+    columns: inferred.columns,
+    stats: {
+      totalDataRowsRead: structure.dataRows.length,
+      validUniqueEntriesCount: entries.length,
+      curpCount,
+      rfcCount,
+      nameOnlyCount,
+      isoCountryCount,
+      excludedCleared69bCount,
+      skippedEmptyOrBannerRowsCount,
+      invalidRowsCount: errors.length,
+    },
+    validationWarnings: errors.slice(0, 15),
+    maskedPreviewRows: previewRows,
+  };
+
   return {
     sourceFileHash,
-    delimiter,
-    entries: Array.from(deduped.values()),
+    canonicalPayloadHash,
+    delimiter: structure.delimiter,
+    entries,
+    analysis,
   };
 }
 
 /**
- * Directriz 4: Construye determinísticamente el batchManifestHash SHA-256 y el Acta Oficial CNBV/UIF
- * sobre el conjunto exacto de datos barridos en la misma transacción atómica.
+ * Directriz 4: Construye determinísticamente el batchManifestHash SHA-256 y el Acta Oficial CNBV/UIF.
  */
 export function generatePldScreeningCertificateActa(input: {
   batchId: string;

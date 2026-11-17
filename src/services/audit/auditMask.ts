@@ -96,6 +96,14 @@ export function formatAuditActionLabel(action: string, curpMasked?: string): str
       return 'Previsualización Determinista de Corte Quincenal (Dry-Run)';
     case 'PLD_LIST_INGESTED':
       return 'Ingesta Criptográfica de Lista Oficial PLD/FT (69-B / UIF / OFAC / PEPs)';
+    case 'PLD_LIST_ANALYZED':
+      return 'Radiografía Inteligente Zero-PII de Lista Oficial PLD/FT (Dry-Run)';
+    case 'FILE_INTEGRITY_TAMPERED':
+      return 'Alerta Crítica: Discrepancia de Integridad SHA-256 en Archivo Subido';
+    case 'PLD_ANALYZE_RATE_LIMIT_EXCEEDED':
+      return 'Límite Anti-DoS Excedido en Analizador Inteligente PLD/FT';
+    case 'XLSX_DYNAMIC_IMPORT_FAILED':
+      return 'Fallo de Carga Diferida del Procesador Excel (OBS-1)';
     case 'PLD_PORTFOLIO_SCREENED':
       return 'Barrido Integral PLD/FT de Cartera e Inversionistas (CNBV / UIF)';
     case 'PLD_HIT_DETECTED':

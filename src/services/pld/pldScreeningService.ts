@@ -19,8 +19,12 @@ import {
   PldScreeningBatchSummary,
   UserRole,
 } from '../../types';
+import { PldColumnMappingOverride, SmartPldFileAnalysisResult } from '../../types/pldSmartIngestion';
+import { decryptEnvelope, EnvelopeEncryptedPayload } from '../crypto/cryptoService';
+import { computeServerBlindIndex, getServerKms } from '../crypto/serverKeyring';
 import {
   generatePldScreeningCertificateActa,
+  normalizePldNameForBlindIndex,
   parseAndValidatePldCsvZeroPii,
 } from './pldListParserAndValidator';
 
@@ -180,11 +184,18 @@ export async function getPldComplianceOverview(): Promise<PldComplianceOverview>
 export async function ingestPldRiskListEntries(input: {
   csvContent: string; defaultListType: PldListType; defaultOfficialReference: string;
   actorEmail: string; actorRole: UserRole; sourceIp: string;
+  originalFileSha256?: string; fileExtensionHint?: string;
+  columnMappingOverride?: PldColumnMappingOverride;
 }): Promise<{
-  sourceFileHash: string; parsedCount: number; insertedCount: number; skippedDuplicatesCount: number;
+  sourceFileHash: string; canonicalPayloadHash: string; parsedCount: number;
+  insertedCount: number; skippedDuplicatesCount: number; analysis: SmartPldFileAnalysisResult;
 }> {
   const manifest = await parseAndValidatePldCsvZeroPii(
-    input.csvContent, input.defaultListType, input.defaultOfficialReference
+    input.csvContent, input.defaultListType, input.defaultOfficialReference, {
+      originalFileSha256: input.originalFileSha256,
+      fileExtensionHint: input.fileExtensionHint,
+      columnMappingOverride: input.columnMappingOverride,
+    }
   );
 
   return db.transaction(async (tx) => {
@@ -212,12 +223,13 @@ export async function ingestPldRiskListEntries(input: {
     await auditEventStore.appendInTx(tx, {
       action: 'PLD_LIST_INGESTED', actorEmail: input.actorEmail, actorRole: input.actorRole,
       outcome: 'success', sourceIp: input.sourceIp, sourceSummary: 'pldScreeningService',
-      details: `Lista PLD/FT (${input.defaultListType}) ingerida. SourceSHA256: ${manifest.sourceFileHash.slice(0, 16)}. Nuevos: ${insertedCount}, Omitidos idempotentes: ${skippedDuplicatesCount}.`,
+      details: `Lista PLD/FT (${input.defaultListType}) ingerida. OrigSHA256: ${manifest.sourceFileHash.slice(0, 16)} | CanonicalSHA256: ${manifest.canonicalPayloadHash.slice(0, 16)}. Nuevos: ${insertedCount}, Omitidos idempotentes: ${skippedDuplicatesCount}.`,
     });
 
     return {
-      sourceFileHash: manifest.sourceFileHash, parsedCount: manifest.entries.length,
-      insertedCount, skippedDuplicatesCount,
+      sourceFileHash: manifest.sourceFileHash, canonicalPayloadHash: manifest.canonicalPayloadHash,
+      parsedCount: manifest.entries.length, insertedCount, skippedDuplicatesCount,
+      analysis: manifest.analysis,
     };
   });
 }
@@ -249,6 +261,7 @@ export async function runFullPortfolioPldScreening(input: {
        ),
        expediente_exposure AS (
          SELECT e.id AS entity_id, TRIM(e.blind_curp) AS clean_blind_index,
+                COALESCE(TRIM(e.blind_rfc), '') AS clean_blind_rfc,
                 e.curp_masked AS entity_masked_id, e.full_name AS entity_masked_name,
                 COALESCE(SUM(CASE
                   WHEN la.id IS NOT NULL AND la.status = 'ACTIVE'
@@ -258,7 +271,7 @@ export async function runFullPortfolioPldScreening(input: {
          FROM expedientes e
          LEFT JOIN loan_accounts la ON la.expediente_id = e.id
          LEFT JOIN lpa_totals lt ON lt.loan_account_id = la.id
-         GROUP BY e.id, e.blind_curp, e.curp_masked, e.full_name, e.requested_amount
+         GROUP BY e.id, e.blind_curp, e.blind_rfc, e.curp_masked, e.full_name, e.requested_amount
        ),
        investor_exposure AS (
          SELECT i.id AS entity_id, TRIM(i.blind_name) AS clean_blind_index,
@@ -270,7 +283,7 @@ export async function runFullPortfolioPldScreening(input: {
        ),
        ranked_resolutions AS (
          SELECT par.hit_alert_id, par.resolution_status,
-                ROW_NUMBER() OVER (PARTITION BY par.hit_alert_id ORDER BY par.created_at DESC, par.id DESC) AS rn
+                ROW_NUMBER() OVER (PARTITION BY par.hit_alert_id ORDER BY created_at DESC, id DESC) AS rn
          FROM pld_alert_resolutions par
        ),
        latest_resolution AS (
@@ -281,7 +294,9 @@ export async function runFullPortfolioPldScreening(input: {
                 SUBSTR(r.blind_index, 1, 12) AS blind_index_prefix,
                 ee.entity_masked_id, ee.entity_masked_name,
                 r.list_type, r.risk_level, r.official_reference, ee.exposure_amount
-         FROM expediente_exposure ee INNER JOIN pld_risk_entries r ON r.blind_index = ee.clean_blind_index
+         FROM expediente_exposure ee
+         INNER JOIN pld_risk_entries r
+           ON (r.blind_index = ee.clean_blind_index OR (ee.clean_blind_rfc <> '' AND r.blind_index = ee.clean_blind_rfc))
          UNION ALL
          SELECT r.id AS risk_entry_id, 'INVESTOR' AS entity_type, ie.entity_id,
                 SUBSTR(r.blind_index, 1, 12) AS blind_index_prefix,
@@ -313,6 +328,47 @@ export async function runFullPortfolioPldScreening(input: {
       exposureAmount: new Decimal(h.exposure_amount || 0).toFixed(2),
       hasPendingAlert: Number(h.has_pending_alert) === 1,
     }));
+
+    // Guardrail 4 (CRUSE-APO-2026-056): Fallback efímero por NOMBRE normalizado para expedientes históricos sin CURP/RFC
+    const nameRiskRes = await tx.query<{
+      id: string; blind_index: string; list_type: PldListType; risk_level: PldRiskLevel; official_reference: string;
+    }>(`SELECT id, blind_index, list_type, risk_level, official_reference FROM pld_risk_entries WHERE identifier_type = 'NOMBRE'`);
+
+    if (nameRiskRes.rows.length > 0) {
+      const riskByBlindName = new Map<string, typeof nameRiskRes.rows>();
+      for (const nr of nameRiskRes.rows) {
+        const key = nr.blind_index.trim();
+        riskByBlindName.set(key, [...(riskByBlindName.get(key) ?? []), nr]);
+      }
+      const matchedKeys = new Set(hitsFormatted.map((h) => `${h.entityId}::${h.listType}`));
+      const expPiiRes = await tx.query<{
+        id: string; curp_masked: string; full_name: string; requested_amount: string | number; encrypted_pii_payload: string | null;
+      }>(`SELECT id, curp_masked, full_name, requested_amount, encrypted_pii_payload FROM expedientes WHERE encrypted_pii_payload IS NOT NULL`);
+      const kms = getServerKms();
+      for (const exp of expPiiRes.rows) {
+        if (!exp.encrypted_pii_payload) continue;
+        try {
+          const plainStr = await decryptEnvelope(JSON.parse(exp.encrypted_pii_payload) as EnvelopeEncryptedPayload, kms);
+          const parsedPii = JSON.parse(plainStr) as { fullName?: string };
+          const normName = normalizePldNameForBlindIndex(parsedPii.fullName ?? '');
+          if (normName.length >= 2) {
+            const nameBlind = await computeServerBlindIndex(normName);
+            for (const match of riskByBlindName.get(nameBlind) ?? []) {
+              const dedupKey = `${exp.id}::${match.list_type}`;
+              if (!matchedKeys.has(dedupKey)) {
+                matchedKeys.add(dedupKey);
+                hitsFormatted.push({
+                  riskEntryId: match.id, entityType: 'EXPEDIENTE', entityId: exp.id,
+                  blindIndexPrefix: nameBlind.slice(0, 12), entityMaskedId: exp.curp_masked, entityMaskedName: exp.full_name,
+                  listType: match.list_type, riskLevel: match.risk_level, officialReference: match.official_reference,
+                  exposureAmount: new Decimal(exp.requested_amount || 0).toFixed(2), hasPendingAlert: false,
+                });
+              }
+            }
+          }
+        } catch { /* Ignora payload corrupto sin exponer PII */ }
+      }
+    }
 
     const newHitsToInsert = hitsFormatted.filter((h) => !h.hasPendingAlert);
 

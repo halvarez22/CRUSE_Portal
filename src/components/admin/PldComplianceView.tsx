@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldAlert, ShieldCheck, Search, Upload, Download, RefreshCw, CheckCircle2, AlertTriangle, Lock, FileText, X } from 'lucide-react';
+import { ShieldAlert, Search, Download, RefreshCw, CheckCircle2, AlertTriangle, FileText, X } from 'lucide-react';
 import { AuthSession, PldComplianceOverview, PldHitAlertItem, PldListType } from '../../types';
 import { PldGrayListDirectionPanel } from './PldGrayListDirectionPanel';
+import { PldWatchlistIngestionCard } from './PldWatchlistIngestionCard';
 
 interface PldComplianceViewProps {
   session: AuthSession;
@@ -21,16 +22,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
   const [overview, setOverview] = useState<PldComplianceOverview | null>(null);
   const [loading, setLoading] = useState(false);
   const [screeningLoading, setScreeningLoading] = useState(false);
-  const [ingestLoading, setIngestLoading] = useState(false);
   const [resolveLoading, setResolveLoading] = useState(false);
-
-  const [selectedListType, setSelectedListType] = useState<PldListType>('SAT_69B_DEFINITIVO');
-  const [officialReference, setOfficialReference] = useState('DOF-SAT-69B-2026-Q4');
-  const [csvContent, setCsvContent] = useState('');
-  const [jurisdictionIso2, setJurisdictionIso2] = useState('KP');
-  const [jurisdictionName, setJurisdictionName] = useState('REPUBLICA POPULAR DEMOCRATICA DE COREA');
-  const [sourceUrl, setSourceUrl] = useState('https://www.fatf-gafi.org/en/publications/High-risk-and-other-monitored-jurisdictions.html');
-  const [officialPubDate, setOfficialPubDate] = useState('2026-10-25');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [selectedAlert, setSelectedAlert] = useState<PldHitAlertItem | null>(null);
@@ -60,100 +52,6 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
     void fetchOverview();
   }, [fetchOverview]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setCsvContent(typeof ev.target?.result === 'string' ? ev.target.result : '');
-    };
-    reader.readAsText(file, 'utf-8');
-  };
-
-  const handleIngestList = async () => {
-    const isJurisdictionList =
-      selectedListType === 'GAFI_HIGH_RISK_JURISDICTIONS' ||
-      selectedListType === 'SHCP_REFIPRES_TAX_HAVENS';
-
-    if (isJurisdictionList && !csvContent.trim()) {
-      setIngestLoading(true);
-      setFeedback(null);
-      try {
-        const res = await fetch('/api/pld/gafi-refipres', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
-          body: JSON.stringify({
-            listType: selectedListType,
-            jurisdictionIso3166Alpha2: jurisdictionIso2,
-            jurisdictionName,
-            sourceUrl,
-            officialPublicationDate: officialPubDate,
-            riskClassificationNote: `Alta Oficial ${selectedListType} (${officialReference})`,
-          }),
-        });
-        const data = (await res.json()) as {
-          item?: { jurisdictionIso3166Alpha2: string; recordSha256Hash: string; officialPublicationDate: string };
-          error?: string;
-        };
-        if (!res.ok || !data.item) throw new Error(data.error || 'Error al ingerir jurisdicción GAFI/ReFiPres');
-        setFeedback({
-          type: 'success',
-          message: `Jurisdicción ${data.item.jurisdictionIso3166Alpha2} ingerida en ${selectedListType} (Pub: ${data.item.officialPublicationDate}) con validación anti-duplicados y Fuente Oficial verificada. SHA-256: ${data.item.recordSha256Hash.slice(0, 16)}...`,
-        });
-        await fetchOverview();
-      } catch (err: unknown) {
-        setFeedback({
-          type: 'error',
-          message: err instanceof Error ? err.message : 'Error registrando jurisdicción GAFI/ReFiPres',
-        });
-      } finally {
-        setIngestLoading(false);
-      }
-      return;
-    }
-
-    if (!csvContent.trim()) {
-      setFeedback({
-        type: 'error',
-        message: 'Selecciona un archivo CSV/TXT o ingresa registros con encabezado CURP,NOMBRE.',
-      });
-      return;
-    }
-    setIngestLoading(true);
-    setFeedback(null);
-    try {
-      const res = await fetch('/api/pld/lists/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
-        body: JSON.stringify({
-          csvContent,
-          defaultListType: selectedListType,
-          defaultOfficialReference: officialReference,
-        }),
-      });
-      const data = (await res.json()) as {
-        sourceFileHash?: string;
-        insertedCount?: number;
-        skippedDuplicatesCount?: number;
-        error?: string;
-      };
-      if (!res.ok) throw new Error(data.error || 'Error al ingerir lista PLD/FT');
-      setFeedback({
-        type: 'success',
-        message: `Lista oficial ingerida con Blind Indexing Zero-PII. SourceSHA256: ${data.sourceFileHash?.slice(0, 16)}... | Nuevos: ${data.insertedCount ?? 0} | Omitidos idempotentes: ${data.skippedDuplicatesCount ?? 0}`,
-      });
-      setCsvContent('');
-      await fetchOverview();
-    } catch (err: unknown) {
-      setFeedback({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Error validando lista PLD/FT',
-      });
-    } finally {
-      setIngestLoading(false);
-    }
-  };
-
   const handleRunPortfolioScreening = async () => {
     setScreeningLoading(true);
     setFeedback(null);
@@ -174,7 +72,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
       if (!res.ok || !data.batch) throw new Error(data.error || 'Error ejecutando barrido PLD/FT');
       setFeedback({
         type: 'success',
-        message: `Barrido WORM ${data.batch.id} completado en Una Sola Pasada CTE. Coincidencias: ${data.batch.hitsDetectedCount} | Nuevas Alertas: ${data.batch.newAlertsCreatedCount} | Sello SHA-256: ${data.batch.batchManifestHash.slice(0, 16)}...`,
+        message: `Barrido WORM ${data.batch.id} completado. Coincidencias: ${data.batch.hitsDetectedCount} | Nuevas Alertas: ${data.batch.newAlertsCreatedCount} | Sello SHA-256: ${data.batch.batchManifestHash.slice(0, 16)}...`,
       });
       await fetchOverview();
     } catch (err: unknown) {
@@ -243,7 +141,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Cruce criptográfico en Una Sola Pasada CTE mediante Blind Indexing HMAC-SHA256 sin desencriptar PII en reposo (Art. 95 Bis LGOAAC / CNBV).
+            Cruce criptográfico mediante Blind Indexing HMAC-SHA256 (CURP · RFC · Nombre Normalizado) sin exponer PII (Art. 95 Bis LGOAAC / CNBV).
           </p>
         </div>
 
@@ -311,114 +209,12 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
         </div>
       </div>
 
-      <div className="p-6 rounded-3xl glass-panel border border-white/10 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 text-[#249E82]" />
-            <h3 className="text-sm font-bold text-white">
-              Ingestar Lista Oficial (69-B SAT / UIF / OFAC / PEPs)
-            </h3>
-          </div>
-          <span className="text-[11px] text-slate-400 font-mono">
-            Encabezado esperado: CURP,NOMBRE,OFICIO (Delimitador: , ; | TAB)
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs text-slate-300 mb-1 font-semibold">Tipo de Lista Oficial</label>
-            <select
-              value={selectedListType}
-              onChange={(e) => setSelectedListType(e.target.value as PldListType)}
-              className="w-full px-3 py-2 rounded-xl glass-input text-xs text-slate-100 focus:outline-none"
-            >
-              {Object.entries(LIST_TYPE_LABELS).map(([k, label]) => (
-                <option key={k} value={k} className="bg-slate-900 text-slate-100">{label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs text-slate-300 mb-1 font-semibold">Oficio / Publicación DOF</label>
-            <input
-              type="text"
-              value={officialReference}
-              onChange={(e) => setOfficialReference(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl glass-input text-xs text-slate-100 focus:outline-none"
-              placeholder="Ej. DOF-SAT-500-05-2026"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs text-slate-300 mb-1 font-semibold">Cargar Archivo CSV / TXT Oficial</label>
-            <label className="w-full px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs text-slate-200 flex items-center justify-center gap-2 cursor-pointer transition-colors">
-              <Upload className="w-4 h-4 text-[#00D1FF]" />
-              <span>Seleccionar archivo CSV/TXT...</span>
-              <input type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
-            </label>
-          </div>
-        </div>
-
-        {(selectedListType === 'GAFI_HIGH_RISK_JURISDICTIONS' ||
-          selectedListType === 'SHCP_REFIPRES_TAX_HAVENS') && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 rounded-2xl bg-slate-900/80 border border-[#00D1FF]/30 text-xs">
-            <div>
-              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">ISO 3166-1 Alpha-2</label>
-              <input type="text" maxLength={2} value={jurisdictionIso2} onChange={(e) => setJurisdictionIso2(e.target.value.toUpperCase())} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white font-mono" />
-            </div>
-            <div>
-              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">Jurisdicción / País</label>
-              <input type="text" value={jurisdictionName} onChange={(e) => setJurisdictionName(e.target.value)} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white" />
-            </div>
-            <div>
-              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">URL Fuente Oficial (GAFI / DOF)</label>
-              <input type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white font-mono" />
-            </div>
-            <div>
-              <label className="block text-[11px] text-[#00D1FF] mb-1 font-semibold">Fecha Publicación Oficial</label>
-              <input type="date" value={officialPubDate} onChange={(e) => setOfficialPubDate(e.target.value)} className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/15 text-white font-mono" />
-            </div>
-          </div>
-        )}
-
-        <textarea
-          rows={3}
-          value={csvContent}
-          onChange={(e) => setCsvContent(e.target.value)}
-          placeholder={'CURP,NOMBRE,OFICIO\nGOMA850101HCHLRN09,JUAN PEREZ CONTRIBUYENTE EFOS,DOF-69B-2026'}
-          className="w-full p-3 rounded-xl glass-input text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none"
-        />
-
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const lines = csvContent
-                .split(/\r?\n/)
-                .map((l) => l.trim())
-                .filter((l) => l.length > 0 && !l.toUpperCase().startsWith('CURP'));
-              setFeedback({
-                type: lines.length > 0 ? 'success' : 'error',
-                message:
-                  lines.length > 0
-                    ? `Previsualización lista: ${lines.length} registro(s) detectados para la lista ${LIST_TYPE_LABELS[selectedListType]}. Haz clic en "Sellar e Ingresar a Base de Datos" para confirmar.`
-                    : 'No se detectaron renglones válidos para previsualizar. Selecciona un archivo CSV o ingresa registros.',
-              });
-            }}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-all"
-          >
-            Previsualizar
-          </button>
-          <button
-            onClick={handleIngestList}
-            disabled={ingestLoading}
-            className="px-5 py-2 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50"
-          >
-            {ingestLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-            <span>Sellar e Ingresar a Base de Datos</span>
-          </button>
-        </div>
-      </div>
+      <PldWatchlistIngestionCard
+        session={session}
+        listTypeLabels={LIST_TYPE_LABELS}
+        onIngestionCompleted={fetchOverview}
+        onFeedback={setFeedback}
+      />
 
       <div className="rounded-3xl glass-panel border border-white/10 overflow-hidden shadow-2xl">
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
@@ -508,7 +304,6 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
         </div>
       </div>
 
-      {/* Fase 2.3: Rama Lista Gris (¿Autoriza Dirección?), Matriz de Riesgo Inicial y Reportes Tentativos */}
       <PldGrayListDirectionPanel session={session} onDecisionCompleted={() => void fetchOverview()} />
 
       {selectedAlert && (

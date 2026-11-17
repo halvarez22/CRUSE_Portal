@@ -8,13 +8,17 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth, getAuth } from '../auth/authMiddleware';
 import { extractClientIp } from '../audit/auditMask';
-import { CnbvRiskGrade, PldListType, TentativeAmountReportingMode } from '../../types';
+import { CnbvRiskGrade, TentativeAmountReportingMode } from '../../types';
 import {
   getPldComplianceOverview,
-  ingestPldRiskListEntries,
   resolvePldHitAlert,
   runFullPortfolioPldScreening,
 } from '../pld/pldScreeningService';
+import {
+  handleAnalyzePldWatchlist,
+  handleIngestPldWatchlist,
+  handleReportClientXlsxFault,
+} from './pldWatchlistIngestHandlers';
 import {
   listGrayListAndExceptionWorkflowData,
   processDirectionGrayListDecision,
@@ -40,16 +44,6 @@ import {
 
 export const pldRouter = Router();
 
-const VALID_LIST_TYPES: ReadonlySet<PldListType> = new Set<PldListType>([
-  'SAT_69B_DEFINITIVO',
-  'SAT_69B_PRESUNTO',
-  'UIF_PERSONAS_BLOQUEADAS',
-  'OFAC_SDN',
-  'PEP_NACIONAL',
-  'GAFI_HIGH_RISK_JURISDICTIONS',
-  'SHCP_REFIPRES_TAX_HAVENS',
-]);
-
 /**
  * GET /api/pld/overview
  * Retorna KPIs, entradas cifradas en listas de riesgo, alertas proyectadas (Single-Pass CTE) y último lote de barrido.
@@ -67,55 +61,14 @@ pldRouter.get('/overview', requireAuth('pld:read'), async (_req: Request, res: R
   }
 });
 
-/**
- * POST /api/pld/lists/ingest
- * Ingiere de forma idempotente un archivo CSV/TXT de lista oficial (69-B SAT / UIF / OFAC / PEPs)
- * calculando sourceFileHash SHA-256 inmediato y aplicando Blind Indexing Zero-PII.
- */
-pldRouter.post('/lists/ingest', requireAuth('pld:manage_lists'), async (req: Request, res: Response) => {
-  try {
-    const { user } = getAuth(req);
-    const ip = extractClientIp(req.headers);
+/** POST /api/pld/lists/analyze — Radiografía Inteligente Zero-PII sin escritura WORM (CRUSE-APO-2026-056) */
+pldRouter.post('/lists/analyze', requireAuth('pld:manage_lists'), handleAnalyzePldWatchlist);
 
-    const body = req.body as {
-      csvContent?: unknown;
-      defaultListType?: unknown;
-      defaultOfficialReference?: unknown;
-    };
+/** POST /api/pld/lists/ingest — Ingesta WORM verificada con re-validación SHA-256 multipart (CRUSE-APO-2026-056) */
+pldRouter.post('/lists/ingest', requireAuth('pld:manage_lists'), handleIngestPldWatchlist);
 
-    const csvContent = typeof body.csvContent === 'string' ? body.csvContent : '';
-    const rawListType = typeof body.defaultListType === 'string' ? body.defaultListType.trim().toUpperCase() : 'SAT_69B_DEFINITIVO';
-    const defaultOfficialReference =
-      typeof body.defaultOfficialReference === 'string' && body.defaultOfficialReference.trim().length > 0
-        ? body.defaultOfficialReference.trim()
-        : 'DOF-SAT-69B-2026';
-
-    if (!csvContent || csvContent.trim().length === 0) {
-      return res.status(400).json({ error: 'Se requiere el contenido CSV/TXT de la lista oficial PLD/FT (csvContent).' });
-    }
-
-    const defaultListType: PldListType = VALID_LIST_TYPES.has(rawListType as PldListType)
-      ? (rawListType as PldListType)
-      : 'SAT_69B_DEFINITIVO';
-
-    const result = await ingestPldRiskListEntries({
-      csvContent,
-      defaultListType,
-      defaultOfficialReference,
-      actorEmail: user.email,
-      actorRole: user.role,
-      sourceIp: ip,
-    });
-
-    return res.json({
-      ok: true,
-      ...result,
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error al ingerir lista PLD/FT';
-    return res.status(400).json({ error: msg });
-  }
-});
+/** POST /api/pld/lists/client-fault — Registro WORM de fallo OBS-1 en import('xlsx') (Guardrail 7) */
+pldRouter.post('/lists/client-fault', requireAuth('pld:manage_lists'), handleReportClientXlsxFault);
 
 /**
  * POST /api/pld/screen-portfolio
