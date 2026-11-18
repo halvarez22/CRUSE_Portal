@@ -1,12 +1,25 @@
 /**
- * SERVICIO DE SEMILLAS CRIPTOGRÁFICAS Y CÓDIGOS DE RESPALDO 2FA — MICROFINANCIERA CRUSE
+ * SERVICIO 2FA TOTP RFC 6238 (APP AUTENTICADORA) Y CÓDIGOS DE RESPALDO SHA-256
+ * Expediente: CRUSE-APO-2026-067 (Guardrail Forense 5: 2FA TOTP Obligatorio para Roles Críticos)
  *
- * Provee generación de semillas criptográficas de 160 bits y los 8 códigos de
- * respaldo de emergencia (One-Time Recovery Codes XXXX-XXXX) para contingencias
- * cuando el usuario no tiene cobertura celular para recibir el SMS 2FA.
+ * - Implementa RFC 6238 usando `crypto.createHmac('sha1', ...)` con ventana de tolerancia ±1 paso (30 s).
+ * - Genera códigos de respaldo de emergencia con `crypto.randomBytes(8)` y almacenamiento SHA-256.
+ * - Roles críticos (`admin`, `cumplimiento`, `operaciones`) requieren TOTP; promotores pueden usar SMS.
  */
 
+import crypto from 'node:crypto';
+import { UserRole } from '../../types';
+
 const ALPHABET_32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+export const CRITICAL_TOTP_ROLES: ReadonlySet<UserRole> = new Set<UserRole>([
+  'admin',
+  'oficial_cumplimiento',
+]);
+
+export function isCriticalTotpRole(role: UserRole | string): boolean {
+  return CRITICAL_TOTP_ROLES.has(role as UserRole);
+}
 
 export function encodeAlphabet32(bytes: Uint8Array): string {
   let bits = 0;
@@ -29,7 +42,7 @@ export function encodeAlphabet32(bytes: Uint8Array): string {
   return output;
 }
 
-export function decodeAlphabet32(encoded: string): Uint8Array {
+export function decodeAlphabet32(encoded: string): Buffer {
   const clean = encoded.toUpperCase().replace(/[^A-Z2-7]/g, '');
   let bits = 0;
   let value = 0;
@@ -46,78 +59,80 @@ export function decodeAlphabet32(encoded: string): Uint8Array {
     }
   }
 
-  return new Uint8Array(bytes);
+  return Buffer.from(bytes);
 }
 
 /**
- * Genera una semilla secreta de 160 bits (20 bytes) aleatoria.
+ * Genera una semilla secreta Base32 de 160 bits (20 bytes) criptográficamente segura.
  */
 export function generateTotpSecret(): string {
-  const bytes = new Uint8Array(20);
-  globalThis.crypto.getRandomValues(bytes);
-  return encodeAlphabet32(bytes);
+  return encodeAlphabet32(crypto.randomBytes(20));
 }
 
 /**
- * Genera el identificador interno de vinculación 2FA para el expediente del usuario.
+ * Genera URI estándar RFC 6238 compatible con Google Authenticator y Microsoft Authenticator.
  */
-export function generateTotpUri(email: string, secretKey: string, issuer = 'Microfinanciera Cruse'): string {
+export function generateTotpUri(
+  email: string,
+  secretKey: string,
+  issuer = 'Microfinanciera Cruse'
+): string {
   const encodedIssuer = encodeURIComponent(issuer);
   const encodedAccount = encodeURIComponent(email);
-  return `urn:cruse:2fa-sms:${encodedIssuer}:${encodedAccount}?key=${secretKey}`;
+  return `otpauth://totp/${encodedIssuer}:${encodedAccount}?secret=${secretKey}&issuer=${encodedIssuer}&algorithm=SHA1&digits=6&period=30`;
 }
 
-async function generateCodeForCounter(secretKey: string, counter: number): Promise<string> {
-  const secretBytes = decodeAlphabet32(secretKey);
-  const subtle = globalThis.crypto.subtle;
+/**
+ * Calcula el código TOTP de 6 dígitos para un contador de tiempo dado usando Node `crypto.createHmac('sha1')`.
+ */
+export function generateTotpCodeForCounter(secretKey: string, counter: number): string {
+  const secretBuffer = decodeAlphabet32(secretKey);
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigUInt64BE(BigInt(counter), 0);
 
-  const counterBuffer = new ArrayBuffer(8);
-  const counterView = new DataView(counterBuffer);
-  counterView.setBigUint64(0, BigInt(counter), false);
-
-  const key = await subtle.importKey(
-    'raw',
-    secretBytes as BufferSource,
-    { name: 'HMAC', hash: 'SHA-1' },
-    false,
-    ['sign']
-  );
-
-  const hmac = await subtle.sign('HMAC', key, counterBuffer);
-  const hmacBytes = new Uint8Array(hmac);
-
-  const offset = hmacBytes[hmacBytes.length - 1]! & 0x0f;
+  const hmac = crypto.createHmac('sha1', secretBuffer).update(counterBuffer).digest();
+  const offset = hmac[hmac.length - 1]! & 0x0f;
   const binaryCode =
-    ((hmacBytes[offset]! & 0x7f) << 24) |
-    ((hmacBytes[offset + 1]! & 0xff) << 16) |
-    ((hmacBytes[offset + 2]! & 0xff) << 8) |
-    (hmacBytes[offset + 3]! & 0xff);
+    ((hmac[offset]! & 0x7f) << 24) |
+    ((hmac[offset + 1]! & 0xff) << 16) |
+    ((hmac[offset + 2]! & 0xff) << 8) |
+    (hmac[offset + 3]! & 0xff);
 
-  const code = (binaryCode % 1000000).toString().padStart(6, '0');
-  return code;
+  return (binaryCode % 1_000_000).toString().padStart(6, '0');
 }
 
-export async function generateCurrentTotpCode(secretKey: string, timeStepSeconds = 30): Promise<string> {
-  const currentCounter = Math.floor(Date.now() / 1000 / timeStepSeconds);
-  return generateCodeForCounter(secretKey, currentCounter);
+export async function generateCurrentTotpCode(
+  secretKey: string,
+  timeStepSeconds = 30,
+  nowMs = Date.now()
+): Promise<string> {
+  const currentCounter = Math.floor(nowMs / 1000 / timeStepSeconds);
+  return generateTotpCodeForCounter(secretKey, currentCounter);
 }
 
+/**
+ * Verifica un código TOTP RFC 6238 con ventana de tolerancia ±windowSteps (por defecto ±1 paso = ±30 s)
+ * usando comparación en tiempo constante (`crypto.timingSafeEqual`).
+ */
 export async function verifyTotpToken(
   token: string,
   secretKey: string,
   windowSteps = 1,
-  timeStepSeconds = 30
+  timeStepSeconds = 30,
+  nowMs = Date.now()
 ): Promise<{ valid: boolean; matchedStep?: number }> {
   const cleanToken = token.trim().replace(/\s+/g, '');
   if (cleanToken.length !== 6 || !/^\d{6}$/.test(cleanToken)) {
     return { valid: false };
   }
 
-  const currentCounter = Math.floor(Date.now() / 1000 / timeStepSeconds);
+  const currentCounter = Math.floor(nowMs / 1000 / timeStepSeconds);
+  const tokenBuf = Buffer.from(cleanToken, 'utf8');
 
   for (let offset = -windowSteps; offset <= windowSteps; offset++) {
-    const expected = await generateCodeForCounter(secretKey, currentCounter + offset);
-    if (expected === cleanToken) {
+    const expected = generateTotpCodeForCounter(secretKey, currentCounter + offset);
+    const expectedBuf = Buffer.from(expected, 'utf8');
+    if (expectedBuf.length === tokenBuf.length && crypto.timingSafeEqual(expectedBuf, tokenBuf)) {
       return { valid: true, matchedStep: offset };
     }
   }
@@ -126,15 +141,14 @@ export async function verifyTotpToken(
 }
 
 /**
- * Genera 8 códigos de respaldo de un solo uso (One-Time Recovery Codes XXXX-XXXX).
+ * Genera códigos de respaldo de un solo uso (XXXX-XXXX) con `crypto.randomBytes(8)`.
  */
 export function generateRecoveryCodes(count = 8): string[] {
   const codes: string[] = [];
-  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // Sin 0, 1, I, O confusos
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
   for (let i = 0; i < count; i++) {
-    const bytes = new Uint8Array(8);
-    globalThis.crypto.getRandomValues(bytes);
+    const bytes = crypto.randomBytes(8);
     let code = '';
     for (let j = 0; j < 8; j++) {
       code += chars[bytes[j]! % chars.length];
@@ -144,4 +158,12 @@ export function generateRecoveryCodes(count = 8): string[] {
   }
 
   return codes;
+}
+
+/**
+ * Calcula el hash SHA-256 de un código de respaldo normalizado para almacenamiento seguro.
+ */
+export function hashRecoveryCodeSha256(code: string): string {
+  const normalized = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
 }

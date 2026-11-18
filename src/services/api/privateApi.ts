@@ -4,7 +4,7 @@
  * Implementa endpoints seguros para:
  * - Autenticación 2FA SMS con usuarios en BD y sesiones opacas (authRouter, CRUSE-APO-2026-005 / CRUSE-APO-2026-030).
  * - Sincronización segura de expedientes con Envelope Encryption y Blind Indexing (OBS-2).
- * - Consulta y verificación criptográfica de la Bitácora Forense WORM de 5 años.
+ * - Consulta y verificación criptográfica de la Bitácora Forense WORM de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).
  * - Servicios 3FN v4 (CRUSE-APO-2026-021): Desglose Manual RN-13, Crédito Especial RN-01, Notas RN-02/RN-04 y Fondeo RN-09/RN-10/RN-11.
  *
  * Regla de identidad (A.3): todo endpoint privado exige requireAuth(permiso) y el actor
@@ -30,6 +30,7 @@ import { digitalSignatureRouter } from './digitalSignatureRouter';
 import { cloudMigrationRouter } from './cloudMigrationRouter';
 import { integrationHubRouter } from './integrationHubRouter';
 import { insuranceAndCoiRouter } from './insuranceAndCoiRouter';
+import { financialParamsAndUneRouter } from './financialParamsAndUneRouter';
 
 export const privateApiRouter = Router();
 
@@ -64,6 +65,7 @@ privateApiRouter.use('/digital-signature', digitalSignatureRouter);
 privateApiRouter.use('/cloud-migration', cloudMigrationRouter);
 privateApiRouter.use('/integration-hub', integrationHubRouter);
 privateApiRouter.use('/insurance-coi', insuranceAndCoiRouter);
+privateApiRouter.use('/system-params', financialParamsAndUneRouter);
 
 // Sub-enrutador de línea abierta Crédito Especial (RN-01) y Block de Notas (RN-02, RN-04)
 privateApiRouter.use('/', specialCreditAndNotesRouter);

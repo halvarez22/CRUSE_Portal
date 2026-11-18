@@ -47,7 +47,7 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
     metrics: [
       { label: 'Tiempo de Originación', value: '< 2 Horas', accent: 'emerald' },
       { label: 'Dependencia de Excel', value: '0%', accent: 'cyan' },
-      { label: 'Retención de Bitácora', value: '5 Años', accent: 'amber' },
+      { label: 'Retención de Bitácora PLD', value: '10 Años', accent: 'amber' },
     ],
   },
   {
@@ -165,7 +165,7 @@ export const PITCH_SLIDES_DATA: readonly PitchSlideItem[] = [
     subtitle: 'Trazabilidad total para Inversionistas, Auditores y Autoridades Financieras',
     category: 'Estructura de Capital & PLD',
     investorNotes:
-      'Destacar el módulo de Fondeo e Inversionistas y el blindaje PLD/FT con sellos digitales inalterables por 5 años.',
+      'Destacar el módulo de Fondeo e Inversionistas y el blindaje PLD/FT con sellos digitales inalterables por 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).',
     highlights: [
       'Gestión de líneas de fondeo e inversionistas con cálculo automatizado de intereses e ISR (0.5% / 0.9%).',
       'Generación automática del layout oficial de Círculo de Crédito (001496) y layouts SIF/CIB Logic Systems.',

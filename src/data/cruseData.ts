@@ -149,7 +149,7 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
   subtitle: "Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)",
   lastUpdated: "Noviembre 2026",
   legalFramework:
-    "Artículos 15, 16, 17, 22, 28 y 36 de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP), su Reglamento, Lineamientos del INAI y disposiciones aplicables de la CONDUSEF y CNBV (Art. 95 Bis LGOAAC).",
+    "Artículos 15, 16, 17, 22, 28 y 36 de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP 2025), Lineamientos de la Secretaría Anticorrupción y Buen Gobierno y disposiciones aplicables de la CONDUSEF y CNBV (Art. 95 Bis LGOAAC).",
   responsibleEntity: COMPANY_INFO.name,
   responsibleAddress: COMPANY_INFO.address,
   uneEmail: COMPANY_INFO.uneContact.email,
@@ -185,7 +185,7 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
       number: "IV",
       title: "Medidas de Seguridad Criptográfica y Protocolos Zero-PII",
       content:
-        "En cumplimiento del artículo 19 de la LFPDPPP, sus documentos e información confidencial (INE, recibos de nómina, CURP y RFC) son protegidos mediante Cifrado de Sobre (Envelope Encryption AES-GCM de 256 bits con llaves DEK envueltas por KEK rotativas) tanto en tránsito como en reposo. Las búsquedas operativas se realizan mediante Blind Indexing criptográfico (HMAC-SHA256) sin desencriptar la base de datos. En capturas móviles de campo se aplica el protocolo Zero-PII Post-Ack (purga automática e irreversible de imágenes temporales en el dispositivo tras el acuse del servidor), y todo acceso queda asentado en una Bitácora Forense Inmutable (WORM con cadena Merkle SHA-256) con retención regulatoria de 5 años.",
+        "En cumplimiento del artículo 19 de la LFPDPPP, sus documentos e información confidencial (INE, recibos de nómina, CURP y RFC) son protegidos mediante Cifrado de Sobre (Envelope Encryption AES-GCM de 256 bits con llaves DEK envueltas por KEK rotativas) tanto en tránsito como en reposo. Las búsquedas operativas se realizan mediante Blind Indexing criptográfico (HMAC-SHA256) sin desencriptar la base de datos. En capturas móviles de campo se aplica el protocolo Zero-PII Post-Ack (purga automática e irreversible de imágenes temporales en el dispositivo tras el acuse del servidor), y todo acceso queda asentado en una Bitácora Forense Inmutable (WORM con cadena Merkle SHA-256) con retención regulatoria mínima de 10 años conforme a las DCG del Art. 95 Bis de la LGOAAC / CNBV. Asimismo, Microfinanciera Cruse nunca solicita ni transmite fotografías de identificaciones oficiales ni datos patrimoniales sin cifrar a través de WhatsApp.",
       highlights: [
         "Cifrado en Reposo y Tránsito: AES-GCM-256 (Envelope Encryption KEK/DEK)",
         "Búsqueda Ciega sin Exposición: Blind Indexing HMAC-SHA256 para CURP y RFC",
@@ -206,11 +206,11 @@ export const PRIVACY_NOTICE_LFPDPPP: PrivacyNoticeData = {
       ],
     },
     {
-      id: "supervision-condusef-inai",
+      id: "supervision-condusef-buen-gobierno",
       number: "VI",
-      title: "Transferencias Legales, Supervisión CONDUSEF y Autoridad Garante",
+      title: "Transferencias Legales, Supervisión CONDUSEF y Secretaría Anticorrupción y Buen Gobierno",
       content:
-        "Sus datos personales únicamente podrán ser transferidos sin requerir su consentimiento en los supuestos previstos por el artículo 37 de la LFPDPPP: a la dependencia, sindicato o agrupación retenedora de nómina para la aplicación de descuentos autorizados, a la institución aseguradora para la cobertura del seguro de vida del crédito, y a las autoridades competentes (CNBV, SHCP/UIF y autoridades judiciales). Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. se encuentra debidamente registrada y supervisada ante la Comisión Nacional para la Protección y Defensa de los Usuarios de Servicios Financieros (CONDUSEF — Sistema SIPRES, www.condusef.gob.mx). En caso de considerar vulnerado su derecho a la protección de datos personales, puede acudir ante la autoridad garante nacional en materia de protección de datos.",
+        "Sus datos personales únicamente podrán ser transferidos sin requerir su consentimiento en los supuestos previstos por el artículo 37 de la LFPDPPP: a la dependencia, sindicato o agrupación retenedora de nómina para la aplicación de descuentos autorizados, a la institución aseguradora para la cobertura del seguro de vida del crédito, y a las autoridades competentes (CNBV, SHCP/UIF y autoridades judiciales). Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R. se encuentra debidamente registrada y supervisada ante la Comisión Nacional para la Protección y Defensa de los Usuarios de Servicios Financieros (CONDUSEF — Sistema SIPRES, www.condusef.gob.mx). En caso de considerar vulnerado su derecho a la protección de datos personales, puede acudir ante la Secretaría Anticorrupción y Buen Gobierno (autoridad garante federal en materia de protección de datos personales).",
     },
   ],
 };
@@ -325,6 +325,13 @@ export const PLD_OFFICIAL_WATCHLIST_TEMPLATES = {
     headers: ['IDENTIFICADOR', 'NOMBRE_COMPLETO', 'PROGRAMA_OFAC', 'FECHA_PUBLICACION'],
     sampleRows: [
       ['', 'GLOBAL TRADING HOLDINGS LTD', 'OFAC-SDN-KINGPIN-2026', '2026-11-05'],
+    ],
+  },
+  UN_CONSOLIDATED_SANCTIONS: {
+    fileNameBase: 'PLANTILLA_ONU_CONSOLIDATED_SANCTIONS_CRUSE',
+    headers: ['IDENTIFICADOR', 'NOMBRE_COMPLETO', 'RESOLUCION_ONU', 'FECHA_PUBLICACION'],
+    sampleRows: [
+      ['UNSC-1267-001', 'AL-QAIDA DESIGNATED ENTITY SAMPLE', 'UNSC-RES-1267/1989/2253', '2026-11-01'],
     ],
   },
   PEP_NACIONAL: {

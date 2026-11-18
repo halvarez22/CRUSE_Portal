@@ -33,16 +33,16 @@ export const NationalHubsAndManualTab: React.FC = () => {
     const manualLines: string[] = [
       '================================================================================',
       'MICROFINANCIERA CRUSE, S.A. DE C.V. SOFOM E.N.R.',
-      'MANUAL AMIGABLE DE FASE 1: GUÍA PRÁCTICA DE LOS 11 MÓDULOS (PARA NO TÉCNICOS)',
+      `GUÍA OPERATIVA EN LENGUAJE CLARO: LOS ${guides.length} MÓDULOS (FASES 1, 2 Y 3)`,
       'DIRIGIDO A: LIC. ALMA (MESA DE CONTROL / OPERACIONES), DIRECCIÓN Y CUMPLIMIENTO',
       '================================================================================',
       '',
     ];
 
     for (const item of guides) {
-      manualLines.push(`MÓDULO ${item.tabNumber}: ${item.friendlyTitle.toUpperCase()}`);
+      manualLines.push(`MÓDULO ${item.tabNumber} [${item.phaseBadge}]: ${item.friendlyTitle.toUpperCase()}`);
       manualLines.push(`1. ¿Qué hace este módulo en tu día a día?: ${item.whatItDoes}`);
-      manualLines.push(`2. ¿Qué punto del Contrato de Fase 1 logramos aquí?: ${item.contractDeliverable}`);
+      manualLines.push(`2. Referencia Contractual (${item.phaseBadge}): ${item.contractDeliverable}`);
       manualLines.push('3. ¿Cómo interactuar con él en 3 pasos sencillos?:');
       for (const st of item.threeSimpleSteps) {
         manualLines.push(`   - ${st}`);

@@ -1,4 +1,4 @@
-# 📗 MANUAL OFICIAL DE USUARIO, CUMPLIMIENTO ASISTIDO Y GUÍA DE ENTRENAMIENTO (FASE 2)
+﻿# 📗 MANUAL OFICIAL DE USUARIO, CUMPLIMIENTO ASISTIDO Y GUÍA DE ENTRENAMIENTO (FASE 2)
 ## Inteligencia Artificial, OCR Determinista y Cumplimiento Asistido CNBV/UIF — Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
 
 **Versión:** Edición Institucional Definitiva 2026 (100% No Técnica — Alcance Exclusivo Fase 2: OCR + IA, Excepciones y Duplicados, Tablero de Lista Gris y Operaciones Fraccionadas, Layout SITI 41 Columnas y Carga Controlada a CIB en 3 Pasos)  
@@ -236,7 +236,7 @@ Por decisión estratégica de seguridad y autonomía de Microfinanciera Cruse, n
 1. El Oficial de Cumplimiento revisa en la tabla del lote cuántos expedientes fueron incluidos, cuántos fueron excluidos preventivamente, el capital total y el sello `SHA-256`.
 2. En la columna derecha del lote, presiona el botón amarillo **`Paso 2: Aprobar OC`**.
 3. Verifica o complementa la nota de dictamen (*"Expedientes validados con Score OCR >= 80% y 0 hits en Listas Negras UIF/OFAC/69-B"*) y presiona **`Firmar Aprobación OC (Sellar CIB_BATCH_VALIDATED)`**.
-4. El lote pasa a estado azul **`APPROVED_BY_OC`** y queda grabado de forma inborrable en la Bitácora Forense WORM de 5 años.
+4. El lote pasa a estado azul **`APPROVED_BY_OC`** y queda grabado de forma inborrable en la Bitácora Forense WORM de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).
 
 ### PASO 3: Carga en Logic Systems CIB y Registro del Folio de Confirmación
 1. Una vez aprobado por el Oficial de Cumplimiento, el área de Operaciones sube el archivo `.CSV` al sistema **CIB (Logic Systems)**.

@@ -1,30 +1,14 @@
 /**
  * MOTOR DE COBRANZA EXTRAJUDICIAL, CONGELAMIENTO DE MORA, BAJA LABORAL ACTIVA Y REESTRUCTURAS N-A-1
- * Expedientes: CRUSE-APO-2026-025 y CRUSE-APO-2026-063 (Casos 2 y 4 — Guardrails 3 y 4)
- *
- * - Directriz 1: Proyección de estado mediante CTEs (`WITH`) en una sola pasada sin N+1.
- * - Directriz 2: Relación N-a-1 estricta en Reestructuras (`RN-11`), insertando N registros en
- *   `loan_restructures` y sellando el evento WORM `DTI_CAPACITY_RELEASED_FOR_RENEWAL` (Guardrail 3).
- * - Directriz 3: Sincronización atómica de `loan_insurance_enrollments` y soporte para `BAJA_LABORAL_ACTIVA`
- *   (hoja `SUBIR A BURO DESPEDIDOS`).
- * - Directriz 4: Zero-PII absoluto y cumplimiento estricto de techo Anti-God-Object (< 580 líneas).
+ * Expedientes: CRUSE-APO-2026-025, CRUSE-APO-2026-063 y CRUSE-APO-2026-067 (Pago Sostenido CNBV < 580 líneas)
  */
-
 import crypto from 'crypto';
 import Decimal from 'decimal.js';
 import { db, TxHandle } from '../db/connectionPool';
 import { auditEventStore } from '../audit/auditEventStore';
 import { calculateSimulation, validateLegalPaymentCapacityLft110 } from '../../config/financialConstants';
 import { maskPiiForPreview } from './creditBureauService';
-import {
-  AuditAction,
-  InsuranceEnrollmentStatus,
-  LoanPortfolioRiskRow,
-  PortfolioRiskSummary,
-  ProjectedLoanOperationalStatus,
-  SuspensionOrFreezeReason,
-  UserRole,
-} from '../../types';
+import { AuditAction, InsuranceEnrollmentStatus, LoanPortfolioRiskRow, PortfolioRiskSummary, ProjectedLoanOperationalStatus, SuspensionOrFreezeReason, UserRole } from '../../types';
 
 interface PortfolioRiskJoinDbRow {
   loan_account_id: string; contract_number: string; expediente_id: string; convenio: string;
@@ -429,18 +413,23 @@ export async function executeLoanRestructure(
     const absorbedLoans: ExecuteLoanRestructureResult['absorbedLoans'] = [];
     let totalAbsorbedDec = new Decimal(0);
     let totalPeriodicDiscountReleasedDec = new Decimal(0);
+    let anyAbsorbedFromArrears = false;
 
     for (const prevId of uniquePrevIds) {
       const loanRes = await tx.query<{
         id: string; contract_number: string; expediente_id: string;
-        principal_original: string | number; fortnightly_payment: string | number; product_type: string;
+        principal_original: string | number; fortnightly_payment: string | number;
+        product_type: string; status: string; days_past_due?: number | null;
       }>(
-        `SELECT id, contract_number, expediente_id, principal_original, fortnightly_payment, product_type FROM loan_accounts WHERE id = $1`,
+        `SELECT id, contract_number, expediente_id, principal_original, fortnightly_payment, product_type, status, COALESCE(days_past_due, 0) AS days_past_due FROM loan_accounts WHERE id = $1`,
         [prevId]
       );
 
       const prevLoan = loanRes.rows[0];
       if (!prevLoan) throw new Error(`El crédito origen '${prevId}' no existe.`);
+      if (Number(prevLoan.days_past_due ?? 0) > 0 || prevLoan.status === 'FROZEN_EXTRAJUDICIAL') {
+        anyAbsorbedFromArrears = true;
+      }
       if (prevLoan.expediente_id !== input.expedienteId) {
         throw new Error(`El crédito '${prevLoan.contract_number}' no pertenece al expediente '${input.expedienteId}'.`);
       }
@@ -519,14 +508,15 @@ export async function executeLoanRestructure(
          fortnightly_payment, payment_frequency, first_deduction_period, activated_at,
          activated_by, product_type, insurance_required, status, reports_to_credit_bureau,
          is_renewal, prior_loan_id, prior_loan_liquidated_amount_cents, net_disbursed_amount_cents,
-         oficio_primer_pago, oficio_suspension
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, 'NOMINA_NORMAL', 1, 'ACTIVE', 1, 1, $10, $11, $12, $13, $14)`,
+         oficio_primer_pago, oficio_suspension, originated_from_arrears_restructure, sustained_payments_completed_count
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, 'NOMINA_NORMAL', 1, 'ACTIVE', 1, 1, $10, $11, $12, $13, $14, $15, 0)`,
       [
         newLoanAccountId, newContractNumber, input.expedienteId,
         newPrincipalDec.toNumber(), newPrincipalDec.toNumber(), fortnightlyPaymentDec.toNumber(),
         frequency, firstPeriod, input.actorEmail, primaryPrior.previousLoanId,
         totalAbsorbedDec.times(100).toDP(0).toNumber(), netCashDec.times(100).toDP(0).toNumber(),
         input.oficioPrimerPago ?? null, input.oficioSuspension ?? null,
+        anyAbsorbedFromArrears ? 1 : 0,
       ]
     );
 

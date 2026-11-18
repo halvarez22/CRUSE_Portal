@@ -1,315 +1,224 @@
+/**
+ * BANNER Y MANUAL INTERACTIVO EN LENGUAJE CLARO (SIN TECNICISMOS)
+ * Expediente: CRUSE-APO-2026-067 (Hallazgos A.1–A.6, D.1, D.7 + Guardrail Forense 8)
+ *
+ * Catálogo extraído a `src/data/moduleGuidesCatalog.ts` (< 360 líneas).
+ * Incluye descarga limpia en PDF de la Guía Operativa y de la Cédula de Pruebas Paralelas UAT.
+ */
+
 import React, { useState } from 'react';
-import { BookOpen, CheckCircle2, ChevronDown, ChevronUp, FileCheck, HelpCircle, Sparkles, X } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  Sparkles,
+  X,
+  FileDown,
+  ClipboardCheck,
+} from 'lucide-react';
+import {
+  AdminTabId,
+  FriendlyGuideModuleId,
+  MODULE_FRIENDLY_GUIDES,
+  MODULE_GUIDES,
+  ModuleFriendlyGuide,
+  ORDERED_MODULE_GUIDES,
+} from '../../data/moduleGuidesCatalog';
+import {
+  downloadCleanFriendlyManualPdf,
+  downloadParallelUatCertificatePdf,
+} from '../../services/reports/uatParallelCertificatePdf';
 
-export type AdminTabId =
-  | 'dashboard' | 'pre_applications' | 'executive' | 'expedientes' | 'reconciliation'
-  | 'collections' | 'funding' | 'credit_bureau' | 'pld' | 'audit'
-  | 'cloud_migration' | 'operations_hub' | 'users';
-
-export interface ModuleFriendlyGuide {
-  tabNumber: number;
-  friendlyTitle: string;
-  whatItDoes: string;
-  contractDeliverable: string;
-  threeSimpleSteps: readonly [string, string, string];
-}
-
-export const MODULE_FRIENDLY_GUIDES: Record<AdminTabId, ModuleFriendlyGuide> = {
-  dashboard: {
-    tabNumber: 1,
-    friendlyTitle: '1. Resumen General de Cartera',
-    whatItDoes:
-      'Antes había que abrir varias hojas de Excel para sumar cuánto dinero estaba prestado o quién tenía atrasos. Esta pantalla suma todo al instante y te muestra con colores de semáforo la salud de todos los créditos en Chihuahua, León y Cancún.',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.3 y Visión Ejecutiva C.1 / C.4: Sustitución definitiva de hojas de Excel por una base de datos central con Semáforo de Morosidad (Verde, Amarillo y Rojo) y supervisión por 3 Hubs Nacionales.',
-    threeSimpleSteps: [
-      'Paso 1: Elige arriba la región que deseas revisar ("Nacional (3 Hubs)", "Chihuahua", "León" o "Cancún").',
-      'Paso 2: Revisa el Semáforo de colores (Verde = Al corriente, Amarillo = En licencia o espera, Rojo = Con atraso) y las 4 tarjetas de dinero.',
-      'Paso 3: En la tabla inferior haz clic en "Ver Detalle" para abrir la ficha de un cliente o en "Exportar a Excel (.CSV)" para descargar tu reporte.',
-    ],
-  },
-  pre_applications: {
-    tabNumber: 2,
-    friendlyTitle: '2. Buzón de Pre-Solicitudes',
-    whatItDoes:
-      'Funciona igual que tu bandeja de correo electrónico: aquí llegan automáticamente los datos de los trabajadores que cotizaron su préstamo en la página pública y pidieron ser atendidos por un promotor, sin enviar documentos personales por chat.',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.2, B.3 y Visión Ejecutiva C.5: Captación digital desde el Simulador Público con aviso automático al WhatsApp de promoción de la Lic. Alma y control de seguimiento (No leído → Leído → Atendido).',
-    threeSimpleSteps: [
-      'Paso 1: Haz clic en cualquier solicitud nueva de la columna izquierda (con punto verde); el sistema la marcará automáticamente como "Leído".',
-      'Paso 2: Revisa en el panel derecho el monto simulado, convenio y teléfono del trabajador, y presiona "Contactar al Solicitante por WhatsApp".',
-      'Paso 3: Escribe tus observaciones en el cuadro de notas de cita y presiona el botón "Marcar como Atendido".',
-    ],
-  },
-  executive: {
-    tabNumber: 3,
-    friendlyTitle: '3. Suite Ejecutiva y Simuladores (5 Módulos)',
-    whatItDoes:
-      'Reúne en un solo lugar las 5 herramientas para Dirección, Mesa de Control e Inversionistas: la presentación comercial de 10 láminas, el proyector de ganancias a 36 meses, la calculadora de descuento quincenal del trabajador, el comparador frente a bancos y el mapa de sedes.',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque B (B.1 a B.5) y Visión Ejecutiva C.8 / C.9: Evaluación del límite del 30% LFT (Ingreso Neto Ajustado = Ingreso Neto + Descuento Liberado) e impresión del "Anexo 1 — Tabla para Compensación" a 2 tantos membretados vinculado a la Constancia NOM-151.',
-    threeSimpleSteps: [
-      'Paso 1: Elige cualquiera de los 5 botones superiores (por ejemplo "3. Simulador & Scoring Aprobador" para evaluar si un trabajador califica).',
-      'Paso 2: Captura el monto, plazo, sueldo neto quincenal y antigüedad del trabajador y presiona "Emitir Dictamen de Scoring para Aprobador".',
-      'Paso 3: Consulta el semáforo de recomendación, la cuota quincenal exacta con seguro de $22.85 e imprime el "Anexo 1 — Tabla para Compensación" (2 tantos).',
-    ],
-  },
-  expedientes: {
-    tabNumber: 4,
-    friendlyTitle: '4. Expedientes de Clientes',
-    whatItDoes:
-      'Es el archivero digital de todas las solicitudes y créditos levantados por los promotores en campo con la cámara guiada de su celular, evitando que las fotos de identificaciones o recibos se queden guardadas en los teléfonos.',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.2 y Visión Ejecutiva C.10: Digitalización segura de expedientes por convenio institucional (STSGECH, Supremo Tribunal, Bajío y Sur) y generación de archivos para el sistema SIF/CIB.',
-    threeSimpleSteps: [
-      'Paso 1: Usa la barra de búsqueda o los filtros por Convenio y Estatus para localizar rápidamente el expediente de cualquier trabajador.',
-      'Paso 2: Revisa en el renglón su monto, plazo, descuento quincenal y estado de validación.',
-      'Paso 3: Utiliza los botones superiores para exportar el listado o preparar el archivo de carga para el sistema contable SIF/CIB.',
-    ],
-  },
-  reconciliation: {
-    tabNumber: 5,
-    friendlyTitle: '5. Conciliación Quincenal de Nómina',
-    whatItDoes:
-      'Cruza en segundos lo enviado al sindicato contra los pagos retenidos por Tesorería, y administra Créditos Especiales con tasa mensual de 3.0% a 5.0% bajo los 3 regímenes de IVA (EXEMPT_SOFOM, ADDITIVE_16 e INCLUDED_1_16 con desglose inverso /1.16).',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.6: Motor de Conciliación Quincenal con prelación automática (1° Seguro $22.85 → 2° Interés → 3° IVA → 4° Capital), Crédito Especial con 3 regímenes de IVA y layout para SIF/CIB.',
-    threeSimpleSteps: [
-      'Paso 1: Selecciona el Convenio y la Quincena, y presiona "Generar Layout de Cobro Sindical" para obtener la lista que se envía a Recursos Humanos.',
-      'Paso 2: Cuando Tesorería envíe los pagos retenidos, sube el archivo y presiona "Previsualizar Cruce Quincenal" para ver las diferencias antes de guardar.',
-      'Paso 3: Presiona "Confirmar y Aplicar Conciliación en Firme" y descarga tu archivo listo para Logic Systems SIF/CIB.',
-    ],
-  },
-  collections: {
-    tabNumber: 6,
-    friendlyTitle: '6. Cobranza, Licencias y Reestructuras',
-    whatItDoes:
-      'Permite pausar cobros por licencia sin sueldo, unir hasta 4 préstamos Normales liberando capacidad DTI (30% LFT con sello WORM DTI_CAPACITY_RELEASED_FOR_RENEWAL) y emitir el "Padrón de Aseguradora ($35,000 M.N.)" junto con la "Póliza Contable Aspel COI".',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.4 y Visión Ejecutiva C.7: Pausa por licencias, renovaciones con liberación DTI (30% LFT), "Padrón de Aseguradora ($35,000 M.N.)" y "Póliza Contable Aspel COI" con partida doble inquebrantable.',
-    threeSimpleSteps: [
-      'Paso 1: Busca al trabajador y elige la pestaña que necesites: "1. Licencias y Convenios", "2. Reestructura N-a-1" o "3. Cotejo Póliza Seguro de Vida".',
-      'Paso 2: Si el trabajador salió de permiso sin sueldo, selecciona "Suspensión Temporal", anota el motivo y confirma para pausar sus recargos.',
-      'Paso 3: En la pestaña 2 consolida hasta 4 préstamos liberando capacidad DTI, o en la pestaña 3 emite el "Padrón de Aseguradora ($35,000 M.N.)" y la "Póliza Contable Aspel COI".',
-    ],
-  },
-  funding: {
-    tabNumber: 7,
-    friendlyTitle: '7. Inversionistas y Pagarés',
-    whatItDoes:
-      'Lleva el control de los pagarés de fondeo operando la convención comercial Base 365/30.4 (Capital × (Tasa / 365) × 30.4), partición de tramos por días calendario reales (30.4 - días_Tramo_1) y retención de ISR configurable (0.5%, 0.9%, 20% o Exento).',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.3 y Visión Ejecutiva C.3: Administración centralizada de fondeo e inversionistas con Base 365/30.4, split de tramos por días reales, retención de ISR (0.5%, 0.9%, 20% o Exento) y corte mensual idempotente.',
-    threeSimpleSteps: [
-      'Paso 1: Haz clic en "+ Nuevo Inversionista", captura nombre, capital inicial, tasa anual, convención 365/30.4 y retención de ISR (0.5%, 0.9%, 20% o Exento), y presiona "Guardar y Generar Pagaré".',
-      'Paso 2: Al final del mes, elige la fecha en el calendario superior y presiona el botón verde de Corte Mensual para calcular los rendimientos de todos.',
-      'Paso 3: Si necesitas anotar una instrucción especial sobre algún inversionista, presiona "Ver Notas" en su renglón.',
-    ],
-  },
-  credit_bureau: {
-    tabNumber: 8,
-    friendlyTitle: '8. Reporte a Círculo de Crédito',
-    whatItDoes:
-      'Prepara y valida el archivo mensual oficial de Círculo de Crédito (otorgante 001496) para Personas Físicas, el "Layout PM v5" de longitud fija (HD:100, EM:350, AC:200, CR:280) para Personas Morales y el filtro de cobranza "BAJA_LABORAL_ACTIVA".',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque D.2: Generador automatizado del reporte mensual para Círculo de Crédito (001496), "Layout PM v5" de Personas Morales y filtro "BAJA_LABORAL_ACTIVA".',
-    threeSimpleSteps: [
-      'Paso 1: Selecciona el Periodo de Corte mensual, el Tipo de Cartera o el filtro de cobranza directa "BAJA_LABORAL_ACTIVA".',
-      'Paso 2: Presiona "Previsualizar Cartera a Reportar" para revisar en pantalla que todos los saldos y claves (CC, CL, RV) estén completos.',
-      'Paso 3: Haz clic en "Generar y Descargar Layout Oficial (001496)" para Personas Físicas o en el botón "Layout PM v5" para Personas Morales.',
-    ],
-  },
-  pld: {
-    tabNumber: 9,
-    friendlyTitle: '9. Prevención de Lavado de Dinero (PLD)',
-    whatItDoes:
-      'Protege a la financiera ante la CNBV revisando automáticamente que ningún solicitante, cliente o inversionista aparezca en las listas oficiales de personas bloqueadas o de riesgo (SAT 69-B, UIF, OFAC o funcionarios públicos PEP).',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque D.1 y Visión Ejecutiva C.2: Blindaje regulatorio PLD/FT ante la CNBV y UIF con carga de listas oficiales, barrido general de cartera en un clic y emisión de Acta de Cumplimiento.',
-    threeSimpleSteps: [
-      'Paso 1: En "Ingestar Lista Oficial", selecciona el archivo de lista oficial (SAT 69-B, UIF u OFAC), presiona "Previsualizar" y luego guárdalo en la base.',
-      'Paso 2: Presiona el botón superior derecho "Ejecutar Barrido Integral (Cartera + Fondeo)" para revisar a todos los clientes e inversionistas.',
-      'Paso 3: Haz clic en "Descargar Acta CNBV/UIF" para guardar tu comprobante de auditoría, o en "Dictaminar" si necesitas resolver alguna alerta.',
-    ],
-  },
-  audit: {
-    tabNumber: 10,
-    friendlyTitle: '10. Historial de Seguridad (Bitácora 5 Años)',
-    whatItDoes:
-      'Es la libreta de seguridad inborrable del portal: guarda automáticamente quién entró al sistema, a qué hora, desde qué computadora y qué movimiento hizo, conservando el historial por 5 años para cualquier revisión de autoridades.',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.5 y Visión Ejecutiva C.2: Bitácora de auditoría inalterable con retención regulatoria de 5 años y botón de verificación de integridad para inspecciones de CNBV e INAI.',
-    threeSimpleSteps: [
-      'Paso 1: Si buscas qué hizo un usuario en particular, escribe su correo en el buscador o elige el tipo de acción en el menú desplegable.',
-      'Paso 2: Revisa en la tabla la fecha, hora exacta, usuario y detalle del movimiento realizado.',
-      'Paso 3: Cuando un auditor pida comprobar que ningún registro fue borrado ni alterado, presiona el botón verde superior derecho de verificación.',
-    ],
-  },
-  cloud_migration: {
-    tabNumber: 11,
-    friendlyTitle: '11. Migración Nube & Rollback',
-    whatItDoes:
-      'Migra las sábanas históricas de Excel al sistema central en la nube limpiando automáticamente fechas y monedas, verificando que los saldos cuadren centavo a centavo ($0.00 de diferencia) e incluye un botón de Plan de Regreso (Rollback Instantáneo).',
-    contractDeliverable:
-      'Contrato Fase 3 — Entregable 3.3: Motor de "Migración Nube & Rollback" con saneamiento determinista, idempotencia total y Rollback criptográfico verificado por huella SHA-256.',
-    threeSimpleSteps: [
-      'Paso 1: Verifica en la parte superior el modo de operación ("STAGING_PARALLEL" o "PRODUCTION_CUTOVER_ACTIVE").',
-      'Paso 2: Haz clic en "Ingestar y Sanear Sábana Histórica Excel (Idempotente)" y revisa las transformaciones aplicadas en la tabla.',
-      'Paso 3: Si deseas revertir un lote migrado en menos de 1 segundo, presiona el botón rojo "Ejecutar Rollback" y comprueba su huella SHA-256.',
-    ],
-  },
-  operations_hub: {
-    tabNumber: 12,
-    friendlyTitle: '12. Hub de Integración & Conciliación',
-    whatItDoes:
-      'Reúne en una sola pantalla gerencial (Single Pane of Glass) las métricas de las Fases 1, 2 y 3 filtrables por Chihuahua, León y Cancún, e integra el "Hub de Integración & Conciliación" por Layouts (.TXT de 60 caracteres y .CSV Pipe) para el Supremo Tribunal y Patrones.',
-    contractDeliverable:
-      'Contrato Fase 3 — Entregable 3.4: "Hub de Integración & Conciliación" por 3 Hubs Nacionales con aislamiento de líneas truncadas y Conectores Internos Zero-Trust.',
-    threeSimpleSteps: [
-      'Paso 1: Usa los botones superiores ("Nacional (3 Hubs)", "Chihuahua", "León" o "Cancún") para filtrar los indicadores de las 3 Fases.',
-      'Paso 2: En el "Hub de Integración & Conciliación" selecciona el conector y formato (.TXT o .CSV) para generar un layout saliente o validar uno entrante.',
-      'Paso 3: En la tabla inferior prueba los Conectores Internos Zero-Trust con "Sync HMAC Válido" o "Simular Firma Alterada".',
-    ],
-  },
-  users: {
-    tabNumber: 13,
-    friendlyTitle: '13. Usuarios y Accesos por Celular',
-    whatItDoes:
-      'Exclusivo para Dirección / Administrador: permite dar de alta al equipo registrando su número celular para que reciban su código de acceso por mensaje SMS (sin instalar aplicaciones), cambiar permisos o cortar el acceso al instante si alguien causa baja.',
-    contractDeliverable:
-      'Contrato Fase 1 — Bloque A.1 y A.6: Control de acceso con doble verificación por código SMS al celular, segregación de funciones por puesto y botón de suspensión inmediata de cuenta.',
-    threeSimpleSteps: [
-      'Paso 1: Para dar de alta a un colaborador, llena su nombre, correo, puesto y teléfono celular en el panel izquierdo y presiona "Crear Usuario".',
-      'Paso 2: Entrega al colaborador su Carta de Bienvenida con su clave inicial y sus 8 códigos de respaldo para emergencias.',
-      'Paso 3: Si un colaborador cambia de celular o deja de laborar en la empresa, usa los botones "Cambiar Celular" o "Suspender Acceso (Baja)" en su renglón.',
-    ],
-  },
-};
+export type { AdminTabId, FriendlyGuideModuleId, ModuleFriendlyGuide };
+export { MODULE_FRIENDLY_GUIDES };
 
 interface ModuleFriendlyGuideBannerProps {
-  activeTab: AdminTabId;
-  isManualModalOpen: boolean;
-  onOpenManualModal: () => void;
-  onCloseManualModal: () => void;
+  activeTab?: AdminTabId;
+  moduleId?: FriendlyGuideModuleId;
+  isManualModalOpen?: boolean;
+  onOpenManualModal?: () => void;
+  onCloseManualModal?: () => void;
 }
 
 export const ModuleFriendlyGuideBanner: React.FC<ModuleFriendlyGuideBannerProps> = ({
   activeTab,
+  moduleId,
   isManualModalOpen,
   onOpenManualModal,
   onCloseManualModal,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const guide = MODULE_FRIENDLY_GUIDES[activeTab];
+  const [expanded, setExpanded] = useState(false);
+  const [internalModalOpen, setInternalModalOpen] = useState(false);
+
+  const resolvedId = activeTab ?? moduleId ?? 'dashboard';
+  const showFullManual = isManualModalOpen !== undefined ? isManualModalOpen : internalModalOpen;
+  const openManual = () => {
+    if (onOpenManualModal) onOpenManualModal();
+    else setInternalModalOpen(true);
+  };
+  const closeManual = () => {
+    if (onCloseManualModal) onCloseManualModal();
+    else setInternalModalOpen(false);
+  };
+
+  const guide = MODULE_GUIDES[resolvedId];
+  const totalModules = ORDERED_MODULE_GUIDES.length;
+  if (!guide) return null;
 
   return (
     <>
-      <div className="mb-6 rounded-2xl bg-gradient-to-r from-[#0D1B3E] via-slate-900 to-[#0D1B3E] border border-[#00D1FF]/35 shadow-lg overflow-hidden">
-        <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-[#00D1FF]/15 text-[#00D1FF] border border-[#00D1FF]/30">
-              <HelpCircle className="w-5 h-5" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Ayuda en Línea · Módulo {guide.tabNumber} de 13
+      <div className="mb-5 rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-slate-900/95 via-slate-900/90 to-cyan-950/35 px-4 py-3.5 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-cyan-300" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-cyan-300">
+                  Guía Operativa en Lenguaje Claro
                 </span>
-                <h2 className="text-sm md:text-base font-extrabold text-white">{guide.friendlyTitle}</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                  {guide.phaseBadge}
+                </span>
+                <span className="text-[11px] text-slate-400 hidden sm:inline">
+                  · {guide.title}
+                </span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Explicación amigable para operación diaria: qué hace esta pantalla, qué punto del contrato cumple y cómo usarla en 3 pasos.
+              <p className="text-xs text-slate-200 mt-0.5 leading-relaxed">
+                {guide.plainSummary}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={onOpenManualModal}
-              className="px-3.5 py-1.5 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold flex items-center gap-1.5 shadow transition-all"
+              onClick={() => setExpanded((prev) => !prev)}
+              className="px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/35 text-cyan-200 text-xs font-bold inline-flex items-center gap-1.5 transition"
             >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Ver Manual Completo Fase 1</span>
+              <span>{expanded ? 'Ocultar pasos' : '¿Cómo usar este módulo?'}</span>
+              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
             <button
               type="button"
-              onClick={() => setIsCollapsed((prev) => !prev)}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-semibold flex items-center gap-1 transition-all"
+              onClick={openManual}
+              className="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold inline-flex items-center gap-1.5 transition"
             >
-              <span>{isCollapsed ? 'Mostrar Guía' : 'Ocultar Guía'}</span>
-              {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+              <BookOpen className="w-3.5 h-3.5 text-amber-300" />
+              <span>Ver Guía ({totalModules} Módulos)</span>
             </button>
           </div>
         </div>
 
-        {!isCollapsed && (
-          <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-white/10 space-y-1.5">
-              <div className="text-xs font-extrabold text-[#00D1FF] flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#D4AF37]" />
-                <span>1. ¿Qué hace este módulo en tu día a día?</span>
-              </div>
-              <p className="text-xs text-slate-200 leading-relaxed">{guide.whatItDoes}</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-emerald-500/30 space-y-1.5">
-              <div className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
-                <FileCheck className="w-4 h-4" />
-                <span>2. ¿Qué punto del Contrato de Fase 1 logramos aquí?</span>
-              </div>
-              <p className="text-xs text-slate-200 leading-relaxed">{guide.contractDeliverable}</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/30 space-y-2">
-              <div className="text-xs font-extrabold text-[#D4AF37] flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>3. ¿Cómo usarlo en 3 pasos sencillos?</span>
-              </div>
-              <ul className="space-y-1.5 text-xs text-slate-200">
-                {guide.threeSimpleSteps.map((stepText, idx) => (
-                  <li key={idx} className="leading-relaxed flex items-start gap-1.5">
-                    <span className="text-emerald-400 font-bold">•</span>
-                    <span>{stepText}</span>
+        {expanded && (
+          <div className="mt-3.5 pt-3.5 border-t border-slate-800/90 grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs">
+            <div className="lg:col-span-2 bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-2">
+              <div className="font-bold text-white">Pasos rápidos para operar este módulo:</div>
+              <ul className="space-y-1.5 text-slate-300">
+                {guide.steps.map((step, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span>{step}</span>
                   </li>
                 ))}
               </ul>
+            </div>
+            <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-2.5 flex flex-col justify-between">
+              <div>
+                <div className="font-bold text-amber-300 mb-1">Qué trabajo manual elimina:</div>
+                <p className="text-slate-300 leading-relaxed">{guide.whatItReplaces}</p>
+              </div>
+              <div className="pt-2 border-t border-slate-800">
+                <div className="font-bold text-emerald-300 mb-1 inline-flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Tip de validación práctica:</span>
+                </div>
+                <p className="text-slate-300 leading-relaxed">{guide.verifyTip}</p>
+                <p className="text-[10px] text-slate-400 mt-2 font-semibold">
+                  Referencia Contractual ({guide.phaseBadge}): {guide.contractRef}
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 bg-[#0D1B3E] border-b border-slate-700 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <BookOpen className="w-5 h-5 text-[#00D1FF]" />
-                <div>
-                  <h3 className="text-base font-extrabold text-white">
-                    Manual Amigable de Fase 1 — Guía de los 11 Módulos para Usuarios No Técnicos
-                  </h3>
-                  <p className="text-xs text-slate-300">Qué hace cada pantalla, qué punto del Contrato cumple y cómo operarla en 3 pasos.</p>
-                </div>
+      {showFullManual && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl">
+            <div className="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-extrabold text-white">
+                  Guía Operativa del Portal Cruse — {totalModules} Módulos (Fases 1, 2 y 3)
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Explicación en lenguaje cotidiano para Dirección, Mesa de Control, Tesorería, Cumplimiento y Promotores.
+                </p>
               </div>
-              <button type="button" onClick={onCloseManualModal} className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1">
-                <X className="w-4 h-4" />
-                <span>Cerrar Manual</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadCleanFriendlyManualPdf()}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-xs font-bold inline-flex items-center gap-1.5"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>Descargar Guía PDF Limpia</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadParallelUatCertificatePdf()}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold inline-flex items-center gap-1.5"
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  <span>Cédula Pruebas Paralelas UAT (PDF)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={closeManual}
+                  aria-label="Cerrar ventana"
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="p-6 overflow-y-auto space-y-4">
-              {(Object.values(MODULE_FRIENDLY_GUIDES) as ModuleFriendlyGuide[]).map((item) => (
-                <div key={item.tabNumber} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <h4 className="text-sm font-extrabold text-[#00D1FF]">{item.friendlyTitle}</h4>
-                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300">Módulo {item.tabNumber} de 13</span>
+
+            <div className="p-5 overflow-y-auto space-y-4">
+              {ORDERED_MODULE_GUIDES.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl bg-slate-950/75 border border-slate-800 p-4 space-y-2"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-extrabold text-cyan-300">{item.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                        {item.phaseBadge}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        Módulo {idx + 1} de {totalModules}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-200 leading-relaxed"><strong className="text-white">¿Qué hace en tu día a día?: </strong>{item.whatItDoes}</p>
-                  <p className="text-xs text-emerald-300 leading-relaxed"><strong className="text-white">Punto del Contrato Fase 1: </strong>{item.contractDeliverable}</p>
-                  <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-xs font-bold text-[#D4AF37] block">Cómo interactuar en 3 pasos:</span>
-                    {item.threeSimpleSteps.map((st, i) => (<p key={i} className="text-xs text-slate-300">{st}</p>))}
-                  </div>
+                  <p className="text-xs text-slate-200 leading-relaxed">{item.plainSummary}</p>
+                  <p className="text-[11px] text-amber-300/90">
+                    <strong>Qué sustituye:</strong> {item.whatItReplaces}
+                  </p>
+                  <ul className="space-y-1 text-xs text-slate-300 pl-4 list-disc">
+                    {item.steps.map((s, sIdx) => (
+                      <li key={sIdx}>{s}</li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] text-emerald-300/90">
+                    <strong>Prueba sugerida:</strong> {item.verifyTip}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    Referencia Contractual ({item.phaseBadge}): {item.contractRef}
+                  </p>
                 </div>
               ))}
             </div>

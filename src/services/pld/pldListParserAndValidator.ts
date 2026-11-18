@@ -77,6 +77,7 @@ const VALID_LIST_TYPES: ReadonlySet<PldListType> = new Set<PldListType>([
   'SAT_69B_DEFINITIVO',
   'SAT_69B_PRESUNTO',
   'UIF_PERSONAS_BLOQUEADAS',
+  'UN_CONSOLIDATED_SANCTIONS',
   'OFAC_SDN',
   'PEP_NACIONAL',
   'GAFI_HIGH_RISK_JURISDICTIONS',
@@ -138,6 +139,7 @@ export function resolveRiskLevelForList(listType: PldListType): PldRiskLevel {
   switch (listType) {
     case 'SAT_69B_DEFINITIVO':
     case 'UIF_PERSONAS_BLOQUEADAS':
+    case 'UN_CONSOLIDATED_SANCTIONS':
     case 'OFAC_SDN':
     case 'GAFI_HIGH_RISK_JURISDICTIONS':
       return 'CRITICAL_BLOCK';

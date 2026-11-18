@@ -20,8 +20,12 @@ import {
 } from '../funding/fundingCron';
 import {
   calculateSplitTrancheInvestorYield,
+  FundingLegalClassification,
   resolveDayCountConvention,
+  resolveInvestorTaxRegime,
+  resolveStatutoryIsrRateByYear,
 } from '../funding/fundingEngine';
+import { getLiveFinancialParameters } from '../config/financialParamsService';
 
 export const fundingRouter = Router();
 
@@ -132,8 +136,30 @@ fundingRouter.post('/investors', requireAuth('funding:manage'), async (req: Requ
     const capital = Number(req.body?.capital ?? 100000);
     const rawRate = Number(req.body?.annualRate ?? 18);
     const interestType = req.body?.interestType === 'COMPOUND' ? 'COMPOUND' : 'SIMPLE';
-    const appliesIsr = req.body?.appliesIsr === false || req.body?.appliesIsr === 0 ? 0 : 1;
-    const isrRetentionRate = Number(req.body?.isrRetentionRate ?? 0.009);
+    const appliesIsrRaw = req.body?.appliesIsr === false || req.body?.appliesIsr === 0 ? 0 : 1;
+    const taxRegime = resolveInvestorTaxRegime(
+      typeof req.body?.taxRegime === 'string' ? req.body.taxRegime : undefined,
+      appliesIsrRaw
+    );
+    const appliesIsr = taxRegime === 'PERSONA_MORAL_SIN_RETENCION' ? 0 : 1;
+    const liveParams = await getLiveFinancialParameters();
+    const fiscalYear = new Date().getUTCFullYear();
+    const statutoryIsrRate = resolveStatutoryIsrRateByYear(fiscalYear, taxRegime, {
+      rate2025: liveParams.isrFinancialSystemRate2025,
+      rate2026: liveParams.isrFinancialSystemRate2026,
+      mutuoPfRate: liveParams.isrMutuoPfInterestRate,
+    }).toNumber();
+
+    const rawLegalClass = String(req.body?.fundingLegalClassification ?? '').trim().toUpperCase();
+    const fundingLegalClassification: FundingLegalClassification =
+      rawLegalClass === 'ACCIONISTA_RELACIONADO' || rawLegalClass === 'LINEA_INSTITUCIONAL'
+        ? rawLegalClass
+        : 'FONDEO_PRIVADO_EXENTO_ART103_LIC';
+    const fundingContractFolio =
+      typeof req.body?.fundingContractFolio === 'string' && req.body.fundingContractFolio.trim()
+        ? req.body.fundingContractFolio.trim().slice(0, 80)
+        : null;
+
     const dayCountConvention = resolveDayCountConvention(
       typeof req.body?.dayCountConvention === 'string' ? req.body.dayCountConvention : 'ACTUAL_365_30_4',
       'ACTUAL_365_30_4'
@@ -162,9 +188,19 @@ fundingRouter.post('/investors', requireAuth('funding:manage'), async (req: Requ
 
     await db.transaction(async (tx) => {
       await tx.execute(
-        `INSERT INTO investors (id, blind_name, encrypted_name, isr_retention_rate, applies_isr, requires_invoice, day_count_convention)
-         VALUES ($1, $2, $3, $4, $5, 0, $6)`,
-        [investorId, blindName, maskedLabel, appliesIsr === 1 ? isrRetentionRate : 0, appliesIsr, dayCountConvention]
+        `INSERT INTO investors (id, blind_name, encrypted_name, isr_retention_rate, applies_isr, requires_invoice, day_count_convention, tax_regime, funding_legal_classification, funding_contract_folio)
+         VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9)`,
+        [
+          investorId,
+          blindName,
+          maskedLabel,
+          statutoryIsrRate,
+          appliesIsr,
+          dayCountConvention,
+          taxRegime,
+          fundingLegalClassification,
+          fundingContractFolio,
+        ]
       );
       await tx.execute(
         `INSERT INTO investments (id, investor_id, capital, current_capital, annual_rate, start_date, status, interest_type, day_count_convention)

@@ -96,23 +96,31 @@ export function resolveHubRegion(rawHub: string | null | undefined): HubRegion {
 export function computeLoanSemaphore(
   expedienteStatus: string,
   loanStatus: string | null,
-  suspensionReason: string | null
+  suspensionReason: string | null,
+  daysPastDue = 0,
+  originatedFromArrearsRestructure = false,
+  sustainedPaymentsCompletedCount = 0
 ): DelinquencySemaphore {
+  const dpd = Math.max(0, Math.trunc(Number(daysPastDue || 0)));
+
+  // Etapa 3 (>= 90 días de atraso) o Cobranza Extrajudicial / Rechazo PLD
   if (
     expedienteStatus === 'rechazado' ||
     expedienteStatus === 'rechazado_pld' ||
     loanStatus === 'FROZEN_EXTRAJUDICIAL' ||
+    dpd >= 90 ||
     (suspensionReason && suspensionReason !== 'LICENCIA_SIN_GOCE')
   ) {
     return 'ROJO';
   }
-  if (
-    expedienteStatus === 'capturado' ||
-    expedienteStatus === 'revision_pld' ||
-    suspensionReason === 'LICENCIA_SIN_GOCE'
-  ) {
+
+  // Mora temprana/media (1..89 DPD) o Reestructurado en Observación CNBV (< 3 pagos sostenidos)
+  // Nota B.1: LICENCIA_SIN_GOCE y trámites en curso NO se clasifican como mora crediticia.
+  const inSustainedObservation = originatedFromArrearsRestructure && sustainedPaymentsCompletedCount < 3;
+  if (dpd >= 1 || inSustainedObservation) {
     return 'AMARILLO';
   }
+
   return 'VERDE';
 }
 

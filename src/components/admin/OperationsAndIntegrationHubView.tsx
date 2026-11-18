@@ -17,6 +17,7 @@ import {
   OperationsHubRegionFilter,
   OperationsIntegrationHubOverview,
 } from '../../types';
+import { FinancialParametersAdminCard } from './FinancialParametersAdminCard';
 
 interface OperationsAndIntegrationHubViewProps {
   session: AuthSession;
@@ -458,14 +459,16 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>Sync HMAC Válido</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleTestConnector(c.connectorCode, true)}
-                      className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/35 border border-rose-500/40 text-rose-300 text-[11px] font-bold inline-flex items-center gap-1"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Simular Firma Alterada</span>
-                    </button>
+                    {!import.meta.env.PROD && (
+                      <button
+                        type="button"
+                        onClick={() => void handleTestConnector(c.connectorCode, true)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/35 border border-rose-500/40 text-rose-300 text-[11px] font-bold inline-flex items-center gap-1"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Simular Firma Alterada</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -473,6 +476,8 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
           </table>
         </div>
       </div>
+
+      <FinancialParametersAdminCard session={session} />
     </div>
   );
 };

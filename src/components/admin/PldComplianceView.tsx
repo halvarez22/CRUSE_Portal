@@ -9,11 +9,12 @@ interface PldComplianceViewProps {
 }
 
 const LIST_TYPE_LABELS: Record<PldListType, string> = {
-  SAT_69B_DEFINITIVO: 'SAT Art. 69-B Definitivo (EFOS)',
-  SAT_69B_PRESUNTO: 'SAT Art. 69-B Presunto',
-  UIF_PERSONAS_BLOQUEADAS: 'UIF Lista de Personas Bloqueadas',
-  OFAC_SDN: 'OFAC SDN (Tesoro EE.UU.)',
-  PEP_NACIONAL: 'Persona Políticamente Expuesta (PEP)',
+  SAT_69B_DEFINITIVO: 'SAT Art. 69-B Definitivo (Lista Fiscal EFOS — Riesgo Transaccional)',
+  SAT_69B_PRESUNTO: 'SAT Art. 69-B Presunto (Lista Fiscal EFOS)',
+  UIF_PERSONAS_BLOQUEADAS: 'UIF Lista de Personas Bloqueadas (Bloqueo PLD/FT)',
+  UN_CONSOLIDATED_SANCTIONS: 'ONU Lista Consolidada Consejo de Seguridad (Res. 1267/1989/1373 — Bloqueo)',
+  OFAC_SDN: 'OFAC SDN — Tesoro EE.UU. (Bloqueo Internacional)',
+  PEP_NACIONAL: 'Persona Políticamente Expuesta (PEP — Debida Diligencia)',
   GAFI_HIGH_RISK_JURISDICTIONS: 'Listas GAFI — Jurisdicciones de Alto Riesgo (Cap. X Fracc. X)',
   SHCP_REFIPRES_TAX_HAVENS: 'SHCP ReFiPres — Regímenes Fiscales Preferentes / Paraísos Fiscales',
 };

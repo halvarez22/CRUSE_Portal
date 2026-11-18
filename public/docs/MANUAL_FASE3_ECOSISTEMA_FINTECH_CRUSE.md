@@ -1,4 +1,4 @@
-# 📙 MANUAL OFICIAL DE USUARIO, OPERACIÓN DIGITAL Y GUÍA DE ENTRENAMIENTO (FASE 3)
+﻿# 📙 MANUAL OFICIAL DE USUARIO, OPERACIÓN DIGITAL Y GUÍA DE ENTRENAMIENTO (FASE 3)
 ## Ecosistema Fintech Integral: App Cruse (iOS/Android), Firma Digital NOM-151, Migración a la Nube y Tablero de Operaciones + Layouts — Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
 
 **Versión:** Edición Institucional Definitiva 2026 (100% No Técnica — Alcance Exclusivo Fase 3: App Móvil Cliente Autoservicio, Firma Digital Legal NOM-151 con Prueba de Vida, Migración Histórica Excel a la Nube con Plan de Regreso y Tablero Web de Operaciones + Hub de Integración por Layouts)  
@@ -123,7 +123,7 @@ Antes de activar la cámara, el cliente debe marcar personalmente las **3 casill
 ### ✅ Checklist de Dominio del Día 2 (Fase 3)
 - [ ] Verifiqué que el sistema no permite firmar si falta alguno de los 3 consentimientos legales.
 - [ ] Completé la Prueba de Vida Activa, obtuve la Constancia Oficial NOM-151 del contrato y descargué el **`"Anexo 1 — Tabla para Compensación"`** a 2 tantos.
-- [ ] Verifiqué en la **Bitácora Forense (5 Años)** el registro inmutable `Firma Digital de Contrato NOM-151 y Prueba de Vida (App Cruse)`.
+- [ ] Verifiqué en la **Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))** el registro inmutable `Firma Digital de Contrato NOM-151 y Prueba de Vida (App Cruse)`.
 
 ---
 

@@ -314,7 +314,27 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     let usedRecoveryCode = false;
 
     if (isSixDigitSms) {
-      valid2FA = await verifySmsOtp(user.id, rawCode);
+      // Guardrail Forense 5 (CRUSE-APO-2026-067):
+      // Validar TOTP RFC 6238 (Google/Microsoft Authenticator) en roles críticos cuando tengan semilla enrolada;
+      // mantener SMS OTP como respaldo operativo para promotores en campo o cuentas en transición.
+      const { verifyTotpToken, isCriticalTotpRole } = await import('../auth/totpService');
+      const { decryptEnvelope } = await import('../crypto/cryptoService');
+      const { getServerKms } = await import('../crypto/serverKeyring');
+      if (user.totp_secret_enc) {
+        try {
+          const parsedEnv = JSON.parse(user.totp_secret_enc);
+          const plainSecret = await decryptEnvelope(parsedEnv, getServerKms());
+          const totpCheck = await verifyTotpToken(rawCode, plainSecret, 1, 30);
+          if (totpCheck.valid) {
+            valid2FA = true;
+          }
+        } catch {
+          // Si la semilla no está en formato envelope estándar, continuar con verificación SMS/respaldo
+        }
+      }
+      if (!valid2FA && (!isCriticalTotpRole(authUser.role) || !authUser.totpEnrolled)) {
+        valid2FA = await verifySmsOtp(user.id, rawCode);
+      }
     }
 
     if (!valid2FA && isRecoveryCode) {

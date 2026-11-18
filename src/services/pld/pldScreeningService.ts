@@ -1,24 +1,12 @@
 /**
- * MOTOR AUTOMATIZADO DE CRUCE CON LISTAS DE RIESGO PLD/FT (69-B SAT / UIF / OFAC / PEPs)
- *
- * @implements CRUSE-APO-2026-027 (Directrices 1, 2, 3 y 4)
+ * MOTOR AUTOMATIZADO DE CRUCE CON LISTAS DE RIESGO PLD/FT (69-B SAT / UIF / ONU / OFAC / PEPs)
+ * @implements CRUSE-APO-2026-027 / CRUSE-APO-2026-067 (Guardrail 6: Lista Consolidada ONU)
  */
-
 import crypto from 'crypto';
 import Decimal from 'decimal.js';
 import { db } from '../db/connectionPool';
 import { auditEventStore } from '../audit/auditEventStore';
-import {
-  PldAlertStatus,
-  PldComplianceOverview,
-  PldHitAlertItem,
-  PldIdentifierType,
-  PldListType,
-  PldRiskEntryItem,
-  PldRiskLevel,
-  PldScreeningBatchSummary,
-  UserRole,
-} from '../../types';
+import { PldAlertStatus, PldComplianceOverview, PldHitAlertItem, PldIdentifierType, PldListType, PldRiskEntryItem, PldRiskLevel, PldScreeningBatchSummary, UserRole } from '../../types';
 import { PldColumnMappingOverride, SmartPldFileAnalysisResult } from '../../types/pldSmartIngestion';
 import { decryptEnvelope, EnvelopeEncryptedPayload } from '../crypto/cryptoService';
 import { computeServerBlindIndex, getServerKms } from '../crypto/serverKeyring';
@@ -118,7 +106,7 @@ export async function getPldComplianceOverview(): Promise<PldComplianceOverview>
     let sat69bCount = 0; let uifOfacCount = 0; let pepCount = 0; let gafiRefipresCount = 0;
     for (const entry of riskEntries) {
       if (entry.listType === 'SAT_69B_DEFINITIVO' || entry.listType === 'SAT_69B_PRESUNTO') sat69bCount++;
-      else if (entry.listType === 'UIF_PERSONAS_BLOQUEADAS' || entry.listType === 'OFAC_SDN') uifOfacCount++;
+      else if (entry.listType === 'UIF_PERSONAS_BLOQUEADAS' || entry.listType === 'OFAC_SDN' || entry.listType === 'UN_CONSOLIDATED_SANCTIONS') uifOfacCount++;
       else if (entry.listType === 'PEP_NACIONAL') pepCount++;
       else if (entry.listType === 'GAFI_HIGH_RISK_JURISDICTIONS' || entry.listType === 'SHCP_REFIPRES_TAX_HAVENS') gafiRefipresCount++;
     }

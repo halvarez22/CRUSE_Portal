@@ -10,6 +10,7 @@ import {
   executeInstantBatchRollback,
   getCloudMigrationOverview,
   ingestAndReconcileLegacyExcelBatch,
+  MigrationRollbackBlockedError,
   SAMPLE_LEGACY_EXCEL_ROWS,
   toggleCloudMigrationCutoverMode,
 } from '../migration/cloudMigrationService';
@@ -92,6 +93,9 @@ cloudMigrationRouter.post('/rollback', requireAuth('migration:rollback'), async 
     const rollbackResult = await executeInstantBatchRollback({
       batchId,
       actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      sourceIp: ip,
+      sourceSummary: buildSourceSummary(ip, ua),
     });
 
     await auditEventStore.append({
@@ -110,6 +114,13 @@ cloudMigrationRouter.post('/rollback', requireAuth('migration:rollback'), async 
       overview,
     });
   } catch (err) {
+    if (err instanceof MigrationRollbackBlockedError) {
+      return res.status(409).json({
+        error: err.message,
+        blockingReason: err.blockingReason,
+        dependentTransactions: err.dependentTransactions,
+      });
+    }
     console.error('[CloudMigration rollback] Error:', err);
     return res.status(500).json({ error: 'Error interno al ejecutar el Plan de Regreso (Rollback).' });
   }

@@ -146,6 +146,22 @@ usersRouter.patch('/:id', requireAuth('users:manage'), async (req: Request, res:
       details: JSON.stringify(result.auditDiff),
     });
 
+    // B.9.d: Segregación de Funciones (SoD) — alerta cruzada inmutable para el Oficial de Cumplimiento
+    await auditEventStore.append({
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'ADMIN_USER_PRIVILEGE_SOD_ALERT',
+      outcome: 'success',
+      sourceIp: ip,
+      sourceSummary,
+      details: JSON.stringify({
+        reviewRequiredByRole: 'cumplimiento',
+        targetUserId: userId,
+        changesCount: result.auditDiff.changes.length,
+        auditDiff: result.auditDiff,
+      }),
+    });
+
     return res.json({
       ok: true,
       auditDiff: result.auditDiff,

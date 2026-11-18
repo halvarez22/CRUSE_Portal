@@ -1,12 +1,10 @@
 /**
- * MOTOR MATEMÁTICO DE FONDEO E INVERSIONISTAS (CONVENCIÓN 365 / 30.4, SIMPLE VS COMPUESTO + EXENCIÓN ISR)
- * Expediente: CRUSE-APO-2026-063 (Caso 1 — Guardrails Forenses 1 y 6)
+ * MOTOR MATEMÁTICO DE FONDEO E INVERSIONISTAS (CONVENCIÓN 365 / 30.4, ACTUAL/365 Y RÉGIMEN FISCAL ISR)
+ * Expedientes: CRUSE-APO-2026-063 / CRUSE-APO-2026-067 (Guardrail Forense 1)
  *
- * @implements RN-09 (Inversionistas de Interés Simple vs Interés Compuesto / Capitalizable)
- * @implements RN-10 (Retención opcional de ISR por inversionista: applies_isr = 1 | 0)
- * @implements RN-11 (Movimientos de capital al corte sobre current_capital y tramos proporcionales 30.4)
- * @implements Guardrail Forense 1 (Cálculo de días calendario reales en Tramo 1 y 30.4 - daysTranche1 en Tramo 2 con Decimal.js)
- * @implements Guardrail Forense 6 (Retrocompatibilidad absoluta con parámetros opcionales y fallback a THIRTY_360)
+ * @implements RN-09 (Interés Simple vs Interés Compuesto / Capitalizable)
+ * @implements RN-10 (Régimen Fiscal ISR determinista: Capital Art. 54 LISR vs Interés 20% Art. 135/160 LISR vs PM 0%)
+ * @implements RN-11 (Tramos proporcionales sin distorsión en día 31 con precisión Decimal.js)
  */
 
 import Decimal from 'decimal.js';
@@ -15,11 +13,23 @@ import { FINANCIAL_CONSTANTS } from '../../config/financialConstants';
 
 export type DayCountConvention = 'ACTUAL_365_30_4' | 'ACTUAL_365' | 'ACTUAL_360' | 'THIRTY_360';
 
+export type InvestorTaxRegime =
+  | 'SISTEMA_FINANCIERO_ART54_CAPITAL'
+  | 'MUTUO_PF_ART160_INTERES'
+  | 'PERSONA_MORAL_SIN_RETENCION';
+
+export type FundingLegalClassification =
+  | 'ACCIONISTA_RELACIONADO'
+  | 'LINEA_INSTITUCIONAL'
+  | 'FONDEO_PRIVADO_EXENTO_ART103_LIC';
+
 export interface MonthlyYieldResult {
   grossYield: number;
   isrRetained: number;
   netYield: number;
   dayCountConvention: DayCountConvention;
+  taxRegime: InvestorTaxRegime;
+  isrBaseApplied: 'CAPITAL_PROMEDIO' | 'INTERES_DEVENGADO' | 'EXENTO_PM';
   effectiveDaysUsed: string;
   monthlyRateDecimal: string;
   dailyRateDecimal: string;
@@ -35,6 +45,7 @@ export interface SplitTrancheInvestorYieldInput {
   periodEndDate: string;
   appliesIsr?: boolean | 0 | 1;
   dayCountConvention?: DayCountConvention;
+  taxRegime?: InvestorTaxRegime;
 }
 
 export interface SplitTrancheInvestorYieldResult {
@@ -47,6 +58,7 @@ export interface SplitTrancheInvestorYieldResult {
   isrRetained: number;
   netYield: number;
   dayCountConvention: DayCountConvention;
+  taxRegime: InvestorTaxRegime;
 }
 
 export interface CapitalizationTransition {
@@ -55,10 +67,6 @@ export interface CapitalizationTransition {
   capitalAfter: number;
 }
 
-/**
- * Normaliza la convención de conteo de días, aplicando fallback seguro a 'THIRTY_360'
- * cuando un registro histórico carece de la columna poblada (Guardrail Forense 6).
- */
 export function resolveDayCountConvention(
   rawConvention?: string | null,
   fallbackIfEmpty: DayCountConvention = 'ACTUAL_365_30_4'
@@ -78,13 +86,49 @@ export function resolveDayCountConvention(
   return 'THIRTY_360';
 }
 
+export function resolveInvestorTaxRegime(
+  rawRegime?: string | null,
+  appliesIsr: boolean | 0 | 1 = true
+): InvestorTaxRegime {
+  if (appliesIsr === false || appliesIsr === 0) {
+    return 'PERSONA_MORAL_SIN_RETENCION';
+  }
+  const clean = String(rawRegime ?? '').trim().toUpperCase();
+  if (
+    clean === 'SISTEMA_FINANCIERO_ART54_CAPITAL' ||
+    clean === 'MUTUO_PF_ART160_INTERES' ||
+    clean === 'PERSONA_MORAL_SIN_RETENCION'
+  ) {
+    return clean;
+  }
+  return 'SISTEMA_FINANCIERO_ART54_CAPITAL';
+}
+
 /**
- * Función matemática pura para el motor de fondeo (Mes Completo o Días Específicos).
- * Homologada a '2. relacion y pago inversionistas 2026.xlsx' (Lic. Alma):
- * - Bajo 'ACTUAL_365_30_4':
- *   Tasa_Mensual = (Tasa_Anual / 365) * 30.4
- *   Tasa_Diaria  = Tasa_Mensual / 30.4 = Tasa_Anual / 365
- *   Interés_Mes  = Saldo * 30.4 * Tasa_Diaria
+ * Determina automáticamente la tasa de retención ISR conforme al régimen fiscal y ejercicio LIF.
+ */
+export function resolveStatutoryIsrRateByYear(
+  fiscalYear: number,
+  taxRegime: InvestorTaxRegime,
+  overrides?: { rate2025?: string | number; rate2026?: string | number; mutuoPfRate?: string | number }
+): Decimal {
+  if (taxRegime === 'PERSONA_MORAL_SIN_RETENCION') {
+    return new Decimal(0);
+  }
+  if (taxRegime === 'MUTUO_PF_ART160_INTERES') {
+    return new Decimal(overrides?.mutuoPfRate ?? '0.2000');
+  }
+  if (fiscalYear <= 2025) {
+    return new Decimal(overrides?.rate2025 ?? FINANCIAL_CONSTANTS.INVESTOR_ISR_RETENTION_RATE_05);
+  }
+  return new Decimal(overrides?.rate2026 ?? FINANCIAL_CONSTANTS.INVESTOR_ISR_RETENTION_RATE_09);
+}
+
+/**
+ * Motor matemático puro de rendimiento mensual e ISR determinista por régimen fiscal (Guardrail 1).
+ * - SISTEMA_FINANCIERO_ART54_CAPITAL: capital * (tasaLIF / baseYear) * effectiveDays
+ * - MUTUO_PF_ART160_INTERES: grossYield * 0.20 (sobre INTERÉS BRUTO DEVENGADO, nunca sobre capital)
+ * - PERSONA_MORAL_SIN_RETENCION: 0.00
  */
 export function calculateMonthlyYieldAndISR(
   currentCapital: number | string | Decimal,
@@ -92,13 +136,13 @@ export function calculateMonthlyYieldAndISR(
   annualIsrRate: number | string | Decimal = FINANCIAL_CONSTANTS.INVESTOR_ISR_RETENTION_RATE_09,
   daysInPeriod: number | string | Decimal = FINANCIAL_CONSTANTS.INVESTOR_AVG_MONTH_DAYS,
   appliesIsr: boolean | 0 | 1 = true,
-  dayCountConvention: DayCountConvention = 'ACTUAL_365_30_4'
+  dayCountConvention: DayCountConvention = 'ACTUAL_365_30_4',
+  taxRegime?: InvestorTaxRegime
 ): MonthlyYieldResult {
   const cap = new Decimal(currentCapital);
   const rate = new Decimal(annualRate);
-  const isrRate = new Decimal(annualIsrRate);
+  const resolvedRegime = resolveInvestorTaxRegime(taxRegime, appliesIsr);
   const avgMonthDays = new Decimal(String(FINANCIAL_CONSTANTS.INVESTOR_AVG_MONTH_DAYS));
-  const shouldRetainIsr = appliesIsr === true || appliesIsr === 1;
 
   const isBase365 =
     dayCountConvention === 'ACTUAL_365_30_4' || dayCountConvention === 'ACTUAL_365';
@@ -106,7 +150,6 @@ export function calculateMonthlyYieldAndISR(
     ? new Decimal(FINANCIAL_CONSTANTS.INVESTOR_ANNUAL_DAYS_BASE)
     : new Decimal(360);
 
-  // En convención ACTUAL_365_30_4, un corte mensual estándar (28..31 días calendario) devenga sobre 30.4 días promedio
   const rawDaysDec = new Decimal(daysInPeriod);
   const effectiveDays =
     dayCountConvention === 'ACTUAL_365_30_4' &&
@@ -117,13 +160,24 @@ export function calculateMonthlyYieldAndISR(
       : rawDaysDec;
 
   const monthlyRateExact = rate.dividedBy(baseYear).times(avgMonthDays);
-  const dailyRateExact = monthlyRateExact.dividedBy(avgMonthDays);
-  const dailyIsrExact = isrRate.dividedBy(baseYear);
-
+  const dailyRateExact = rate.dividedBy(baseYear);
   const grossYieldExact = cap.times(dailyRateExact).times(effectiveDays);
-  const isrRetainedExact = shouldRetainIsr
-    ? cap.times(dailyIsrExact).times(effectiveDays)
-    : new Decimal(0);
+
+  let isrRetainedExact = new Decimal(0);
+  let isrBaseApplied: MonthlyYieldResult['isrBaseApplied'] = 'EXENTO_PM';
+
+  if (resolvedRegime === 'SISTEMA_FINANCIERO_ART54_CAPITAL') {
+    const isrRate = new Decimal(annualIsrRate);
+    isrRetainedExact = cap.times(isrRate.dividedBy(baseYear)).times(effectiveDays);
+    isrBaseApplied = 'CAPITAL_PROMEDIO';
+  } else if (resolvedRegime === 'MUTUO_PF_ART160_INTERES') {
+    // Guardrail 1: Art. 135/142/160 LISR — 20% estrictamente sobre INTERÉS DEVENGADO
+    const interestTaxRate = new Decimal(annualIsrRate).gte(new Decimal('0.10'))
+      ? new Decimal(annualIsrRate)
+      : new Decimal('0.2000');
+    isrRetainedExact = grossYieldExact.times(interestTaxRate);
+    isrBaseApplied = 'INTERES_DEVENGADO';
+  }
 
   const grossYield = grossYieldExact.toDP(2, Decimal.ROUND_HALF_UP);
   const isrRetained = isrRetainedExact.toDP(2, Decimal.ROUND_HALF_UP);
@@ -134,28 +188,31 @@ export function calculateMonthlyYieldAndISR(
     isrRetained: isrRetained.toNumber(),
     netYield: netYield.toNumber(),
     dayCountConvention,
+    taxRegime: resolvedRegime,
+    isrBaseApplied,
     effectiveDaysUsed: effectiveDays.toFixed(2),
     monthlyRateDecimal: monthlyRateExact.toDP(8, Decimal.ROUND_HALF_UP).toFixed(8),
     dailyRateDecimal: dailyRateExact.toDP(10, Decimal.ROUND_HALF_UP).toFixed(10),
   };
 }
 
-/**
- * Alias retrocompatible para consumidores externos del motor de fondeo (Guardrail 6).
- */
 export const calculateInvestorYield = calculateMonthlyYieldAndISR;
 
 /**
- * Guardrail Forense 1: Cálculo de rendimiento en meses con abono o retiro intermedio
- * ('2. relacion y pago inversionistas 2026.xlsx' — ej. César Augusto / Erika):
- * - daysTranche1 = differenceInDays(movementDate, periodStartDate) (días calendario reales)
- * - daysTranche2 = 30.4 - daysTranche1 (días proporcionales restantes para cerrar el mes promedio 30.4)
- * Cero hardcoding de días; todo se deriva de las fechas reales con Decimal.js.
+ * Cálculo de rendimiento en meses con abono o retiro intermedio sin distorsión en día 31 (B.2 + Guardrail 1):
+ * - Bajo ACTUAL_365 / ACTUAL_360: días calendario reales exactos (daysTranche1 + daysTranche2 = totalPeriodRealDays).
+ * - Bajo ACTUAL_365_30_4: prorrateo exacto sobre totalPeriodRealDays escalado a 30.4 cuando el mes tiene 31 días
+ *   y el movimiento cae en día 30-31, garantizando siempre daysTranche1 + daysTranche2 = totalDaysBase y cero negativos.
  */
 export function calculateSplitTrancheInvestorYield(
   input: SplitTrancheInvestorYieldInput
 ): SplitTrancheInvestorYieldResult {
   const convention = input.dayCountConvention ?? 'ACTUAL_365_30_4';
+  const resolvedRegime = resolveInvestorTaxRegime(
+    input.taxRegime,
+    input.appliesIsr === undefined ? true : input.appliesIsr
+  );
+
   const startDt = parseISO(input.periodStartDate.trim().slice(0, 10));
   const moveDt = parseISO(input.movementDate.trim().slice(0, 10));
   const endDt = parseISO(input.periodEndDate.trim().slice(0, 10));
@@ -175,8 +232,23 @@ export function calculateSplitTrancheInvestorYield(
         ? new Decimal(30)
         : new Decimal(totalPeriodRealDays);
 
-  const daysTranche1 = new Decimal(realDiffDays);
-  const daysTranche2 = Decimal.max(new Decimal(0), totalDaysBase.minus(daysTranche1));
+  let daysTranche1: Decimal;
+  let daysTranche2: Decimal;
+
+  if (convention === 'ACTUAL_365' || convention === 'ACTUAL_360') {
+    daysTranche1 = new Decimal(realDiffDays);
+    daysTranche2 = new Decimal(totalPeriodRealDays - realDiffDays);
+  } else if (new Decimal(realDiffDays).gt(totalDaysBase)) {
+    // Prorrateo exacto para evitar truncamiento en meses de 31 días (B.2)
+    daysTranche1 = totalDaysBase
+      .times(realDiffDays)
+      .dividedBy(totalPeriodRealDays)
+      .toDP(4, Decimal.ROUND_HALF_UP);
+    daysTranche2 = Decimal.max(new Decimal(0), totalDaysBase.minus(daysTranche1));
+  } else {
+    daysTranche1 = new Decimal(realDiffDays);
+    daysTranche2 = Decimal.max(new Decimal(0), totalDaysBase.minus(daysTranche1));
+  }
 
   const baseYear =
     convention === 'ACTUAL_365_30_4' || convention === 'ACTUAL_365'
@@ -189,23 +261,25 @@ export function calculateSplitTrancheInvestorYield(
   const annualIsrRate = new Decimal(
     input.annualIsrRate ?? FINANCIAL_CONSTANTS.INVESTOR_ISR_RETENTION_RATE_09
   );
-  const shouldRetainIsr =
-    input.appliesIsr === undefined || input.appliesIsr === true || input.appliesIsr === 1;
 
   const dailyRate = annualRate.dividedBy(baseYear);
-  const dailyIsrRate = annualIsrRate.dividedBy(baseYear);
-
   const tranche1GrossExact = capBefore.times(daysTranche1).times(dailyRate);
   const tranche2GrossExact = capAfter.times(daysTranche2).times(dailyRate);
   const totalGrossExact = tranche1GrossExact.plus(tranche2GrossExact);
 
-  const tranche1IsrExact = shouldRetainIsr
-    ? capBefore.times(daysTranche1).times(dailyIsrRate)
-    : new Decimal(0);
-  const tranche2IsrExact = shouldRetainIsr
-    ? capAfter.times(daysTranche2).times(dailyIsrRate)
-    : new Decimal(0);
-  const totalIsrExact = tranche1IsrExact.plus(tranche2IsrExact);
+  let totalIsrExact = new Decimal(0);
+  if (resolvedRegime === 'SISTEMA_FINANCIERO_ART54_CAPITAL') {
+    const dailyIsrRate = annualIsrRate.dividedBy(baseYear);
+    totalIsrExact = capBefore
+      .times(daysTranche1)
+      .times(dailyIsrRate)
+      .plus(capAfter.times(daysTranche2).times(dailyIsrRate));
+  } else if (resolvedRegime === 'MUTUO_PF_ART160_INTERES') {
+    const interestTaxRate = annualIsrRate.gte(new Decimal('0.10'))
+      ? annualIsrRate
+      : new Decimal('0.2000');
+    totalIsrExact = totalGrossExact.times(interestTaxRate);
+  }
 
   const grossYieldDec = totalGrossExact.toDP(2, Decimal.ROUND_HALF_UP);
   const isrRetainedDec = totalIsrExact.toDP(2, Decimal.ROUND_HALF_UP);
@@ -221,24 +295,24 @@ export function calculateSplitTrancheInvestorYield(
     isrRetained: isrRetainedDec.toNumber(),
     netYield: netYieldDec.toNumber(),
     dayCountConvention: convention,
+    taxRegime: resolvedRegime,
   };
 }
 
-/**
- * Calcula la transición de capital para inversiones de Interés Compuesto (`COMPOUND`),
- * sumando el rendimiento neto del periodo al `current_capital` con precisión Decimal.js.
- */
-export function computeCompoundCapitalization(
+export function calculateCapitalizationTransition(
   currentCapital: number | string | Decimal,
   netYield: number | string | Decimal
 ): CapitalizationTransition {
-  const beforeExact = new Decimal(currentCapital);
-  const yieldExact = new Decimal(netYield);
-  const afterExact = beforeExact.plus(yieldExact);
+  const capBefore = new Decimal(currentCapital).toDP(2, Decimal.ROUND_HALF_UP);
+  const capAmt = new Decimal(netYield).toDP(2, Decimal.ROUND_HALF_UP);
+  const capAfter = capBefore.plus(capAmt).toDP(2, Decimal.ROUND_HALF_UP);
 
   return {
-    capitalBefore: beforeExact.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
-    capitalizedAmount: yieldExact.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
-    capitalAfter: afterExact.toDP(2, Decimal.ROUND_HALF_UP).toNumber(),
+    capitalBefore: capBefore.toNumber(),
+    capitalizedAmount: capAmt.toNumber(),
+    capitalAfter: capAfter.toNumber(),
   };
 }
+
+/** Alias retrocompatible para consumidores del cron mensual de fondeo. */
+export const computeCompoundCapitalization = calculateCapitalizationTransition;

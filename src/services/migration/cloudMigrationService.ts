@@ -455,24 +455,51 @@ export async function ingestAndReconcileLegacyExcelBatch(params: {
   return { ok: true, batch: createdBatch };
 }
 
+import {
+  assertMigrationRollbackAllowed,
+  MigrationRollbackBlockedError,
+} from './cloudMigrationRollbackGuard';
+export { MigrationRollbackBlockedError };
+
 export async function executeInstantBatchRollback(params: {
   batchId: string;
   actorEmail: string;
+  actorRole?: import('../../types').UserRole | 'sistema';
+  sourceIp?: string;
+  sourceSummary?: string;
 }): Promise<{
   ok: true;
   preMigrationSnapshotSha256: string;
   postRollbackSnapshotSha256: string;
   cryptographicParityVerified: boolean;
 }> {
-  const batchRes = await db.query<{ id: string; pre_migration_snapshot_sha256: string }>(
-    `SELECT id, pre_migration_snapshot_sha256 FROM cloud_migration_batches WHERE id = $1`,
+  const batchRes = await db.query<{
+    id: string;
+    batch_code: string;
+    pre_migration_snapshot_sha256: string;
+    created_at: string;
+  }>(
+    `SELECT id, batch_code, pre_migration_snapshot_sha256, created_at
+     FROM cloud_migration_batches WHERE id = $1`,
     [params.batchId]
   );
   if (batchRes.rowCount === 0) {
     throw new Error('Lote de migración no encontrado.');
   }
-  const preSha = batchRes.rows[0]!.pre_migration_snapshot_sha256;
+  const batchRow = batchRes.rows[0]!;
+  const preSha = batchRow.pre_migration_snapshot_sha256;
   const nowIso = new Date().toISOString();
+
+  // Guardrail Forense 4 (CRUSE-APO-2026-067): Candado Transaccional Pre-Rollback
+  await assertMigrationRollbackAllowed({
+    batchId: params.batchId,
+    batchCode: batchRow.batch_code,
+    batchCreatedAt: batchRow.created_at,
+    actorEmail: params.actorEmail,
+    actorRole: params.actorRole,
+    sourceIp: params.sourceIp,
+    sourceSummary: params.sourceSummary,
+  });
 
   await db.transaction(async (tx) => {
     await tx.execute(`DELETE FROM cleaned_migrated_portfolio WHERE batch_id = $1`, [params.batchId]);

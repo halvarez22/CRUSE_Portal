@@ -159,7 +159,7 @@ export interface AmortizationSchedulesTable {
   created_at: Generated<Date | string>;
 }
 
-// 9. Pólizas de Seguro de Vida ($35,000 x hasta 4 créditos activos, 18-65 años — RN-08) y Siniestros
+// 9. Pólizas de Seguro de Vida ($35,000 x hasta 4 créditos activos, edad 18 a 65 — RN-08) y Siniestros
 export interface InsurancePoliciesTable {
   id: string;
   insurance_company: string;
