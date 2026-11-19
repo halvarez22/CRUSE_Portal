@@ -29,6 +29,11 @@ import {
   inferPldColumnsHybridZeroPii,
   normalizeHeaderToken,
 } from '../ai/pldSmartColumnInferer';
+import {
+  assembleSplitPersonName,
+  extractUifLpbEmbeddedMetadata,
+  shouldUseUifLpbExtractor,
+} from './uifLpbCommentExtractor';
 
 export interface ValidatedPldRiskRow {
   listType: PldListType;
@@ -305,28 +310,21 @@ export async function parseAndValidatePldCsvZeroPii(
     const rawRfcCell = firstCellOf(cols, rfcCols).toUpperCase().replace(/[\s-]+/g, '');
     const rawGenCell = firstCellOf(cols, genIdCols).toUpperCase().replace(/[\s-]+/g, '');
 
+    const useUifLpb = shouldUseUifLpbExtractor(defaultListType, structure.rawHeaders);
+    const rawRef = firstCellOf(cols, refCols) || defaultOfficialRef;
+    const embeddedMeta = useUifLpb ? extractUifLpbEmbeddedMetadata(rawRef) : null;
+
     const corpName = firstCellOf(cols, corpCols);
     const fullName = firstCellOf(cols, fullNameCols);
-    const splitParts = [
-      firstCellOf(cols, firstNameCols),
-      firstCellOf(cols, patCols),
-      firstCellOf(cols, matCols),
-    ].filter((p) => p.length > 0);
+    const splitJoined = useUifLpb
+      ? assembleSplitPersonName(cols, firstNameCols, patCols, matCols)
+      : [firstCellOf(cols, firstNameCols), firstCellOf(cols, patCols), firstCellOf(cols, matCols)].filter(Boolean).join(' ');
 
-    const assembledRawName = (corpName || fullName || splitParts.join(' ')).trim().toUpperCase();
+    const assembledRawName = (corpName || fullName || splitJoined).trim().toUpperCase();
     const normalizedAlphaName = normalizePldNameForBlindIndex(assembledRawName);
 
-    const curpCandidate = !EMPTY_ID_SET.has(rawCurpCell)
-      ? rawCurpCell
-      : STRICT_CURP_REGEX.test(rawGenCell)
-        ? rawGenCell
-        : '';
-
-    const rfcCandidate = !EMPTY_ID_SET.has(rawRfcCell)
-      ? rawRfcCell
-      : STRICT_RFC_REGEX.test(rawGenCell) && !STRICT_CURP_REGEX.test(rawGenCell)
-        ? rawGenCell
-        : '';
+    const curpCandidate = rawCurpCell && !EMPTY_ID_SET.has(rawCurpCell) ? rawCurpCell : STRICT_CURP_REGEX.test(rawGenCell) ? rawGenCell : embeddedMeta?.extractedCurp ?? '';
+    const rfcCandidate = rawRfcCell && !EMPTY_ID_SET.has(rawRfcCell) ? rawRfcCell : STRICT_RFC_REGEX.test(rawGenCell) && !STRICT_CURP_REGEX.test(rawGenCell) ? rawGenCell : embeddedMeta?.extractedRfc ?? '';
 
     const isoCandidate = /^[A-Z]{2}$/.test(rawGenCell) ? rawGenCell : '';
 
@@ -385,8 +383,10 @@ export async function parseAndValidatePldCsvZeroPii(
       else if (rawSatStatus.includes('DEFINITIVO')) resolvedListType = 'SAT_69B_DEFINITIVO';
     }
 
-    const rawRef = firstCellOf(cols, refCols) || defaultOfficialRef;
-    const rawDate = normalizePublicationDate(firstCellOf(cols, dateCols), todayIso);
+    const rawDate = normalizePublicationDate(
+      firstCellOf(cols, dateCols) || embeddedMeta?.extractedDateIso || '',
+      todayIso
+    );
     const riskLevel = resolveRiskLevelForList(resolvedListType);
     const identifierMasked = maskPldIdentifierImmediate(rawDisplayId, idType);
     const subjectMaskedName = maskPldSubjectName(assembledRawName || rawDisplayId);

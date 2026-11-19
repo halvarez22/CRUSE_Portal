@@ -517,6 +517,9 @@ export async function inferPldColumnsHybridZeroPii(input: InferPldColumnsInput):
     if (headerRole && headerRole !== 'IGNORE') {
       return { role: headerRole, conf: new Decimal('94.00'), source: 'DETERMINISTIC_HEADER', ambiguous: false };
     }
+    if (headerRole === 'IGNORE') {
+      return { role: 'IGNORE', conf: new Decimal('92.00'), source: 'DETERMINISTIC_HEADER', ambiguous: false };
+    }
     if (m.dateMatchRatio.greaterThanOrEqualTo(new Decimal('70'))) {
       return { role: 'PUBLICATION_DATE', conf: m.dateMatchRatio, source: 'DETERMINISTIC_CONTENT', ambiguous: false };
     }
