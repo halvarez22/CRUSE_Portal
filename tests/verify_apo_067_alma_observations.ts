@@ -60,6 +60,7 @@ async function main(): Promise<void> {
   } = await import('../src/services/config/financialParamsService');
   const { resolveRiskLevelForList } = await import('../src/services/pld/pldListParserAndValidator');
   const { evaluateConvenioPaymentCapacity } = await import('../src/config/convenioCapacityRules');
+  const { evaluateParametricCreditScoring } = await import('../src/services/executive/scoringService');
   const { buildParallelUatCasesData, buildParallelUatPdfBytes } = await import(
     '../src/services/reports/uatParallelCertificatePdf'
   );
@@ -366,7 +367,35 @@ async function main(): Promise<void> {
     assert.ok(pdfText.includes('%%EOF'), 'PDF UAT debe cerrar con marcador %%EOF');
     console.log('[PASS] Prueba 6 (Guardrails 6 y 7): Lista ONU + Parámetros BD + WORM + Candado Renovación + UAT PDF OK.');
 
-    console.log('=== TODAS LAS PRUEBAS FORENSES CRUSE-APO-2026-067 PASARON AL 100% ===');
+    // -------------------------------------------------------------------------
+    // PRUEBA 7 (Guardrail 1 APO-070): Conexión E2E scoringService -> validateLegalPaymentCapacityLft110 -> convenioCapacityRules
+    // Con ingreso neto $6,000 quincenales y crédito Normal $15,000 a 24Q (cuota ~$854.16):
+    // - STSGECH (estatal): tope 30% de $6,000 = $1,800.00 -> cuota $854.16 VÁLIDA (no dispara bloqueo 30%)
+    // - PRIVADO_LFT_110 (privado): excedente SMG ($6,000 - $4,182 = $1,818) * 30% = $545.40 -> cuota $854.16 RECHAZADA (HIGH_RISK)
+    // -------------------------------------------------------------------------
+    const scoreEstatal = await evaluateParametricCreditScoring({
+      productType: 'normal',
+      requestedAmount: 15000,
+      termFortnights: 24,
+      fortnightlyNetSalary: 6000,
+      currentPayrollDeductions: 0,
+      seniorityMonths: 36,
+      convenio: 'STSGECH',
+    });
+    const scorePrivado = await evaluateParametricCreditScoring({
+      productType: 'normal',
+      requestedAmount: 15000,
+      termFortnights: 24,
+      fortnightlyNetSalary: 6000,
+      currentPayrollDeductions: 0,
+      seniorityMonths: 36,
+      convenio: 'PRIVADO_LFT_110',
+    });
+    assert.notEqual(scoreEstatal.riskLevel, 'ALTO', 'STSGECH con cuota $854 vs tope $1,800 no debe bloquearse por 30%');
+    assert.equal(scorePrivado.riskLevel, 'ALTO', 'PRIVADO_LFT_110 con cuota $854 vs tope $545.40 (30% excedente SMG) DEBE bloquearse en ALTO');
+    console.log('[PASS] Prueba 7 (Guardrail 1 APO-070): Ruta E2E scoringService -> PRIVADO_LFT_110 (excedente SMG) vs STSGECH (neto) OK.');
+
+    console.log('=== TODAS LAS PRUEBAS FORENSES CRUSE-APO-2026-067/070 PASARON AL 100% ===');
   } finally {
     try {
       await db.close();

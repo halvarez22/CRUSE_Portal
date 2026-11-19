@@ -469,14 +469,16 @@ export async function executeLoanRestructure(
     const fortnightlyPaymentDec = new Decimal(sim.fortnightlyPayment).toDP(2, Decimal.ROUND_HALF_UP);
     const netCashDec = Decimal.max(0, newPrincipalDec.minus(totalAbsorbedDec)).toDP(2, Decimal.ROUND_HALF_UP);
 
-    // Guardrail Forense 3: Sellar evento WORM DTI_CAPACITY_RELEASED_FOR_RENEWAL
+    // Guardrail 1 APO-070: Leer convenio real del expediente y delegarlo a validateLegalPaymentCapacityLft110
+    const expConvRes = await tx.query<{ convenio: string | null }>(`SELECT convenio FROM expedientes WHERE id = $1`, [input.expedienteId]);
+    const expedienteConvenio = expConvRes.rows[0]?.convenio ?? undefined;
     const baseNetIncomeDec = new Decimal(input.currentNetPeriodicIncome ?? sim.requiredNetIncome);
     const dtiCheck = validateLegalPaymentCapacityLft110(fortnightlyPaymentDec, baseNetIncomeDec, {
       isRenewal: true,
       previousLoanPeriodicDiscountToRelease: totalPeriodicDiscountReleasedDec,
       previousLoanBalanceToLiquidate: totalAbsorbedDec,
       requestedPrincipal: newPrincipalDec,
-    });
+    }, expedienteConvenio);
 
     const primaryPrior = absorbedLoans[0]!;
     await auditEventStore.appendInTx(tx, {

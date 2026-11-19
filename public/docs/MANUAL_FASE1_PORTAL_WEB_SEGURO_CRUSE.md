@@ -1,7 +1,7 @@
 ﻿# 📘 MANUAL OFICIAL DE USUARIO, ADMINISTRACIÓN Y GUÍA DE ENTRENAMIENTO (FASE 1)
 ## Portal Web Seguro Integral — Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
 
-**Versión:** Edición Institucional Definitiva 2026 (100% No Técnica — Alcance Exclusivo Fase 1: Bloques A, B, C y D — 2FA vía Código SMS al Celular Registrado + Buzón de Pre-Solicitudes y Exportación Excel)  
+**Versión:** Edición Institucional Definitiva 2026 (100% No Técnica — Alcance Exclusivo Fase 1: Bloques A, B, C y D — 2FA vía código 2FA (TOTP roles críticos / respaldo SMS Promotores) al Celular Registrado + Buzón de Pre-Solicitudes y Exportación Excel)  
 **Dirigido a:** Dirección General, Oficial de Cumplimiento, Mesa de Control / Administración y Promotores en Campo  
 **Propósito:** Servir como guía paso a paso durante la **Semana de Entrenamiento de Fase 1 (Día 1 al Día 5)** y como manual de consulta diaria para administrar usuarios, atender el Buzón de Pre-Solicitudes, operar todos los módulos del portal, presentar los 5 módulos ejecutivos de valor y cumplir ante la **CNBV, CONDUSEF, ASOFOM, SAT/UIF e Secretaría Anticorrupción y Buen Gobierno**. *(Nota de alcance: La automatización avanzada con OCR + IA, Lista Gris, SITI 41 Columnas y Lotes CIB en 3 pasos se documenta por separado en el **Manual Oficial de Fase 2**).*
 
@@ -13,7 +13,7 @@
 2. **Mapa General de las 13 Módulos (Fases 1, 2 y 3) del Portal Administrativo**
 3. **SECCIÓN 1 — Plan Formal de Desactivación Ordenada de Accesos Remotos, Excel y WhatsApp (Bloque A.1)**
 4. **SECCIÓN 2 — Matriz Oficial de Roles, Permisos y Decálogo de Seguridad Operativa (Bloque A.6)**
-5. **DÍA 1: Acceso Seguro con Doble Verificación (Código SMS de 6 Dígitos al Celular Registrado — Sin Instalar Apps) y Administración de Usuarios (Altas, Bajas y Cambios)**
+5. **DÍA 1: Acceso Seguro con Doble Verificación (TOTP App Autenticadora en Roles Críticos / SMS Promotores) y Administración de Usuarios (Altas, Bajas y Cambios)**
    - *Incluye: ✅ Checklist de Dominio del Día 1*
 6. **DÍA 2: Captación de Pre-Solicitudes (Simulador Público → Buzón Tipo Email → WhatsApp Srita. Alma), Captura en Campo (Escáner Móvil) y Tablero General con Exportación a Excel**
    - *Incluye: ✅ Checklist de Dominio del Día 2*
@@ -31,7 +31,7 @@
 
 | Día de Capacitación | Tema Principal | ¿Quiénes participan? | Meta Práctica del Día |
 | :--- | :--- | :--- | :--- |
-| **Día 1 (Lunes)** | **Acceso Seguro 2FA por Código SMS al Celular, Administración de Usuarios (Altas, Bajas, Cambios) y Apagado de Accesos Remotos** | Administrador, Dirección y todo el personal | Que cada colaborador reciba su código SMS de 6 dígitos en su celular (sin instalar apps), cambie su contraseña temporal y el Administrador domine altas, cambios y bajas inmediatas (*Kill-Switch*). |
+| **Día 1 (Lunes)** | **Acceso Seguro 2FA (TOTP Roles Críticos / SMS Promotores), Administración de Usuarios (Altas, Bajas, Cambios) y Apagado de Accesos Remotos** | Administrador, Dirección y todo el personal | Que cada colaborador reciba su código 2FA (TOTP roles críticos / respaldo SMS Promotores) de 6 dígitos en su celular (sin instalar apps), cambie su contraseña temporal y el Administrador domine altas, cambios y bajas inmediatas (*Kill-Switch*). |
 | **Día 2 (Martes)** | **Buzón de Pre-Solicitudes, Captura en Campo con Escáner Móvil y Tablero Central con Exportación a Excel** | Promotores, Srita. Alma (Mesa de Control) y Dirección | Atender el **Buzón Pre-Solicitudes** (`No leído` → `Leído` → `Atendido`), capturar expedientes desde el celular con borrado automático local, filtrar la cartera por los **3 Hubs (Chihuahua, León y Cancún)**, supervisar el **Semáforo de Morosidad** y exportar a Excel `.CSV`. |
 | **Día 3 (Miércoles)** | **Conciliación Quincenal, Layouts SIF/CIB, Círculo de Crédito, Cobranza/Reestructuras y Fondeo** | Mesa de Control, Aprobadores y Administración | Conciliar la nómina quincenal en minutos, descargar el archivo para **SIF/CIB** y **Círculo de Crédito (`001496`)**, aplicar licencias/reestructuras y dar de alta inversionistas y pagarés. |
 | **Día 4 (Jueves)** | **Blindaje Base en Prevención de Lavado de Dinero (PLD/FT ante CNBV) y Bitácora de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV)** | Oficial de Cumplimiento y Dirección General | Cargar listas oficiales (**69-B SAT, UIF, OFAC, PEPs**), ejecutar el barrido general de cartera en 1 clic, dictaminar alertas y auditar movimientos en la Bitácora de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV). |
@@ -41,7 +41,7 @@
 
 ## 2. 🧭 MAPA GENERAL DE LAS 13 Módulos (Fases 1, 2 y 3) DEL PORTAL ADMINISTRATIVO
 
-Al ingresar con tu cuenta y el código SMS de 6 dígitos enviado a tu celular, en la parte superior del portal verás la barra principal con las **13 Módulos (Fases 1, 2 y 3) operativas y ejecutivas** (más el botón dorado del **Asistente IA Interno 24/7**):
+Al ingresar con tu cuenta y tu código de doble factor 2FA de 6 dígitos (App Autenticadora TOTP en Dirección/Cumplimiento; SMS solo para Promotores en campo), en la parte superior del portal verás la barra principal con los **13 Módulos (Fases 1, 2 y 3) operativos y ejecutivos** (más el botón dorado del **Asistente IA Interno 24/7**):
 
 | # | Nombre Exacto del Botón en Pantalla | ¿Para qué sirve en el día a día? |
 | :---: | :--- | :--- |
@@ -88,7 +88,7 @@ Esta matriz establece de forma estricta qué funciones puede realizar cada puest
 
 ### 4.2 Decálogo de Seguridad Operativa (7 Reglas de Oro)
 
-1. **Nunca compartir el código SMS de 6 dígitos:** El código que llega por mensaje de texto a tu teléfono celular es personal e intransferible; ningún directivo ni compañero de soporte te lo solicitará por llamada o mensaje.
+1. **Nunca compartir tu código 2FA de 6 dígitos:** El código temporal de tu App Autenticadora TOTP (o el respaldo SMS exclusivo de Promotores en campo) es personal e intransferible; ningún directivo ni compañero de soporte te lo solicitará por llamada o mensaje.
 2. **La contraseña temporal debe cambiarse en el primer ingreso:** Al entrar por primera vez con la clave entregada por el Administrador, es obligatorio definir una contraseña personal de al menos 10 caracteres.
 3. **Cerrar sesión al levantarse del escritorio:** Siempre presiona el botón **"Cerrar Sesión"** cuando te retires de tu estación de trabajo; además, el portal cerrará la sesión automáticamente tras 15 minutos sin actividad.
 4. **Cero envío de documentos por WhatsApp o Telegram:** Ninguna fotografía de INE, recibo de nómina o comprobante de domicilio puede enviarse por mensajería personal; el solicitante tampoco los sube en línea, sino que todo documento se captura presencialmente en el Escáner Móvil del Portal.
@@ -114,10 +114,10 @@ El ingreso se protege con dos pasos obligatorios según el nivel de privilegio d
 Cuando el Administrador te da de alta, te entrega personalmente tu **Carta de Bienvenida** con tu **Contraseña Temporal** y tus **8 Códigos de Emergencia**. En tu primer ingreso sigue estos 4 clics:
 
 1. Abre el Portal Cruse y haz clic en el botón superior derecho **"Acceso Institucional 2FA"**.
-2. Escribe tu **Correo Electrónico Institucional** y tu **Contraseña Temporal**, y presiona el botón **"Enviar Código SMS a mi Celular"**.
-3. En la pantalla verás la confirmación con los últimos 4 números de tu teléfono protegido (por ejemplo: `+52 •••• •••• 1148`):
-   - **Cambia tu contraseña temporal:** En el recuadro amarillo **"Cambio Obligatorio de Contraseña Temporal (Primer Ingreso)"**, escribe tu nueva contraseña personal definitiva (mínimo 10 caracteres).
-   - **Escribe el código SMS:** Revisa los mensajes de texto de tu celular, escribe los **6 dígitos** en el recuadro **"Código SMS de 6 Dígitos Recibido en tu Celular"** y presiona **"Verificar Código SMS y Entrar"**.
+2. Escribe tu **Correo Electrónico Institucional** y tu **Contraseña Temporal**, y presiona **"Continuar a Verificación 2FA"**.
+3. En la pantalla de verificación 2FA:
+   - **Cambia tu contraseña temporal:** En el recuadro amarillo **"Cambio Obligatorio de Contraseña Temporal (Primer Ingreso)"**, escribe tu nueva contraseña personal definitiva (mínimo 12 caracteres).
+   - **Ingresa tu código 2FA de 6 dígitos:** Si eres **Dirección, Oficial de Cumplimiento o Mesa de Control**, captura el código **TOTP de 6 dígitos** de tu App Autenticadora (Google/Microsoft Authenticator); si eres **Promotor en campo**, escribe el código enviado a tu celular registrado. Presiona **"Verificar y Entrar"**.
 4. *(Opcional)* Si estás en una zona sin cobertura celular, haz clic en **"¿Sin señal o extraviaste tu celular? Usar código de emergencia"** e ingresa cualquiera de los 8 códigos de respaldo de tu Carta de Bienvenida.
 
 ---
@@ -131,7 +131,7 @@ Haz clic en la pestaña **11. "Usuarios y Accesos 2FA"**.
    - **Nombre Completo:** (ej. *Alma Operadora Cruse*).
    - **Correo Institucional:** (ej. `alma@cruse.com.mx`).
    - **Rol de Acceso (RBAC):** Selecciona **Dirección / Administrador General**, **Oficial de Cumplimiento / Operaciones** o **Promotor en Campo**.
-   - **Teléfono Móvil para Código SMS (10 dígitos / +52):** Escribe el número celular del colaborador donde recibirá sus códigos SMS (ej. `+526141965449`).
+   - **Teléfono Móvil de Respaldo (10 dígitos / +52 — Promotores en campo):** Escribe el número celular del colaborador donde recibirá sus códigos SMS (ej. `+526141965449`).
 2. Presiona el botón **"Crear Usuario"**.
 3. Aparecerá en pantalla la **Carta de Bienvenida de Un Solo Uso** con su contraseña temporal, su celular registrado y sus 8 códigos de emergencia. Haz clic en **"Copiar Carta de Bienvenida"** o **"Imprimir Acta"**, marca la casilla de confirmación de entrega personal y presiona **"Cerrar y Purgar Credenciales de Pantalla"**.
 
@@ -151,7 +151,7 @@ Haz clic en la pestaña **11. "Usuarios y Accesos 2FA"**.
 
 ### ✅ Checklist de Dominio del Día 1
 - [ ] El Administrador creó un usuario nuevo registrando su número de teléfono móvil de 10 dígitos (`+52...`).
-- [ ] El usuario recibió el **código SMS de 6 dígitos** en su teléfono celular registrado (verificando en pantalla el formato enmascarado `+52 •••• •••• 1234`) sin instalar ninguna aplicación externa.
+- [ ] El usuario validó su **código 2FA de 6 dígitos** (App Autenticadora TOTP en roles críticos / respaldo SMS exclusivo de Promotores en campo) (verificando en pantalla el formato enmascarado `+52 •••• •••• 1234`) sin instalar ninguna aplicación externa.
 - [ ] El usuario cambió su contraseña temporal obligatoria en su primer ingreso y guardó sus 8 códigos de emergencia.
 - [ ] El Administrador actualizó el número de celular de un usuario con el botón **"Cambiar Celular"** y probó el botón **"Reenviar SMS"**.
 - [ ] El Administrador simuló una baja inmediata presionando **"Suspender Acceso (Baja)"** (*Kill-Switch*) y verificó el cierre inmediato de la sesión.

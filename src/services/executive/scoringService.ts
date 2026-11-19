@@ -69,10 +69,12 @@ export async function evaluateParametricCreditScoring(
   const availableCapDec = Decimal.max(new Decimal(0), maxTotalAllowedDedDec.minus(currentDedDec));
   const freeIncomeDec = Decimal.max(new Decimal(1), salaryDec.minus(currentDedDec));
 
-  // Validación hardcodeada Art. 110 LFT sobre ingreso libre
+  // Validación determinista de capacidad de pago (Guardrail 1 APO-070: delega convenio estatal vs PRIVADO_LFT_110)
   const lftCheck = validateLegalPaymentCapacityLft110(
     currentDedDec.plus(fortnightlyPaymentDec),
-    salaryDec
+    salaryDec,
+    undefined,
+    convenio
   );
 
   // Ratios de endeudamiento (DTI sobre ingreso libre y sobre sueldo neto total)
