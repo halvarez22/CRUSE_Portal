@@ -99,7 +99,9 @@
 <tr><td><strong>8</strong></td><td><strong>Círculo de Crédito (SIC)</strong></td><td>Previsualiza, valida y genera con un clic el archivo mensual oficial de reporte crediticio con clave de otorgante <strong><code>001496</code></strong>.</td></tr>
 <tr><td><strong>9</strong></td><td><strong>Cobranza, Convenios y Reestructuras</strong></td><td>Permite aplicar <strong>&quot;Suspensión Temporal&quot;</strong> por Licencia sin Goce de Sueldo, <strong>Congelar Mora</strong> por baja laboral/demanda, <strong>&quot;Consolidar en Nuevo Contrato&quot;</strong> hasta 4 créditos en 1 y revisar el <strong>Cotejo de Póliza de Seguro de Vida ($35,000 MXN)</strong>.</td></tr>
 <tr><td><strong>10</strong></td><td><strong>Prevención PLD/FT (UIF · ONU · OFAC (Bloqueo PLD/FT) y SAT 69-B (Lista Fiscal EFOS))</strong></td><td>Permite <strong>&quot;Ingestar Lista Oficial&quot;</strong> (69-B, UIF, OFAC), <strong>&quot;Previsualizar&quot;</strong>, <strong>&quot;Sellar e Ingresar a Base de Datos&quot;</strong>, ejecutar el barrido de cartera e inversionistas, descargar el acta para la CNBV y dictaminar alertas.</td></tr>
-<tr><td><strong>11</strong></td><td><strong>Usuarios y Accesos 2FA</strong></td><td><em>(Exclusivo Administrador)</em> Permite dar de <strong>Alta</strong> usuarios registrando su teléfono celular para SMS 2FA, hacer <strong>Cambios</strong> de rol o número celular y aplicar *<em>Bajas inmediatas (</em>Kill-Switch<em>)</em>*.</td></tr>
+<tr><td><strong>11</strong></td><td><strong>Usuarios y Accesos 2FA</strong></td><td><em>(Exclusivo Administrador)</em> Permite dar de <strong>Alta</strong> usuarios con doble factor (<strong>App Autenticadora TOTP</strong> obligatorio para Dirección/Cumplimiento y respaldo SMS para promotores), hacer <strong>Cambios</strong> de rol y aplicar *<em>Bajas inmediatas (</em>Kill-Switch<em>)</em>*.</td></tr>
+<tr><td><strong>12</strong></td><td><strong>Migración Segura desde Excel a la Nube (Fase 3)</strong></td><td><em>(Entregable 3.3)</em> Carga controlada de históricos de Excel con cuadre al centavo (<code>$0.00</code> diferencia) y Plan de Regreso seguro bloqueado automáticamente tras el primer pago o corte productivo.</td></tr>
+<tr><td><strong>13</strong></td><td><strong>Centro de Operaciones, Conectores y Parámetros (Fase 3)</strong></td><td><em>(Entregable 3.4)</em> Monitoreo integral del portal, conectores y <strong>Panel Administrativo de Parámetros Financieros</strong> (seguro <code>$22.85</code>, suma asegurada <code>$35,000</code>, tasas especiales e ISR anual sin depender de programación).</td></tr>
 <tr><td><strong>★</strong></td><td><strong>Botón Dorado: Asistente IA Interno 24/7</strong></td><td><em>(Esquina superior derecha)</em> Abre el chat privado para que Dirección y Cumplimiento hagan preguntas en lenguaje natural sobre la cartera en tiempo real.</td></tr>
 </tbody></table>
 <hr/>
@@ -109,7 +111,7 @@
 <li>[ ] <strong>Día 1:</strong> Revocación inmediata de todos los accesos remotos no autorizados (AnyDesk, TeamViewer, Escritorio Remoto) en las estaciones de trabajo de la Mesa de Control y Dirección.</li>
 <li>[ ] <strong>Día 2:</strong> Migración de la carpeta local &quot;Excel_Cartera_Antigua&quot; a una unidad de red con permisos de <strong>&quot;Solo Lectura Histórica&quot;</strong>. Queda prohibida la edición o creación de nuevos archivos Excel sueltos para control de cartera.</li>
 <li>[ ] <strong>Día 3:</strong> Comunicación formal por correo institucional a todo el personal (especialmente promotores) prohibiendo terminantemente el envío de INEs, recibos de nómina o comprobantes de domicilio por WhatsApp personal o Telegram. <em>(El WhatsApp de promoción solo se utiliza para agendar la cita presencial a partir del folio generado en el Portal; la captura de documentos se realiza exclusivamente en el Escáner Móvil del Portal).</em></li>
-<li>[ ] <strong>Día 4:</strong> Verificación de que el 100% de los colaboradores activos cuentan con su teléfono celular registrado en la pestaña <strong>&quot;Usuarios y Accesos 2FA&quot;</strong> y reciben su código SMS de 6 dígitos.</li>
+<li>[ ] <strong>Día 4:</strong> Verificación de que el 100% de los colaboradores activos completaron su enrolamiento 2FA: <strong>App Autenticadora (TOTP 6 dígitos)</strong> para Dirección y Oficial de Cumplimiento, y teléfono celular registrado para <strong>SMS 6 dígitos</strong> en Promotores en campo.</li>
 <li>[ ] <strong>Día 5:</strong> Revisión en la pestaña <strong>&quot;Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))&quot;</strong> para certificar que la totalidad de las consultas, pre-solicitudes, capturas y conciliaciones de la semana se ejecutaron dentro del Portal Seguro.</li>
 </ul>
 <hr/>
@@ -132,13 +134,17 @@
 <li><strong>Reserva absoluta en alertas de Lavado de Dinero (PLD/FT):</strong> Ante cualquier alerta de coincidencia en listas oficiales (69-B, UIF, OFAC o PEP), queda estrictamente prohibido avisar al solicitante; únicamente el Oficial de Cumplimiento dictamina el caso en el sistema.</li>
 </ol>
 <hr/>
-<h1>🟢 DÍA 1: ACCESO SEGURO VÍA CÓDIGO SMS AL CELULAR (SIN INSTALAR APPS) Y ADMINISTRACIÓN DE USUARIOS</h1>
-<h2>5.1 ¿Cómo funciona el Acceso de Doble Factor por SMS (Cero Apps Adicionales)?</h2>
-<p>Por política institucional de Microfinanciera Cruse, <strong>ningún colaborador ni usuario tiene que instalar aplicaciones adicionales en su teléfono celular</strong>. El ingreso se protege con dos pasos muy simples:</p>
+<h1>🟢 DÍA 1: ACCESO SEGURO DE DOBLE FACTOR (TOTP ROLES CRÍTICOS / SMS PROMOTORES) Y ADMINISTRACIÓN DE USUARIOS</h1>
+<h2>5.1 ¿Cómo funciona el Acceso de Doble Factor (2FA)?</h2>
+<p>El ingreso se protege con dos pasos obligatorios según el nivel de privilegio del puesto:</p>
 <ol>
-<li><strong>Primer paso:</strong> Ingresar tu <strong>Correo Electrónico Institucional</strong> y tu <strong>Contraseña</strong>.</li>
-<li><strong>Segundo paso:</strong> El portal envía automáticamente un <strong>código por mensaje de texto (SMS) de 6 dígitos</strong> al número de teléfono celular que el Administrador registró para tu cuenta. Solo escribes esos 6 números en pantalla y entras.</li>
+<li><strong>Primer paso:</strong> Ingresar tu <strong>Correo Electrónico Institucional</strong> y tu <strong>Contraseña</strong> (en el primer acceso el sistema exige cambiar la contraseña temporal).</li>
+<li><strong>Segundo paso (2FA):</strong></li>
 </ol>
+<ul>
+<li><strong>Dirección General / Administrador y Oficial de Cumplimiento (Roles Críticos):</strong> Código <strong>TOTP de 6 dígitos</strong> generado por <strong>App Autenticadora</strong> (Google Authenticator o Microsoft Authenticator, estándar RFC 6238), eliminando riesgos de clonación de chip SMS.</li>
+<li><strong>Promotores en Campo:</strong> Código <strong>SMS de 6 dígitos</strong> enviado al teléfono celular registrado (con 8 códigos de respaldo de emergencia en caso de no tener señal).</li>
+</ul>
 <hr/>
 <h2>5.2 Guía Paso a Paso: Cómo entra un usuario nuevo por primera vez</h2>
 <p>Cuando el Administrador te da de alta, te entrega personalmente tu <strong>Carta de Bienvenida</strong> con tu <strong>Contraseña Temporal</strong> y tus <strong>8 Códigos de Emergencia</strong>. En tu primer ingreso sigue estos 4 clics:</p>
@@ -407,7 +413,7 @@
 <table><thead><tr><th>Código</th><th>Punto de la Visión Ejecutiva</th><th>Ubicación Exacta en el Portal para Demostración en Vivo</th></tr></thead><tbody>
 <tr><td><strong>Punto C.1</strong></td><td><strong>Consolidación como SOFOM de Alta Calidad</strong></td><td>Se visualiza en <strong>'Dashboard Cartera'</strong> y en <strong>'Suite Ejecutiva → 1. Pitch Inversionistas (Láminas 1 y 2)'</strong>, operando sobre una base de datos central única que sustituye al 100% los archivos de Excel.</td></tr>
 <tr><td><strong>Punto C.2</strong></td><td><strong>Certificación y Calificación ASOFOM</strong></td><td>Se visualiza en la pestaña <strong>'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'</strong> mediante el botón verde <strong>'Verificar Integridad SHA-256'</strong> y en <strong>'Prevención PLD/FT'</strong> mediante el botón <strong>'Descargar Acta CNBV/UIF'</strong>.</td></tr>
-<tr><td><strong>Punto C.3</strong></td><td><strong>Trayectoria e Historia Institucional (+110 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))</strong></td><td>Se visualiza en <strong>'Dashboard Cartera'</strong> y en <strong>'Fondeo e Inversionistas'</strong>, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo.</td></tr>
+<tr><td><strong>Punto C.3</strong></td><td><strong>Trayectoria e Historia Institucional (más de 15 ciclos anuales de operación)</strong></td><td>Se visualiza en <strong>'Dashboard Cartera'</strong> y en <strong>'Fondeo e Inversionistas'</strong>, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo.</td></tr>
 <tr><td><strong>Punto C.4</strong></td><td><strong>Semáforo de Morosidad y Supervisión por 3 Hubs</strong></td><td>Se visualiza en el <strong>Dashboard Financiero ('Dashboard Cartera')</strong>, columna <strong>'Salud del Crédito / Semáforo'</strong> con íconos <strong>🟢 Verde</strong>, <strong>🟡 Amarillo</strong> y <strong>🔴 Rojo</strong>, y en los botones superiores de filtro por <strong>Chihuahua</strong>, <strong>León</strong> y <strong>Cancún</strong>.</td></tr>
 <tr><td><strong>Punto C.5</strong></td><td><strong>Enfoque en Crédito de Nómina Humano y Tecnológico</strong></td><td>Se visualiza en el <strong>Buzón Pre-Solicitudes</strong>, en el <strong>Escáner Móvil</strong> de promotores y en el <strong>'Asistente IA 24/7'</strong> (público e interno), que agilizan la atención al trabajador sin trámites engorrosos.</td></tr>
 <tr><td><strong>Punto C.6</strong></td><td><strong>Retención Directa Gubernamental y Sindical</strong></td><td>Se visualiza en la pestaña <strong>'Conciliación Quincenal'</strong>, mediante el botón <strong>'Generar Layout de Cobro Sindical'</strong> y la aplicación automática de descuentos de nómina.</td></tr>
@@ -430,11 +436,11 @@
 <p><strong>Empresa:</strong> Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.</p>
 <p><strong>Fase Entregada y Capacitada:</strong> Fase 1 — Portal Web Seguro Integral (Blindaje Operativo 2FA con App Autenticadora (TOTP) obligatorio para Dirección y Oficial de Cumplimiento (SMS como respaldo para promotores en campo) + Buzón de Pre-Solicitudes + Automatización + Los 5 Módulos Ejecutivos de Valor + Cumplimiento PLD/FT Base y Bitácora de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))</p>
 <p>Por medio de la presente constancia, los participantes confirman haber recibido el entrenamiento práctico de los Días 1 al 5 de la Fase 1 y validado en vivo todas las listas de verificación diarias:</p>
-<table><thead><tr><th>Rol / Área</th><th>Nombre del Participante</th><th>Correo Institucional</th><th>Celular SMS 2FA Verificado</th><th>Firma de Conformidad</th></tr></thead><tbody>
-<tr><td><strong>Dirección General / Administrador</strong></td><td></td><td><code>admin@cruse.com.mx</code></td><td><code>[ ] Sí (SMS 6 dígitos)</code></td><td></td></tr>
-<tr><td><strong>Oficial de Cumplimiento</strong></td><td>Lic. Gerardo Olvera / Ing. Gerardo Ornelas</td><td></td><td><code>[ ] Sí (SMS 6 dígitos)</code></td><td></td></tr>
-<tr><td><strong>Mesa de Control / Administración</strong></td><td>Srita. Alma (Promoción y Control)</td><td></td><td><code>[ ] Sí (SMS 6 dígitos)</code></td><td></td></tr>
-<tr><td><strong>Promotor / Operación Comercial</strong></td><td></td><td></td><td><code>[ ] Sí (SMS 6 dígitos)</code></td><td></td></tr>
+<table><thead><tr><th>Rol / Área</th><th>Nombre del Participante</th><th>Correo Institucional</th><th>Doble Factor 2FA Verificado</th><th>Firma de Conformidad</th></tr></thead><tbody>
+<tr><td><strong>Dirección General / Administrador</strong></td><td></td><td><code>admin@cruse.com.mx</code></td><td><code>[ ] Sí (TOTP 6 dígitos — App Autenticadora)</code></td><td></td></tr>
+<tr><td><strong>Oficial de Cumplimiento</strong></td><td>Lic. Gerardo Olvera / Ing. Gerardo Ornelas</td><td></td><td><code>[ ] Sí (TOTP 6 dígitos — App Autenticadora)</code></td><td></td></tr>
+<tr><td><strong>Mesa de Control / Administración</strong></td><td>Srita. Alma (Promoción y Control)</td><td></td><td><code>[ ] Sí (TOTP 6 dígitos — App Autenticadora)</code></td><td></td></tr>
+<tr><td><strong>Promotor / Operación Comercial</strong></td><td></td><td></td><td><code>[ ] Sí (SMS 6 dígitos — Campo)</code></td><td></td></tr>
 <tr><td><strong>Auditoría / Entrega Fase 1</strong></td><td></td><td></td><td><code>[ ] Verificado</code></td><td></td></tr>
 </tbody></table>
 </body>

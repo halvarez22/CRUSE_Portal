@@ -3,17 +3,12 @@
  * Conforme a la Regla 2 (HRU) y Guardrails 1 y 2 de Auditoría Forense Qwen (CRUSE-APO-2026-051):
  * - Cero punto flotante nativo (FLOAT_CALLS_COUNT === 0; uso exclusivo de Decimal.js)
  * - Fórmula de Anualidad PMT sobre saldos insolutos con IVA integrado (16%)
- * - Tope legal inquebrantable del 30% conforme al Art. 110 de la Ley Federal del Trabajo (LFT)
+ * - Tope máximo del 30% delegado a `convenioCapacityRules.ts` (convenios estatales vs Art. 110 Fracc. IV LFT privado)
  */
 import Decimal from 'decimal.js';
-import {
-  ProductId,
-  SimulationResult,
-  AmortizationRow,
-  PaymentFrequency,
-  BorrowerProfile,
-} from '../types';
+import { ProductId, SimulationResult, AmortizationRow, PaymentFrequency, BorrowerProfile } from '../types';
 import { getAllowedExpressTerm, lookupOfficialQuotaRow } from './officialQuotaTables';
+import { evaluateConvenioPaymentCapacity } from './convenioCapacityRules';
 
 // Configuración de precisión decimal bancaria
 Decimal.set({ precision: 28, rounding: Decimal.ROUND_HALF_UP });
@@ -109,16 +104,44 @@ export interface LegalPaymentCapacityCheck {
 }
 
 /**
- * Guardrail 2 y Guardrail 6 (CRUSE-APO-2026-063): Validación del tope legal del 30% conforme al Art. 110 LFT,
- * con soporte retrocompatible para Renovaciones ('Q. EMISION simulador y carga.xlsx'):
- * - Ingreso Neto Ajustado (T) = Ingreso Neto Actual + Descuento Cruse del Crédito Anterior Liquidado (S)
- * - Cheque Neto a Dispersar (M) = Monto Nuevo Crédito (K) - Saldo Crédito Anterior a Liquidar (L)
+ * Validación del tope de capacidad de pago del 30% (CRUSE-APO-2026-063 / 069):
+ * - Si se especifica `convenioName`, delega determinísticamente a `evaluateConvenioPaymentCapacity`
+ *   (convenios estatales sobre ingreso neto vs sector privado Art. 110 Fracc. IV LFT sobre excedente del SMG).
+ * - Si `convenioName` se omite, conserva retrocompatibilidad 100% con los convenios estatales de Chihuahua.
  */
 export function validateLegalPaymentCapacityLft110(
   periodicPaymentInput: number | string | Decimal,
   netPeriodicIncomeInput: number | string | Decimal,
   renewalOptions?: RenewalCapacityOptions,
+  convenioName?: string,
 ): LegalPaymentCapacityCheck {
+  if (convenioName && convenioName.trim() !== '') {
+    const evalRes = evaluateConvenioPaymentCapacity({
+      convenioName,
+      periodicPayment: periodicPaymentInput,
+      netPeriodicIncome: netPeriodicIncomeInput,
+      isRenewal: renewalOptions?.isRenewal,
+      priorLoanId: renewalOptions?.isRenewal ? 'RENEWAL_LINKED' : undefined,
+      priorLoanPeriodicDiscountToRelease: renewalOptions?.previousLoanPeriodicDiscountToRelease,
+      priorLoanBalanceToLiquidate: renewalOptions?.previousLoanBalanceToLiquidate,
+      requestedPrincipal: renewalOptions?.requestedPrincipal,
+    });
+    const dMaxRatio = new Decimal(FINANCIAL_CONSTANTS.MAX_PAYMENT_CAPACITY_RATIO);
+    const dPay = new Decimal(periodicPaymentInput).toDP(2, Decimal.ROUND_HALF_UP);
+    return {
+      isValid: evalRes.isValid,
+      ratioDecimal: new Decimal(evalRes.ratioPercent).dividedBy(100).toDP(4, Decimal.ROUND_HALF_UP).toFixed(4),
+      ratioPercent: evalRes.ratioPercent,
+      maxAllowedPayment: evalRes.maxAllowedPayment,
+      requiredMinNetIncome: dPay.dividedBy(dMaxRatio).toDP(2, Decimal.ROUND_HALF_UP).toFixed(2),
+      adjustedNetIncome: evalRes.computableBaseIncome,
+      capacityReleasedAmount: renewalOptions?.isRenewal
+        ? Decimal.max(0, new Decimal(renewalOptions.previousLoanPeriodicDiscountToRelease ?? 0)).toDP(2, Decimal.ROUND_HALF_UP).toFixed(2)
+        : '0.00',
+      netDisbursementCheckAmount: evalRes.netDisbursementCheckAmount,
+      errorMessage: evalRes.errorMessage,
+    };
+  }
   const dPayment = new Decimal(periodicPaymentInput).toDP(2, Decimal.ROUND_HALF_UP);
   const dBaseIncome = new Decimal(netPeriodicIncomeInput).toDP(2, Decimal.ROUND_HALF_UP);
   const isRenewal = Boolean(renewalOptions?.isRenewal);

@@ -14,11 +14,15 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '5mb' }));
 
-const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-068';
-const BUILD_COMMIT = process.env.VITE_BUILD_COMMIT || 'a5c645f+apo068';
-const BUILD_TIMESTAMP = process.env.VITE_BUILD_TIMESTAMP || '2026-11-18T18:25:00-06:00';
+declare const __GIT_COMMIT__: string | undefined;
+declare const __BUILD_TIMESTAMP__: string | undefined;
 
-// Healthcheck (Guardrail 3 APO-068: máximo 8 campos, cero secretos)
+const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-069';
+const BUILD_COMMIT = typeof __GIT_COMMIT__ !== 'undefined' ? __GIT_COMMIT__ : 'local-dev';
+const BUILD_TIMESTAMP =
+  typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : new Date().toISOString();
+
+// Healthcheck (Guardrail 3 APO-068 / Guardrail 4 APO-069: máximo 8 campos, cero secretos)
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',

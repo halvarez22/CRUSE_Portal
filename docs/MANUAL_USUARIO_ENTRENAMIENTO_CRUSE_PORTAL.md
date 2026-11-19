@@ -55,7 +55,9 @@ Al ingresar con tu cuenta y el código SMS de 6 dígitos enviado a tu celular, e
 | **8** | **Círculo de Crédito (SIC)** | Previsualiza, valida y genera con un clic el archivo mensual oficial de reporte crediticio con clave de otorgante **`001496`**. |
 | **9** | **Cobranza, Convenios y Reestructuras** | Permite aplicar **"Suspensión Temporal"** por Licencia sin Goce de Sueldo, **Congelar Mora** por baja laboral/demanda, **"Consolidar en Nuevo Contrato"** hasta 4 créditos en 1 y revisar el **Cotejo de Póliza de Seguro de Vida ($35,000 MXN)**. |
 | **10** | **Prevención PLD/FT (UIF · ONU · OFAC (Bloqueo PLD/FT) y SAT 69-B (Lista Fiscal EFOS))** | Permite **"Ingestar Lista Oficial"** (69-B, UIF, OFAC), **"Previsualizar"**, **"Sellar e Ingresar a Base de Datos"**, ejecutar el barrido de cartera e inversionistas, descargar el acta para la CNBV y dictaminar alertas. |
-| **11** | **Usuarios y Accesos 2FA** | *(Exclusivo Administrador)* Permite dar de **Alta** usuarios registrando su teléfono celular para SMS 2FA, hacer **Cambios** de rol o número celular y aplicar **Bajas inmediatas (*Kill-Switch*)**. |
+| **11** | **Usuarios y Accesos 2FA** | *(Exclusivo Administrador)* Permite dar de **Alta** usuarios con doble factor (**App Autenticadora TOTP** obligatorio para Dirección/Cumplimiento y respaldo SMS para promotores), hacer **Cambios** de rol y aplicar **Bajas inmediatas (*Kill-Switch*)**. |
+| **12** | **Migración Segura desde Excel a la Nube (Fase 3)** | *(Entregable 3.3)* Carga controlada de históricos de Excel con cuadre al centavo (`$0.00` diferencia) y Plan de Regreso seguro bloqueado automáticamente tras el primer pago o corte productivo. |
+| **13** | **Centro de Operaciones, Conectores y Parámetros (Fase 3)** | *(Entregable 3.4)* Monitoreo integral del portal, conectores y **Panel Administrativo de Parámetros Financieros** (seguro `$22.85`, suma asegurada `$35,000`, tasas especiales e ISR anual sin depender de programación). |
 | **★** | **Botón Dorado: Asistente IA Interno 24/7** | *(Esquina superior derecha)* Abre el chat privado para que Dirección y Cumplimiento hagan preguntas en lenguaje natural sobre la cartera en tiempo real. |
 
 ---
@@ -67,7 +69,7 @@ Lista de verificación ejecutiva accionable por la Dirección General y el área
 - [ ] **Día 1:** Revocación inmediata de todos los accesos remotos no autorizados (AnyDesk, TeamViewer, Escritorio Remoto) en las estaciones de trabajo de la Mesa de Control y Dirección.
 - [ ] **Día 2:** Migración de la carpeta local "Excel_Cartera_Antigua" a una unidad de red con permisos de **"Solo Lectura Histórica"**. Queda prohibida la edición o creación de nuevos archivos Excel sueltos para control de cartera.
 - [ ] **Día 3:** Comunicación formal por correo institucional a todo el personal (especialmente promotores) prohibiendo terminantemente el envío de INEs, recibos de nómina o comprobantes de domicilio por WhatsApp personal o Telegram. *(El WhatsApp de promoción solo se utiliza para agendar la cita presencial a partir del folio generado en el Portal; la captura de documentos se realiza exclusivamente en el Escáner Móvil del Portal).*
-- [ ] **Día 4:** Verificación de que el 100% de los colaboradores activos cuentan con su teléfono celular registrado en la pestaña **"Usuarios y Accesos 2FA"** y reciben su código SMS de 6 dígitos.
+- [ ] **Día 4:** Verificación de que el 100% de los colaboradores activos completaron su enrolamiento 2FA: **App Autenticadora (TOTP 6 dígitos)** para Dirección y Oficial de Cumplimiento, y teléfono celular registrado para **SMS 6 dígitos** en Promotores en campo.
 - [ ] **Día 5:** Revisión en la pestaña **"Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))"** para certificar que la totalidad de las consultas, pre-solicitudes, capturas y conciliaciones de la semana se ejecutaron dentro del Portal Seguro.
 
 ---
@@ -96,12 +98,14 @@ Esta matriz establece de forma estricta qué funciones puede realizar cada puest
 
 ---
 
-# 🟢 DÍA 1: ACCESO SEGURO VÍA CÓDIGO SMS AL CELULAR (SIN INSTALAR APPS) Y ADMINISTRACIÓN DE USUARIOS
+# 🟢 DÍA 1: ACCESO SEGURO DE DOBLE FACTOR (TOTP ROLES CRÍTICOS / SMS PROMOTORES) Y ADMINISTRACIÓN DE USUARIOS
 
-## 5.1 ¿Cómo funciona el Acceso de Doble Factor por SMS (Cero Apps Adicionales)?
-Por política institucional de Microfinanciera Cruse, **ningún colaborador ni usuario tiene que instalar aplicaciones adicionales en su teléfono celular**. El ingreso se protege con dos pasos muy simples:
-1. **Primer paso:** Ingresar tu **Correo Electrónico Institucional** y tu **Contraseña**.
-2. **Segundo paso:** El portal envía automáticamente un **código por mensaje de texto (SMS) de 6 dígitos** al número de teléfono celular que el Administrador registró para tu cuenta. Solo escribes esos 6 números en pantalla y entras.
+## 5.1 ¿Cómo funciona el Acceso de Doble Factor (2FA)?
+El ingreso se protege con dos pasos obligatorios según el nivel de privilegio del puesto:
+1. **Primer paso:** Ingresar tu **Correo Electrónico Institucional** y tu **Contraseña** (en el primer acceso el sistema exige cambiar la contraseña temporal).
+2. **Segundo paso (2FA):**
+   - **Dirección General / Administrador y Oficial de Cumplimiento (Roles Críticos):** Código **TOTP de 6 dígitos** generado por **App Autenticadora** (Google Authenticator o Microsoft Authenticator, estándar RFC 6238), eliminando riesgos de clonación de chip SMS.
+   - **Promotores en Campo:** Código **SMS de 6 dígitos** enviado al teléfono celular registrado (con 8 códigos de respaldo de emergencia en caso de no tener señal).
 
 ---
 
@@ -322,7 +326,7 @@ Guía de verificación directa para demostrar ante auditores de **ASOFOM / CNBV*
 | :---: | :--- | :--- |
 | **Punto C.1** | **Consolidación como SOFOM de Alta Calidad** | Se visualiza en **'Dashboard Cartera'** y en **'Suite Ejecutiva → 1. Pitch Inversionistas (Láminas 1 y 2)'**, operando sobre una base de datos central única que sustituye al 100% los archivos de Excel. |
 | **Punto C.2** | **Certificación y Calificación ASOFOM** | Se visualiza en la pestaña **'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'** mediante el botón verde **'Verificar Integridad SHA-256'** y en **'Prevención PLD/FT'** mediante el botón **'Descargar Acta CNBV/UIF'**. |
-| **Punto C.3** | **Trayectoria e Historia Institucional (+110 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))** | Se visualiza en **'Dashboard Cartera'** y en **'Fondeo e Inversionistas'**, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo. |
+| **Punto C.3** | **Trayectoria e Historia Institucional (más de 15 ciclos anuales de operación)** | Se visualiza en **'Dashboard Cartera'** y en **'Fondeo e Inversionistas'**, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo. |
 | **Punto C.4** | **Semáforo de Morosidad y Supervisión por 3 Hubs** | Se visualiza en el **Dashboard Financiero ('Dashboard Cartera')**, columna **'Salud del Crédito / Semáforo'** con íconos **🟢 Verde**, **🟡 Amarillo** y **🔴 Rojo**, y en los botones superiores de filtro por **Chihuahua**, **León** y **Cancún**. |
 | **Punto C.5** | **Enfoque en Crédito de Nómina Humano y Tecnológico** | Se visualiza en el **Buzón Pre-Solicitudes**, en el **Escáner Móvil** de promotores y en el **'Asistente IA 24/7'** (público e interno), que agilizan la atención al trabajador sin trámites engorrosos. |
 | **Punto C.6** | **Retención Directa Gubernamental y Sindical** | Se visualiza en la pestaña **'Conciliación Quincenal'**, mediante el botón **'Generar Layout de Cobro Sindical'** y la aplicación automática de descuentos de nómina. |
@@ -349,10 +353,10 @@ Guía de verificación directa para demostrar ante auditores de **ASOFOM / CNBV*
 
 Por medio de la presente constancia, los participantes confirman haber recibido el entrenamiento práctico de los Días 1 al 5 de la Fase 1 y validado en vivo todas las listas de verificación diarias:
 
-| Rol / Área | Nombre del Participante | Correo Institucional | Celular SMS 2FA Verificado | Firma de Conformidad |
+| Rol / Área | Nombre del Participante | Correo Institucional | Doble Factor 2FA Verificado | Firma de Conformidad |
 | :--- | :--- | :--- | :---: | :--- |
-| **Dirección General / Administrador** | | `admin@cruse.com.mx` | `[ ] Sí (SMS 6 dígitos)` | |
-| **Oficial de Cumplimiento** | Lic. Gerardo Olvera / Ing. Gerardo Ornelas | | `[ ] Sí (SMS 6 dígitos)` | |
-| **Mesa de Control / Administración** | Srita. Alma (Promoción y Control) | | `[ ] Sí (SMS 6 dígitos)` | |
-| **Promotor / Operación Comercial** | | | `[ ] Sí (SMS 6 dígitos)` | |
+| **Dirección General / Administrador** | | `admin@cruse.com.mx` | `[ ] Sí (TOTP 6 dígitos — App Autenticadora)` | |
+| **Oficial de Cumplimiento** | Lic. Gerardo Olvera / Ing. Gerardo Ornelas | | `[ ] Sí (TOTP 6 dígitos — App Autenticadora)` | |
+| **Mesa de Control / Administración** | Srita. Alma (Promoción y Control) | | `[ ] Sí (TOTP 6 dígitos — App Autenticadora)` | |
+| **Promotor / Operación Comercial** | | | `[ ] Sí (SMS 6 dígitos — Campo)` | |
 | **Auditoría / Entrega Fase 1** | | | `[ ] Verificado` | |
