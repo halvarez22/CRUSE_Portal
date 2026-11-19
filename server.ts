@@ -1,5 +1,7 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { COMPANY_INFO } from './src/data/cruseData';
 import { privateApiRouter } from './src/services/api/privateApi';
@@ -17,7 +19,7 @@ app.use(express.json({ limit: '5mb' }));
 declare const __GIT_COMMIT__: string | undefined;
 declare const __BUILD_TIMESTAMP__: string | undefined;
 
-const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-070';
+const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-071';
 const BUILD_COMMIT = typeof __GIT_COMMIT__ !== 'undefined' ? __GIT_COMMIT__ : 'local-dev';
 const BUILD_TIMESTAMP =
   typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : new Date().toISOString();
@@ -33,6 +35,31 @@ app.get('/api/health', (_req, res) => {
     buildCommit: BUILD_COMMIT,
     buildTimestamp: BUILD_TIMESTAMP,
     phase3Active: true,
+  });
+});
+
+// Guardrail 4 Permanente (CRUSE-APO-2026-071): Prueba criptográfica pública del binario en ejecución sin credenciales Kudu
+app.get('/api/build-proof', (_req, res) => {
+  const serverBundlePath = path.join(process.cwd(), 'dist', 'server.cjs');
+  let serverCjsSha256 = 'UNAVAILABLE_IN_DEV_TSX';
+  let serverCjsBytes = 0;
+  try {
+    if (fs.existsSync(serverBundlePath)) {
+      const buf = fs.readFileSync(serverBundlePath);
+      serverCjsBytes = buf.length;
+      serverCjsSha256 = crypto.createHash('sha256').update(buf).digest('hex');
+    }
+  } catch {
+    serverCjsSha256 = 'READ_ERROR';
+  }
+  res.json({
+    releaseExpediente: RELEASE_EXPEDIENTE,
+    buildCommit: BUILD_COMMIT,
+    buildTimestamp: BUILD_TIMESTAMP,
+    serverCjsSha256,
+    serverCjsBytes,
+    verificationMethod: 'Runtime SHA-256 of dist/server.cjs on Azure host (zero Kudu credentials required)',
+    timestamp: new Date().toISOString(),
   });
 });
 

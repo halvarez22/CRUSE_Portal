@@ -138,14 +138,14 @@ export const PreApplicationModal: React.FC<PreApplicationModalProps> = ({
   const capacityValidation = useMemo(() => {
     const cleanVal = netSalaryInput.replace(/[^0-9.]/g, '');
     if (!cleanVal) {
-      return validateLegalPaymentCapacityLft110(periodicPayment, 0);
+      return validateLegalPaymentCapacityLft110(periodicPayment, 0, undefined, convenio);
     }
     try {
-      return validateLegalPaymentCapacityLft110(periodicPayment, new Decimal(cleanVal));
+      return validateLegalPaymentCapacityLft110(periodicPayment, new Decimal(cleanVal), undefined, convenio);
     } catch {
-      return validateLegalPaymentCapacityLft110(periodicPayment, 0);
+      return validateLegalPaymentCapacityLft110(periodicPayment, 0, undefined, convenio);
     }
-  }, [periodicPayment, netSalaryInput]);
+  }, [periodicPayment, netSalaryInput, convenio]);
 
   // Guardrail 4: Enrutamiento determinista según dependencia seleccionada
   const isTribunalConfianza = useMemo(

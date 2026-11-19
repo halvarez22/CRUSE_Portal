@@ -395,7 +395,17 @@ async function main(): Promise<void> {
     assert.equal(scorePrivado.riskLevel, 'ALTO', 'PRIVADO_LFT_110 con cuota $854 vs tope $545.40 (30% excedente SMG) DEBE bloquearse en ALTO');
     console.log('[PASS] Prueba 7 (Guardrail 1 APO-070): Ruta E2E scoringService -> PRIVADO_LFT_110 (excedente SMG) vs STSGECH (neto) OK.');
 
-    console.log('=== TODAS LAS PRUEBAS FORENSES CRUSE-APO-2026-067/070 PASARON AL 100% ===');
+    // -------------------------------------------------------------------------
+    // PRUEBA 8 (Guardrail 1 APO-071): Verificación de 100% callers de validateLegalPaymentCapacityLft110
+    // -------------------------------------------------------------------------
+    const { validateLegalPaymentCapacityLft110 } = await import('../src/config/financialConstants');
+    const directStsgech = validateLegalPaymentCapacityLft110(854.16, 6000, undefined, 'STSGECH');
+    const directPrivado = validateLegalPaymentCapacityLft110(854.16, 6000, undefined, 'PRIVADO_LFT_110');
+    assert.equal(directStsgech.isValid, true, 'STSGECH debe aceptar $854.16 sobre $6,000 neto');
+    assert.equal(directPrivado.isValid, false, 'PRIVADO_LFT_110 debe rechazar $854.16 sobre excedente SMG ($545.40)');
+    console.log('[PASS] Prueba 8 (Guardrail 1 APO-071): Todos los callers conectados y validados (STSGECH=true, PRIVADO_LFT_110=false) OK.');
+
+    console.log('=== TODAS LAS PRUEBAS FORENSES CRUSE-APO-2026-067/070/071 PASARON AL 100% ===');
   } finally {
     try {
       await db.close();

@@ -145,12 +145,10 @@ export function evaluateDeterministicFinancialQuery(
     };
   }
 
-  // Escenario A: Análisis de Capacidad de Descuento (30% Art. 110 LFT) y Préstamo Máximo por Sueldo
+  // Escenario A: Análisis de Capacidad de Descuento y Préstamo Máximo por Sueldo (APO-071: convenioName explícito)
   const analysis = calculateMaxLoanBySalary(extracted.amount, extracted.frequency);
-  const sampleCheck = validateLegalPaymentCapacityLft110(
-    analysis.maxFortnightlyDeduction,
-    analysis.fortnightlyNetSalary
-  );
+  const detectedConvenio = /\bprivad[oa]\b|\bsector\s+privado\b/i.test(message) ? 'PRIVADO_LFT_110' : 'STSGECH';
+  const sampleCheck = validateLegalPaymentCapacityLft110(analysis.maxFortnightlyDeduction, analysis.fortnightlyNetSalary, undefined, detectedConvenio);
   const tableRows = analysis.options.map(
     (opt) =>
       `| **${opt.productLabel}** | ${opt.termFortnights} quincenas | **${fmtMxn(opt.maxPrincipal)}** | **${fmtMxn(opt.fortnightlyPayment)}** | ${opt.catPercent.toFixed(2)}% |`

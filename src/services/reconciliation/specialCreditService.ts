@@ -432,6 +432,11 @@ export async function evaluateAndAuditRenewalDtiCapacity(
       )
       .digest('hex');
 
+    const expConvRes = await tx.query<{ convenio: string | null }>(
+      `SELECT convenio FROM expedientes WHERE id = $1`,
+      [priorLoan.expediente_id]
+    );
+    const expedienteConvenio = expConvRes.rows[0]?.convenio ?? undefined;
     const dtiCheck = validateLegalPaymentCapacityLft110(
       input.newPeriodicPayment,
       input.currentNetPeriodicIncome,
@@ -440,7 +445,8 @@ export async function evaluateAndAuditRenewalDtiCapacity(
         previousLoanPeriodicDiscountToRelease: periodicDiscountReleasedDec,
         previousLoanBalanceToLiquidate: realLiveBalanceDec,
         requestedPrincipal: input.newPrincipalAmount,
-      }
+      },
+      expedienteConvenio
     );
 
     await auditEventStore.appendInTx(tx, {

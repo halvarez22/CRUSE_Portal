@@ -228,7 +228,7 @@ export async function createPreApplicationInDb(
 
   if (payload.netPeriodicSalary !== undefined && String(payload.netPeriodicSalary).trim() !== '') {
     const netSalaryDec = sanitizeDecimalString(String(payload.netPeriodicSalary), '0');
-    const lftCheck = validateLegalPaymentCapacityLft110(fortnightlyDec, netSalaryDec);
+    const lftCheck = validateLegalPaymentCapacityLft110(fortnightlyDec, netSalaryDec, undefined, cleanConvenio);
     if (!lftCheck.isValid) {
       throw new Error(`VALIDATION_ERROR: ${lftCheck.errorMessage}`);
     }
