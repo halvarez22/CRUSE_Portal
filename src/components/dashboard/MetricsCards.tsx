@@ -70,7 +70,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({ kpis, loading }) => 
       glowClass: 'shadow-[0_0_28px_-6px_rgba(212,175,55,0.30)]',
       topBarClass: 'from-amber-400 to-yellow-500',
       iconBadgeClass: 'bg-amber-500/20 text-amber-300 border-amber-400/30',
-      badgeText: 'Cuentas 3FN v4',
+      badgeText: 'Cuentas Base de Datos Estructurada',
     },
     {
       label: 'Cartera Vencida',

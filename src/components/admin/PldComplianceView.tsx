@@ -73,7 +73,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
       if (!res.ok || !data.batch) throw new Error(data.error || 'Error ejecutando barrido PLD/FT');
       setFeedback({
         type: 'success',
-        message: `Barrido WORM ${data.batch.id} completado. Coincidencias: ${data.batch.hitsDetectedCount} | Nuevas Alertas: ${data.batch.newAlertsCreatedCount} | Sello SHA-256: ${data.batch.batchManifestHash.slice(0, 16)}...`,
+        message: `Barrido Registro Inmutable ${data.batch.id} completado. Coincidencias: ${data.batch.hitsDetectedCount} | Nuevas Alertas: ${data.batch.newAlertsCreatedCount} | Sello Folio de Integridad: ${data.batch.batchManifestHash.slice(0, 16)}...`,
       });
       await fetchOverview();
     } catch (err: unknown) {
@@ -114,7 +114,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
       if (!res.ok) throw new Error(data.error || 'Error emitiendo dictamen PLD/FT');
       setFeedback({
         type: 'success',
-        message: `Dictamen WORM (${resolutionStatus}) asentado para alerta ${selectedAlert.id}. Sello SHA-256: ${data.resolutionHash?.slice(0, 16)}...`,
+        message: `Dictamen Inmutable (${resolutionStatus}) asentado para alerta ${selectedAlert.id}. Sello Folio de Integridad: ${data.resolutionHash?.slice(0, 16)}...`,
       });
       setSelectedAlert(null);
       setJustificationNotes('');
@@ -202,7 +202,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
         </div>
 
         <div className="p-4 rounded-2xl glass-card border border-emerald-500/30 bg-emerald-500/5">
-          <p className="text-[11px] uppercase tracking-wider text-emerald-300 font-semibold">Último Sello WORM de Barrido</p>
+          <p className="text-[11px] uppercase tracking-wider text-emerald-300 font-semibold">Último Sello de Integridad de Barrido</p>
           <p className="text-xs font-mono font-bold text-emerald-400 mt-2 truncate">
             {overview?.latestBatch ? `#${overview.latestBatch.batchManifestHash.slice(0, 20)}...` : 'Sin barrido registrado'}
           </p>
@@ -240,7 +240,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
               <tr>
                 <th className="py-3 px-4">Fecha / Canal</th>
                 <th className="py-3 px-4">Entidad & Sujeto (Zero-PII)</th>
-                <th className="py-3 px-4">Blind Index Prefix</th>
+                <th className="py-3 px-4">Búsqueda Protegida (sin exponer datos) Prefix</th>
                 <th className="py-3 px-4">Lista Oficial & Nivel</th>
                 <th className="py-3 px-4">Exposición MXN</th>
                 <th className="py-3 px-4">Estado Proyectado</th>

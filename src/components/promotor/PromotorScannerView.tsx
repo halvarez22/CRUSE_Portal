@@ -414,7 +414,7 @@ export const PromotorScannerView: React.FC<PromotorScannerViewProps> = ({ sessio
                 CURP Mod-10 RENAPO: {ocrEvaluation.idValidation.curpCheckDigitMod10Valid ? 'VÁLIDO' : 'EXCEPCIÓN'}
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-300 font-mono">
-                SHA-256 Doc: {ocrEvaluation.duplicateCheck.documentImageSha256.slice(0, 12)}...
+                Folio de Integridad Doc: {ocrEvaluation.duplicateCheck.documentImageSha256.slice(0, 12)}...
               </span>
             </div>
 

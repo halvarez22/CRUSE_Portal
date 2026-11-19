@@ -165,7 +165,7 @@ export const CollectionsAndAgreementsView: React.FC<CollectionsAndAgreementsView
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok) setFeedback({ type: 'error', text: data.error || 'Error al registrar operación.' });
       else {
-        setFeedback({ type: 'success', text: `Contrato ${selectedLoan.contractNumber} actualizado atómicamente (Estado, Póliza Seguro RN-08 y Sello WORM).` });
+        setFeedback({ type: 'success', text: `Contrato ${selectedLoan.contractNumber} actualizado atómicamente (Estado, Póliza Seguro RN-08 y Sello de Integridad).` });
         setSelectedLoan(null);
         await fetchPortfolio();
       }
@@ -233,7 +233,7 @@ export const CollectionsAndAgreementsView: React.FC<CollectionsAndAgreementsView
             Motor de Cobranza Extrajudicial, Suspensiones, Reestructuras y Cotejo de Seguro
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Proyección determinista basada en eventos (Condición 1 WORM) · Sincronización automática con Círculo de Crédito (001496) y Póliza Colectiva $35,000 MXN
+            Proyección determinista basada en eventos (Condición 1 Registro Inmutable) · Sincronización automática con Círculo de Crédito (001496) y Póliza Colectiva $35,000 MXN
           </p>
         </div>
         <button
@@ -437,7 +437,7 @@ export const CollectionsAndAgreementsView: React.FC<CollectionsAndAgreementsView
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-slate-800">
             <div className="text-xs text-slate-300 space-x-4">
               <span>Créditos seleccionados: <strong>{selectedPrevLoanIds.length}</strong></span>
-              <span>Saldo absorbido (Decimal.js): <strong className="text-amber-300">${restructureCalc.absorbedTotal}</strong></span>
+              <span>Saldo absorbido (Cálculo Financiero Exacto): <strong className="text-amber-300">${restructureCalc.absorbedTotal}</strong></span>
               <span>Remanente neto a entregar: <strong className="text-emerald-400">${restructureCalc.netDisbursed}</strong></span>
             </div>
             <button type="submit" disabled={submittingRestructure || selectedPrevLoanIds.length === 0} className="px-5 py-2 rounded-lg bg-[#00D1FF] hover:bg-cyan-400 disabled:opacity-40 text-[#0D1B3E] font-bold text-xs">
@@ -518,13 +518,13 @@ export const CollectionsAndAgreementsView: React.FC<CollectionsAndAgreementsView
               <input type="text" value={modalPeriod} onChange={(e) => setModalPeriod(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white" />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">Nota Operativa Anclada y Términos del Convenio / Acta WORM</label>
+              <label className="block text-xs text-slate-300 mb-1">Nota Operativa Anclada y Términos del Convenio / Acta Registro Inmutable</label>
               <textarea rows={3} value={modalNotes} onChange={(e) => setModalNotes(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setSelectedLoan(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-xs text-slate-300">Cancelar</button>
               <button type="submit" disabled={submittingModal} className="px-4 py-2 rounded-lg bg-[#00D1FF] text-[#0D1B3E] font-bold text-xs">
-                {submittingModal ? 'Sellando en PostgreSQL...' : 'Confirmar y Sellar WORM'}
+                {submittingModal ? 'Sellando en Base de Datos Central...' : 'Confirmar y Sellar Registro Inmutable'}
               </button>
             </div>
           </form>

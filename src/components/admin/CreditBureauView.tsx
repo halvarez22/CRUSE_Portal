@@ -148,7 +148,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
       }
 
       setSuccessMsg(
-        `Reporte ${base} sellado en WORM (Folio: ${data.result.reportId ?? 'N/A'}) con SHA-256: ${data.result.manifestHash.slice(0, 16)}...`
+        `Reporte ${base} Sellado en Registro Inmutable (Folio: ${data.result.reportId ?? 'N/A'}) con Folio de Integridad: ${data.result.manifestHash.slice(0, 16)}...`
       );
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Fallo en generación');
@@ -193,7 +193,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) throw new Error(data.error ?? 'Error al guardar catálogo SIC');
-      setSuccessMsg('Clave oficial del catálogo SIC actualizada y registrada en Bitácora WORM.');
+      setSuccessMsg('Clave oficial del catálogo SIC actualizada y registrada en Bitácora Inmutable.');
       await fetchHistoryAndCatalogs();
       return true;
     } catch (err: unknown) {
@@ -285,7 +285,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
                 </p>
               </div>
               <div className="p-4 rounded-2xl bg-slate-900/80 border border-indigo-500/30">
-                <p className="text-[11px] text-slate-400 uppercase font-mono">Archivo & Sello SHA-256</p>
+                <p className="text-[11px] text-slate-400 uppercase font-mono">Archivo & Sello Folio de Integridad</p>
                 <p className="text-xs font-mono font-bold text-indigo-300 mt-1 truncate">
                   {previewResult?.officialFileNameBase}
                 </p>

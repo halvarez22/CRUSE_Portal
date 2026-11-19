@@ -11,6 +11,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { AuthSession, CloudMigrationOverview, CloudMigrationCutoverMode } from '../../types';
+import { getStatusLabel } from '../../utils/uiStatusLabels';
 
 interface CloudMigrationAndRollbackViewProps {
   session: AuthSession;
@@ -103,7 +104,7 @@ export const CloudMigrationAndRollbackView: React.FC<CloudMigrationAndRollbackVi
       if (data.overview) setOverview(data.overview as CloudMigrationOverview);
       setFeedback({
         type: 'ok',
-        text: `🔄 Plan de Regreso (Rollback Instantáneo) completado. Huella SHA-256 Pre vs Post idéntica al 100%: ${data.postRollbackSnapshotSha256?.slice(0, 20)}...`,
+        text: `🔄 Plan de Regreso (Rollback Instantáneo) completado. Huella Folio de Integridad Pre vs Post idéntica al 100%: ${data.postRollbackSnapshotSha256?.slice(0, 20)}...`,
       });
     } catch {
       setFeedback({ type: 'err', text: 'Error al conectar con el motor de Rollback.' });
@@ -149,7 +150,7 @@ export const CloudMigrationAndRollbackView: React.FC<CloudMigrationAndRollbackVi
               Motor de Migración Histórica Excel → Nube y Plan de Regreso (Fase 3.3)
             </h2>
             <p className="text-xs text-slate-300">
-              Saneamiento determinista de fechas/monedas con Decimal.js, cuadre centavo a centavo ($0.00) y Rollback con paridad SHA-256.
+              Saneamiento determinista de fechas/monedas con Cálculo Financiero Exacto, cuadre centavo a centavo ($0.00) y Rollback con paridad Folio de Integridad.
             </p>
           </div>
         </div>
@@ -171,7 +172,7 @@ export const CloudMigrationAndRollbackView: React.FC<CloudMigrationAndRollbackVi
             }`}
           >
             <Lock className="w-3.5 h-3.5" />
-            <span>Modo: {overview?.cutoverMode || 'STAGING_PARALLEL'}</span>
+            <span>Modo: {getStatusLabel(overview?.cutoverMode || 'STAGING_PARALLEL')}</span>
           </button>
 
           <button
@@ -229,7 +230,7 @@ export const CloudMigrationAndRollbackView: React.FC<CloudMigrationAndRollbackVi
           <div className="text-2xl font-black text-[#00D1FF] mt-1">
             ${overview?.totalMigratedPrincipalMxn ?? '0.00'} MXN
           </div>
-          <span className="text-[11px] text-slate-400">Aritmética exacta Decimal.js</span>
+          <span className="text-[11px] text-slate-400">Aritmética exacta Cálculo Financiero Exacto</span>
         </div>
         <div className="p-4 rounded-2xl glass-card border border-white/10">
           <span className="text-xs text-slate-400">Saldo Vivo Migrado Verificado</span>
@@ -316,7 +317,7 @@ export const CloudMigrationAndRollbackView: React.FC<CloudMigrationAndRollbackVi
                 <th className="py-3 px-4">Estatus</th>
                 <th className="py-3 px-4 text-right">Saldo Excel vs Nube</th>
                 <th className="py-3 px-4 text-right">Discrepancia</th>
-                <th className="py-3 px-4">Huella SHA-256 Pre / Post Rollback</th>
+                <th className="py-3 px-4">Huella Folio de Integridad Pre / Post Rollback</th>
                 <th className="py-3 px-4 text-right">Acción Plan de Regreso</th>
               </tr>
             </thead>

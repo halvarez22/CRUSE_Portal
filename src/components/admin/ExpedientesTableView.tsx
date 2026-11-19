@@ -367,7 +367,7 @@ export const ExpedientesTableView: React.FC<ExpedientesTableViewProps> = ({ expe
                     {renderSortIcon('status')}
                   </div>
                 </th>
-                <th className="py-3 px-4 text-right">Acciones</th>
+                <th className="py-3 px-4 text-right sticky right-0 z-10 bg-slate-900 border-l border-white/10">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -396,7 +396,7 @@ export const ExpedientesTableView: React.FC<ExpedientesTableViewProps> = ({ expe
                         {exp.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                    <td className="py-3 px-4 text-right whitespace-nowrap sticky right-0 z-10 bg-slate-900 border-l border-white/10">
                       <button
                         type="button"
                         onClick={() => {

@@ -119,7 +119,7 @@ export const CibBatchControlPanel: React.FC<CibBatchControlPanelProps> = ({ toke
 
       setFeedback({
         type: 'success',
-        message: `Paso 2 Completado: Lote ${data.batch.batchCode} aprobado por el Oficial de Cumplimiento (APPROVED_BY_OC) y sellado en audit_events WORM (CIB_BATCH_VALIDATED).`,
+        message: `Paso 2 Completado: Lote ${data.batch.batchCode} aprobado por el Oficial de Cumplimiento (APPROVED_BY_OC) y sellado en audit_events Registro Inmutable (CIB_BATCH_VALIDATED).`,
       });
       setSelectedBatchForOc(null);
       await fetchBatches();
@@ -174,7 +174,7 @@ export const CibBatchControlPanel: React.FC<CibBatchControlPanelProps> = ({ toke
             Entregable Fase 2 · Procedimiento de Carga Manual/Semiautomática CIB (Logic Systems)
           </span>
           <h4 className="text-sm font-bold text-white">
-            Control de Lotes CIB (1. Generar Lote Pre-Validado → 2. Revisión Oficial de Cumplimiento → 3. Carga CIB y Bitácora WORM)
+            Control de Lotes CIB (1. Generar Lote Pre-Validado → 2. Revisión Oficial de Cumplimiento → 3. Carga CIB y Bitácora Inmutable)
           </h4>
         </div>
 
@@ -225,7 +225,7 @@ export const CibBatchControlPanel: React.FC<CibBatchControlPanelProps> = ({ toke
               <th className="py-2 px-3">Código Lote CIB</th>
               <th className="py-2 px-3">Expedientes (Incluidos / Excluidos)</th>
               <th className="py-2 px-3">Capital / Cuota Quincenal</th>
-              <th className="py-2 px-3">Hash SHA-256</th>
+              <th className="py-2 px-3">Folio de Integridad</th>
               <th className="py-2 px-3">Estado Flujo 3 Pasos</th>
               <th className="py-2 px-3 text-right">Acción Siguiente</th>
             </tr>

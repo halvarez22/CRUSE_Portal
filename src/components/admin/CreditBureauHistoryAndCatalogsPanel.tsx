@@ -54,7 +54,7 @@ export const CreditBureauHistoryAndCatalogsPanel: React.FC<
         <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
           <Database className="w-4 h-4 text-[#00D1FF]" />
           <span className="text-xs font-bold text-white">
-            Lotes Históricos Sellados en `credit_bureau_reports` (WORM Inmutable)
+            Lotes Históricos Sellados en `credit_bureau_reports` (Registro Inmutable Inmutable)
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -66,7 +66,7 @@ export const CreditBureauHistoryAndCatalogsPanel: React.FC<
                 <th className="py-3 px-4">Fecha de Sellado</th>
                 <th className="py-3 px-4 text-right">Cuentas Detalladas</th>
                 <th className="py-3 px-4 text-right">Saldo Total Reportado</th>
-                <th className="py-3 px-4">Sello Criptográfico SHA-256</th>
+                <th className="py-3 px-4">Sello Criptográfico Folio de Integridad</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">

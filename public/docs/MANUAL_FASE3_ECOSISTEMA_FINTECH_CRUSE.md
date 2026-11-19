@@ -50,7 +50,7 @@ Con la Fase 3, Microfinanciera Cruse culmina su evolución hacia un **Ecosistema
 | :--- | :--- | :--- | :--- |
 | **Día 1 (Lunes)** | **App Cruse Móvil (iOS/Android) y Subida de Expediente Digital del Cliente** | Promotores, Srita. Alma (Mesa de Control) y Equipo de Atención a Clientes | Instalar la App Cruse en el celular, abrir un expediente con Folio + Celular, subir los 4 documentos y verificar el bloqueo automático de 2 horas ante intentos inválidos. |
 | **Día 2 (Martes)** | **Firma Digital Legal NOM-151 y Prueba de Vida Biométrica Activa** | Dirección General, Oficial de Cumplimiento y Mesa de Control | Completar un expediente de 4 documentos, marcar los 3 consentimientos legales, ejecutar la Prueba de Vida en cámara y verificar el Certificado NOM-151 en la Bitácora Forense. |
-| **Día 3 (Miércoles)** | **Migración Histórica Excel a la Nube, Saneamiento y Plan de Regreso (Rollback)** | Dirección General, Srita. Alma e Ing. Gerardo Ornelas | Ingestar un lote histórico de Excel, revisar las transformaciones de limpieza, comprobar el cuadre exacto de saldos y ejecutar el **Plan de Regreso (Rollback)** verificando su huella SHA-256. |
+| **Día 3 (Miércoles)** | **Migración Histórica Excel a la Nube, Saneamiento y Plan de Regreso (Rollback)** | Dirección General, Srita. Alma e Ing. Gerardo Ornelas | Ingestar un lote histórico de Excel, revisar las transformaciones de limpieza, comprobar el cuadre exacto de saldos y ejecutar el **Plan de Regreso (Rollback)** verificando su huella Folio de Integridad. |
 | **Día 4 (Jueves)** | **Tablero Web de Operaciones Unificado (Tablero Único de Operaciones Fases 1, 2 y 3)** | Dirección General, Oficial de Cumplimiento y Gerencia Operativa | Consultar el Tablero de Operaciones filtrando por **Nacional (3 Hubs)**, **Hub Chihuahua**, **Hub León** y **Hub Cancún**, validando los indicadores de cartera, PLD y ecosistema digital. |
 | **Día 5 (Viernes)** | **Hub de Integración por Layouts (Tribunal / Patrones) y Conectores Internos** | Mesa de Control (Srita. Alma), Oficial de Cumplimiento y Sistemas | Generar un layout saliente para el Supremo Tribunal o Sindicato, ingestar un layout de respuesta con una línea truncada de prueba y validar los conectores internos seguros. |
 
@@ -62,7 +62,7 @@ Con la Fase 3, Microfinanciera Cruse culmina su evolución hacia un **Ecosistema
 | :--- | :--- | :--- |
 | **Barra Superior del Portal Público / Simulador** | **App Cruse — Subir Documentos y Firmar Contrato (Autoservicio 24/7)** | Botón **`Instalar App Cruse`**, botón **`Subir mis Documentos (Con Folio)`**, campos **`Folio de Pre-Solicitud`** y **`Teléfono Celular (10 dígitos)`**, y botones de carga para los **4 Documentos**. |
 | **Dentro del Portal de Autoservicio del Cliente (al completar 4/4 documentos)** | **Firma Digital con Validez Legal (NOM-151) y Biometría Facial** | Casillas de **`Aceptación de Contrato y CAT`**, **`Autorización de Descuento por Nómina`** y **`Consentimiento Biométrico LFPDPPP`**, botón **`Iniciar Prueba de Vida en Cámara`**, botón **`Estampar Firma Digital NOM-151`** y descarga del **`"Anexo 1 — Tabla para Compensación"`**. |
-| **Portal Administrativo → Pestaña: `"Migración Nube & Rollback"` (Fase 3.3)** | **Motor de Saneamiento Determinista, Reconciliación y Rollback Criptográfico** | Conmutador **`Modo: STAGING_PARALLEL / PRODUCTION_CUTOVER_ACTIVE`**, botón **`Ingestar y Sanear Sábana Histórica Excel (con protección contra duplicados)`** y botón **`Ejecutar Rollback`**. |
+| **Portal Administrativo → Pestaña: `"Migración Nube & Rollback"` (Fase 3.3)** | **Motor de Saneamiento Determinista, Reconciliación y Rollback Criptográfico** | Conmutador **`Modo: Paralelo en Validación / PRODUCTION_CUTOVER_ACTIVE`**, botón **`Ingestar y Sanear Sábana Histórica Excel (con protección contra duplicados)`** y botón **`Ejecutar Rollback`**. |
 | **Portal Administrativo → Pestaña: `"Hub de Integración & Conciliación"` (Fase 3.4)** | **Tablero Único de Operaciones + Hub de Layouts Institucionales + Conectores control estricto de identidad y permisos** | Botones de filtro **`Nacional (3 Hubs)` / `Hub CHIHUAHUA` / `Hub LEON` / `Hub CANCUN`**, botón **`Generar Layout Saliente`**, botón **`Ingestar y Validar Layout Entrante`** y botones **`Sync sello digital verificable Válido`** / **`Validación de Integridad de Firma (solo disponible en pruebas UAT)`**. |
 
 ---
@@ -81,14 +81,14 @@ Con la Fase 3, Microfinanciera Cruse culmina su evolución hacia un **Ecosistema
 3. Escribe su **Folio de Pre-Solicitud** y los **10 dígitos de su Teléfono Celular** registrado, y presiona **`Abrir Mi Expediente Digital`**.
    - **Candado de Seguridad Anti-Intrusos:** Si alguien intenta adivinar el teléfono de un folio y falla **5 veces**, el sistema bloquea automáticamente ese folio durante **2 horas** y registra la alerta en la Bitácora Forense.
 
-### Paso 3: Subida de los 4 Documentos Oficiales con Limpieza de Metadatos (Zero-EXIF)
+### Paso 3: Subida de los 4 Documentos Oficiales con Limpieza de Datos ocultos de la fotografía (ubicación/cámara)
 1. Dentro de su expediente, el cliente visualiza las **4 tarjetas obligatorias**:
    - **1. INE Vigente (Frente)**
    - **2. INE Vigente (Reverso)**
    - **3. Último Recibo de Nómina**
    - **4. Comprobante de Domicilio (< 3 meses)**
 2. En cada tarjeta, el cliente toca **`Tomar Foto o Seleccionar Archivo`**.
-3. El sistema limpia automáticamente cualquier rastro de ubicación GPS oculto en la fotografía (*Zero-EXIF*), extrae los datos con Inteligencia Artificial, los cifra con grado bancario (`AES-256-GCM`) y borra la imagen de la memoria temporal del servidor.
+3. El sistema limpia automáticamente cualquier rastro de ubicación GPS oculto en la fotografía (sin datos ocultos de la fotografía), extrae los datos con Inteligencia Artificial, los cifra con grado bancario (`AES-256-GCM`) y borra la imagen de la memoria temporal del servidor.
 4. Si el cliente vuelve a subir un documento corregido, el sistema conserva el historial de la huella digital anterior y de la nueva para auditoría.
 
 ### ✅ Checklist de Dominio del Día 1 (Fase 3)
@@ -114,7 +114,7 @@ Antes de activar la cámara, el cliente debe marcar personalmente las **3 casill
 1. El cliente presiona **`Iniciar Prueba de Vida Activa`** y sigue las instrucciones frente a la cámara frontal de su celular (*Centrar rostro, Parpadear y Girar levemente*).
    - **Protección Anti-Fraude:** El sistema verifica que la prueba dure al menos el tiempo humano mínimo (**1.5 segundos**) para impedir el uso de fotografías impresas o videos pregrabados.
 2. Una vez superada la prueba de vida, el cliente presiona **`Estampar Firma Digital NOM-151`**.
-3. El sistema emite de inmediato el **Certificado de Firma Digital y Constancia de Conservación NOM-151**, mostrando en pantalla el **Folio del Certificado**, el **Sello de Tiempo Oficial UTC** y la **Huella Criptográfica SHA-256** del contrato firmado.
+3. El sistema emite de inmediato el **Certificado de Firma Digital y Constancia de Conservación NOM-151**, mostrando en pantalla el **Folio del Certificado**, el **Sello de Tiempo Oficial UTC** y la **Huella Criptográfica Folio de Integridad** del contrato firmado.
 
 ### Paso 4: Emisión del `"Anexo 1 — Tabla para Compensación"` Vinculado a la Constancia NOM-151
 1. Tanto al concluir la firma digital como desde el módulo **'3. Simulador & Scoring Aprobador'**, presiona el botón **`"Anexo 1 — Tabla para Compensación"`**.
@@ -132,7 +132,7 @@ Antes de activar la cámara, el cliente debe marcar personalmente las **3 casill
 ### Paso 1: Ingreso al Módulo de `"Migración Nube & Rollback"`
 1. Inicia sesión en el Portal Administrativo con tu cuenta y código SMS de 6 dígitos.
 2. Haz clic en la pestaña **`"Migración Nube & Rollback"`**.
-3. Verás que por seguridad el sistema opera inicialmente en **`Modo: STAGING_PARALLEL`** (esquema paralelo seguro que no altera la operación diaria de las Fases 1 y 2).
+3. Verás que por seguridad el sistema opera inicialmente en **`Modo: Paralelo en Validación`** (esquema paralelo seguro que no altera la operación diaria de las Fases 1 y 2).
 
 ### Paso 2: Ingesta, Saneamiento Automático y Cuadre Centavo a Centavo
 1. Haz clic en el botón **`Ingestar y Sanear Sábana Histórica Excel (con protección contra duplicados)`**.
@@ -144,12 +144,12 @@ Antes de activar la cámara, el cliente debe marcar personalmente las **3 casill
 
 ### Paso 3: Cómo Ejecutar el Plan de Regreso (Rollback Instantáneo)
 1. Si durante la revisión de un lote migrado deseas revertirlo por completo, ubica el lote en la tabla **"Bitácora de Lotes de Migración"** y haz clic en el botón rojo **`Ejecutar Rollback`**.
-2. El sistema elimina en menos de un segundo los registros migrados de ese lote, apaga el modo de corte productivo y **verifica matemáticamente que la huella digital `SHA-256` de la cartera después del Rollback sea idéntica a la huella que tenía antes de la migración** (`✓ Verificado`).
+2. El sistema elimina en menos de un segundo los registros migrados de ese lote, apaga el modo de corte productivo y **verifica matemáticamente que la huella digital `Folio de Integridad` de la cartera después del Rollback sea idéntica a la huella que tenía antes de la migración** (`✓ Verificado`).
 
 ### ✅ Checklist de Dominio del Día 3 (Fase 3)
 - [ ] Ejecuté la ingesta de una sábana histórica de Excel y revisé la tabla de transformaciones de limpieza aplicadas a cada contrato.
 - [ ] Comprobé que al volver a ejecutar el mismo lote no se duplican los contratos (`upserts` con protección contra duplicadoss).
-- [ ] Ejecuté el botón **`Ejecutar Rollback`** y verifiqué el mensaje de confirmación con huella `SHA-256 Pre / Post` coincidente al 100%.
+- [ ] Ejecuté el botón **`Ejecutar Rollback`** y verifiqué el mensaje de confirmación con Folio de Integridad Pre / Post coincidente al 100%.
 
 ---
 
@@ -204,7 +204,7 @@ Al concluir el Día 5 de entrenamiento de la Fase 3, el equipo directivo, operat
 
 | Entregable Contractual de Fase 3 | Estado de Validación Práctica | Responsable que Certifica |
 | :--- | :---: | :--- |
-| **3.1 Aplicación Móvil App Cruse (iOS/Android) y Autoservicio Digital del Cliente (4 Documentos + Zero-EXIF + Candado 2h)** | `[  ] APROBADO` | Mesa de Control / Coordinación de Promotores (Srita. Alma) |
+| **3.1 Aplicación Móvil App Cruse (iOS/Android) y Autoservicio Digital del Cliente (4 Documentos + Sin Datos Ocultos de Fotografía + Candado 2h)** | `[  ] APROBADO` | Mesa de Control / Coordinación de Promotores (Srita. Alma) |
 | **3.2 Motor de Firma Digital con Validez Legal (NOM-151-SCFI-2016), Triple Consentimiento y Prueba de Vida Activa** | `[  ] APROBADO` | Dirección General y Oficial de Cumplimiento (Lic. Gerardo Olvera) |
 | **3.3 Motor de Migración Histórica Excel → Nube Centralizada, Saneamiento Determinista y Plan de Regreso (Rollback Instantáneo)** | `[  ] APROBADO` | Administración y Sistemas (Srita. Alma / Ing. Gerardo Ornelas) |
 | **3.4 Tablero Web de Operaciones Unificado (Tablero Único de Operaciones 3 Hubs) + Hub de Integración por Layouts y Conectores control estricto de identidad y permisos** | `[  ] APROBADO` | Dirección General, Oficial de Cumplimiento y Sistemas |

@@ -211,7 +211,7 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
         void loadConvenios();
         if (onBatchProcessed) onBatchProcessed();
       } else {
-        setErrorBanner(data.error || 'Error al sellar el corte quincenal en WORM.');
+        setErrorBanner(data.error || 'Error al sellar el corte quincenal en Registro Inmutable.');
       }
     } catch {
       setErrorBanner('Error de conexión al sellar el lote quincenal.');
@@ -235,7 +235,7 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
       ? {
           isSealed: false,
           sourceFileHash: previewResult.sourceFileHash,
-          manifestHash: 'PENDIENTE DE SELLADO WORM (MODO PREVISUALIZACIÓN DRY-RUN)',
+          manifestHash: 'PENDIENTE DE SELLADO Registro Inmutable (MODO PREVISUALIZACIÓN DRY-RUN)',
           batchId: 'DRY-RUN',
           summary: previewResult.summary,
           items: previewResult.items,
@@ -351,7 +351,7 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
               className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#249E82] to-[#1e856e] text-white text-xs font-bold flex items-center gap-2 disabled:opacity-50"
             >
               {isSealing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-white" />}
-              <span>2. Confirmar y Sellar Corte WORM</span>
+              <span>2. Confirmar y Sellar Corte Registro Inmutable</span>
             </button>
           </div>
         </div>
@@ -412,15 +412,15 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
               <div className="space-y-0.5">
                 <span className="text-xs font-bold text-white">
                   {activeDisplayData.isSealed
-                    ? `Lote Sellado Criptográficamente en WORM (${activeDisplayData.batchId})`
-                    : 'Previsualización Determinista (Dry-Run) — Lista para Sellado WORM'}
+                    ? `Lote Sellado Criptográficamente en Registro Inmutable (${activeDisplayData.batchId})`
+                    : 'Previsualización Determinista (Dry-Run) — Lista para Sellado Registro Inmutable'}
                 </span>
                 <p className="text-[11px] text-slate-400 font-mono break-all">
-                  Archivo Fuente SHA-256: {activeDisplayData.sourceFileHash}
+                  Archivo Fuente Folio de Integridad: {activeDisplayData.sourceFileHash}
                 </p>
                 {activeDisplayData.isSealed && (
                   <p className="text-[11px] text-emerald-300 font-mono break-all">
-                    Manifiesto WORM SHA-256: {activeDisplayData.manifestHash}
+                    Manifiesto Registro Inmutable Folio de Integridad: {activeDisplayData.manifestHash}
                   </p>
                 )}
               </div>
@@ -514,7 +514,7 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
                           <Sliders className="w-3 h-3" /> Desglose Manual (RN-13)
                         </button>
                       ) : (
-                        <span className="text-slate-400">{item.auditNotes || 'Prelación automática WORM'}</span>
+                        <span className="text-slate-400">{item.auditNotes || 'Prelación automática Registro Inmutable'}</span>
                       )}
                     </td>
                   </tr>
@@ -530,7 +530,7 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
             Layout de Retención Listo ({csvContent ? csvContent.trim().split(/\r?\n/).length - 1 : 0} partidas en memoria)
           </h3>
           <p className="text-xs text-slate-400 max-w-xl mx-auto">
-            Haga clic en <strong>&ldquo;1. Previsualizar Corte (Dry-Run)&rdquo;</strong> para validar el hash SHA-256 del archivo fuente y verificar la distribución Multi-Crédito antes del sellado WORM.
+            Haga clic en <strong>&ldquo;1. Previsualizar Corte (Dry-Run)&rdquo;</strong> para validar el Folio de Integridad del archivo fuente y verificar la distribución Multi-Crédito antes del sellado Registro Inmutable.
           </p>
         </div>
       )}

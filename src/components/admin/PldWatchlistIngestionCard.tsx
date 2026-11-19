@@ -190,7 +190,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
         if (!res.ok || !data.item) throw new Error(data.error || 'Error al ingerir jurisdicción GAFI/ReFiPres');
         onFeedback({
           type: 'success',
-          message: `Jurisdicción ${data.item.jurisdictionIso3166Alpha2} ingerida en ${selectedListType} (Pub: ${data.item.officialPublicationDate}). SHA-256: ${data.item.recordSha256Hash.slice(0, 16)}...`,
+          message: `Jurisdicción ${data.item.jurisdictionIso3166Alpha2} ingerida en ${selectedListType} (Pub: ${data.item.officialPublicationDate}). Folio de Integridad: ${data.item.recordSha256Hash.slice(0, 16)}...`,
         });
         await onIngestionCompleted();
       } catch (err: unknown) {
@@ -205,7 +205,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
     }
 
     if (!csvContent.trim()) {
-      onFeedback({ type: 'error', message: 'Carga un archivo o ingresa registros antes de sellar en WORM.' });
+      onFeedback({ type: 'error', message: 'Carga un archivo o ingresa registros antes de sellar en Registro Inmutable.' });
       return;
     }
 
@@ -227,7 +227,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
       if (!res.ok) throw new Error(data.error || 'Error al sellar lista PLD/FT');
       onFeedback({
         type: 'success',
-        message: `Lista oficial sellada en WORM con Blind Indexing Zero-PII. SHA-256 Original: ${data.sourceFileHash?.slice(0, 16)}... | Nuevos: ${data.insertedCount ?? 0} | Omitidos idempotentes: ${data.skippedDuplicatesCount ?? 0}`,
+        message: `Lista oficial sellada en Registro Inmutable con Búsqueda Protegida (sin exponer datos) Zero-PII. Folio de Integridad Original: ${data.sourceFileHash?.slice(0, 16)}... | Nuevos: ${data.insertedCount ?? 0} | Omitidos idempotentes: ${data.skippedDuplicatesCount ?? 0}`,
       });
       setCsvContent('');
       setPreparedFile(null);
@@ -398,7 +398,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
                 Confianza: {analysis.overallConfidencePct}%
               </span>
               <span className="px-2 py-0.5 rounded-full bg-white/10 text-slate-300 text-[10px] font-mono">
-                SHA-256: {analysis.sourceFileHash.slice(0, 16)}...
+                Folio de Integridad: {analysis.sourceFileHash.slice(0, 16)}...
               </span>
             </div>
             <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
@@ -481,7 +481,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
           className="px-5 py-2 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50"
         >
           {ingestLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-          <span>Confirmar Mapeo y Sellar en Base WORM</span>
+          <span>Confirmar Mapeo y Sellar en Base Registro Inmutable</span>
         </button>
       </div>
     </div>

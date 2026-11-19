@@ -204,7 +204,7 @@ export const AiAssistantPublic: React.FC = () => {
                 </span>
                 <span className="text-[11px] text-[#0F766E] dark:text-[#2EBD9B] flex items-center gap-1 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-[#0F766E] dark:bg-[#4CD360] animate-pulse" />
-                  Motor Determinista Decimal.js + IA
+                  Motor Determinista Cálculo Financiero Exacto + IA
                 </span>
               </div>
             </div>

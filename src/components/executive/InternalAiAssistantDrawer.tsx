@@ -46,7 +46,7 @@ function createInitialWelcomeMessage(): InternalChatTurn {
   return {
     id: 'welcome_alma_virtual',
     sender: 'assistant',
-    text: '¡Hola! Soy **Alma Virtual**, tu Copiloto Financiero y Operativo Interno 24/7 en Microfinanciera Cruse. Estoy conectada en tiempo real a las **38 tablas de Azure PostgreSQL 16 (`cruse_fintech_v4`)** bajo protocolo estricto **Zero-PII**. Selecciona cualquiera de los **5 dominios operativos (24 preguntas estratégicas)** arriba o escríbeme cualquier consulta sobre cobranza quincenal, prelación de pagos, reestructuras N-a-1, seguros de vida ($22.85 / $35,000), Círculo de Crédito o bitácora forense WORM.',
+    text: '¡Hola! Soy **Alma Virtual**, tu Copiloto Financiero y Operativo Interno 24/7 en Microfinanciera Cruse. Estoy conectada en tiempo real a las **38 tablas de Azure Base de Datos Central (`cruse_fintech_v4`)** bajo protocolo estricto **Zero-PII**. Selecciona cualquiera de los **5 dominios operativos (24 preguntas estratégicas)** arriba o escríbeme cualquier consulta sobre cobranza quincenal, prelación de pagos, reestructuras N-a-1, seguros de vida ($22.85 / $35,000), Círculo de Crédito o Bitácora Inmutable.',
     model: 'Alma Virtual · SQL-Verified Engine',
     ts: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
   };
@@ -169,7 +169,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
                 </span>
               </div>
               <p className="text-[11px] text-slate-200">
-                Conectada en vivo a Azure PostgreSQL 16 (`cruse_fintech_v4`) · 24 Consultas Estratégicas de Administración y Mesa de Control.
+                Conectada en vivo a Azure Base de Datos Central (`cruse_fintech_v4`) · 24 Consultas Estratégicas de Administración y Mesa de Control.
               </p>
             </div>
           </div>
@@ -199,7 +199,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
         {snapshot && (
           <div className="px-5 py-2 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
             <span className="text-teal-400 font-bold flex items-center gap-1">
-              <Database className="w-3.5 h-3.5" /> PostgreSQL 16 En Vivo:
+              <Database className="w-3.5 h-3.5" /> Base de Datos Central En Vivo:
             </span>
             <span className="text-slate-100">
               Créditos Activos: <strong>{snapshot.totalActiveLoans}</strong>
@@ -295,7 +295,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
           ))}
           {loading && (
             <div className="text-xs text-teal-400 font-semibold animate-pulse">
-              Ejecutando consulta parametrizada en PostgreSQL 16 (`cruse_core_v4`) y sintetizando respuesta con Alma Virtual...
+              Ejecutando consulta parametrizada en Base de Datos Central (`cruse_core_v4`) y sintetizando respuesta con Alma Virtual...
             </div>
           )}
         </div>
@@ -312,7 +312,7 @@ export const InternalAiAssistantDrawer: React.FC<InternalAiAssistantDrawerProps>
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Pregunta a Alma Virtual sobre pagos parciales, prelación, reestructuras, seguros, buró o bitácora WORM..."
+            placeholder="Pregunta a Alma Virtual sobre pagos parciales, prelación, reestructuras, seguros, buró o Bitácora Inmutable..."
             className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#00D1FF]"
           />
           <button

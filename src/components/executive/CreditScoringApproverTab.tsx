@@ -402,7 +402,7 @@ export const CreditScoringApproverTab: React.FC<CreditScoringApproverTabProps> =
                 </div>
               </div>
 
-              {/* ③ y ④ Tabla de Amortización Ampliada con Fila de Totales (Decimal.js) y Exportación a Excel (.CSV) */}
+              {/* ③ y ④ Tabla de Amortización Ampliada con Fila de Totales (Cálculo Financiero Exacto) y Exportación a Excel (.CSV) */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h4 className="text-xs font-extrabold uppercase text-white flex items-center gap-1.5">

@@ -61,7 +61,7 @@
 <li><em>Incluye: ✅ Checklist de Dominio del Día 3 (Fase 2)</em></li>
 </ul>
 <ol>
-<li><strong>DÍA 4 (ENTREGABLE 3 — PARTE B): Detector de Operaciones Fraccionadas ($500 a $7,500 USD), Sesión del Comité (CCC), Prórroga Extraordinaria (+30 Días WORM), Reportes de 24 Horas, Reloj 60+3 Días Hábiles y Layout SITI de 41 Columnas</strong></li>
+<li><strong>DÍA 4 (ENTREGABLE 3 — PARTE B): Detector de Operaciones Fraccionadas ($500 a $7,500 USD), Sesión del Comité (CCC), Prórroga Extraordinaria (+30 Días Registro Inmutable), Reportes de 24 Horas, Reloj 60+3 Días Hábiles y Layout SITI de 41 Columnas</strong></li>
 </ol>
 <ul>
 <li><em>Incluye: ✅ Checklist de Dominio del Día 4 (Fase 2)</em></li>
@@ -92,7 +92,7 @@
 <tr><td><strong>Día 2 (Martes)</strong></td><td><strong>Manejo de Excepciones Documentales (&lt; 80% de Confianza) y Detección de Duplicados</strong></td><td>Promotores, Mesa de Control y Oficial de Cumplimiento</td><td>Simular un documento borroso o con CURP inválida, comprobar el bloqueo automático de sincronización y destrabarlo mediante el botón <strong>&quot;Habilitar Revisión Asistida&quot;</strong>.</td></tr>
 <tr><td><strong>Día 3 (Miércoles)</strong></td><td><strong>Rama de Lista Gris (¿Autoriza Dirección?), Reportes Tentativos 24h y Buzón ROIP</strong></td><td>Dirección General y Oficial de Cumplimiento (Lic. Gerardo Olvera)</td><td>Dictaminar un caso en Lista Gris (<strong>Autorizar con Riesgo Alto</strong> vs. <strong>Rechazar y Generar Reporte Inusual Tentativo SITI Tipo 2</strong>) y registrar una denuncia interna anónima en el <strong>Buzón ROIP (Tipo 3)</strong>.</td></tr>
 <tr><td><strong>Día 4 (Jueves)</strong></td><td><strong>Operaciones Fraccionadas ($500-$7,500 USD), Sesiones del Comité (CCC), Reloj 60+3 Días y Layout SITI 41 Columnas</strong></td><td>Oficial de Cumplimiento y Comité de Comunicación y Control (CCC)</td><td>Ejecutar el simulador de operaciones fraccionadas en modo lectura, sesionar un reporte en el <strong>CCC</strong>, verificar el cálculo de los <strong>3 días hábiles bancarios CNBV</strong> y descargar el archivo <strong><code>.TXT</code> de 41 Columnas SITI</strong>.</td></tr>
-<tr><td><strong>Día 5 (Viernes)</strong></td><td><strong>Procedimiento de 3 Pasos para Carga Controlada a CIB (Logic Systems)</strong></td><td>Oficial de Cumplimiento y Mesa de Control / Operaciones</td><td>Generar un lote CIB validado (Paso 1), aprobarlo con firma del Oficial de Cumplimiento en la bitácora WORM (Paso 2) y registrar el folio de confirmación de Logic Systems (Paso 3).</td></tr>
+<tr><td><strong>Día 5 (Viernes)</strong></td><td><strong>Procedimiento de 3 Pasos para Carga Controlada a CIB (Logic Systems)</strong></td><td>Oficial de Cumplimiento y Mesa de Control / Operaciones</td><td>Generar un lote CIB validado (Paso 1), aprobarlo con firma del Oficial de Cumplimiento en la Bitácora Inmutable (Paso 2) y registrar el folio de confirmación de Logic Systems (Paso 3).</td></tr>
 </tbody></table>
 <hr/>
 <h2>3. 🧭 MAPA DE PANTALLAS Y BOTONES DE FASE 2 DENTRO DEL PORTAL</h2>
@@ -130,7 +130,7 @@
 <ul>
 <li>La etiqueta <strong><code>Confianza OCR: XX.XX%</code></strong> (en verde cuando es igual o mayor a <code>80.00%</code>).</li>
 <li>La etiqueta <strong><code>Riesgo Inicial: BAJO / MEDIO / ALTO</code></strong> con su puntaje exacto.</li>
-<li>El sello <strong><code>CURP Mod-10 RENAPO: VÁLIDO</code></strong> y la huella <strong><code>SHA-256 Doc</code></strong> contra duplicados.</li>
+<li>El sello <strong><code>CURP Mod-10 RENAPO: VÁLIDO</code></strong> y la Folio de Integridad contra duplicados.</li>
 </ul>
 <ol>
 <li>Revisa que los datos en los recuadros coincidan con el documento físico y presiona <strong><code>Sincronizar y Purgar (Zero-PII)</code></strong>.</li>
@@ -148,7 +148,7 @@
 <ol>
 <li>Cuando el porcentaje de <strong><code>Confianza OCR</code></strong> es menor a <strong><code>80.00%</code></strong> (documento borroso, oscuro o cortado).</li>
 <li>Cuando la CURP, el RFC o la Clave de Elector no cumplen con el formato oficial o el dígito verificador RENAPO (<strong><code>LOW_CONFIDENCE_EXCEPTION</code></strong>).</li>
-<li>Cuando la huella digital de la fotografía (<code>SHA-256</code>) coincide con un documento que ya había sido subido previamente (<strong><code>DUPLICATE_DETECTED</code></strong>), previniendo expedientes duplicados o intentos de fraude interno.</li>
+<li>Cuando la huella digital de la fotografía (Huella Digital) coincide con un documento que ya había sido subido previamente (<strong><code>DUPLICATE_DETECTED</code></strong>), previniendo expedientes duplicados o intentos de fraude interno.</li>
 </ol>
 <hr/>
 <h2>5.2 Guía Paso a Paso: Cómo destrabar un documento mediante Revisión Asistida</h2>
@@ -200,7 +200,7 @@
 <p>Una vez establecida la relación comercial, las Disposiciones de Carácter General del Art. 115 LIC (Capítulo X, Fracción VIII) y el diagrama del Oficial de Cumplimiento exigen actualizar cada <strong>6 meses (180 días)</strong> el perfil transaccional del cliente respondiendo dos preguntas secuenciales obligatorias:</p>
 <ol>
 <li>En la sección <strong>&quot;Control de Lista Gris (¿Autoriza Dirección?), Excepciones OCR y Reportes Tentativos&quot;</strong>, ubica la fila del expediente y haz clic en el botón cyan <strong><code>Revisión 6M (YYYY-MM-DD)</code></strong>.</li>
-<li>Se abrirá el modal interactivo <strong>&quot;Revisión Semestral de Perfil Transaccional (Cada 6 Meses / 180 Días)&quot;</strong>, el cual muestra también el <strong>Historial Inmutable WORM de Revisiones Semestrales</strong> previas del mismo expediente.</li>
+<li>Se abrirá el modal interactivo <strong>&quot;Revisión Semestral de Perfil Transaccional (Cada 6 Meses / 180 Días)&quot;</strong>, el cual muestra también el <strong>Historial Inmutable Registro Inmutable de Revisiones Semestrales</strong> previas del mismo expediente.</li>
 <li><strong>Pregunta 1 Obligatoria — <code>¿Cambió algo en el perfil transaccional del cliente en los últimos 6 meses?</code>:</strong></li>
 </ol>
 <ul>
@@ -211,11 +211,11 @@
 <li><strong>Pregunta 2 Obligatoria — <code>¿El cambio detectado amerita Reporte de Operación Inusual (ROI)?</code>:</strong></li>
 </ol>
 <ul>
-<li><strong>Opción A (<code>SÍ SE REPORTA — ROI + Cambio Grado de Riesgo</code>):</strong> El sistema ejecuta <strong>tres acciones atómicas simultáneas</strong>: <strong>(1)</strong> genera el Reporte de Operación Inusual (<code>ROI_OPERACION</code>, SITI Tipo <code>2</code>) con el monto en la Columna 11 y el criterio en la Columna 40, <strong>(2)</strong> actualiza el Perfil Transaccional y el Grado de Riesgo (<code>MEDIO</code> o <code>ALTO</code>), y <strong>(3)</strong> sella el evento WORM <strong><code>SEMESTER_REVIEW_ESCALATED_TO_ROI</code></strong>.</li>
-<li><strong>Opción B (<code>NO SE REPORTA — Solo Perfil + Grado de Riesgo</code>):</strong> Actualiza únicamente el Perfil Transaccional quincenal y el Grado de Riesgo EBR sin generar reporte Inusual, y sella el evento WORM <strong><code>SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI</code></strong>.</li>
+<li><strong>Opción A (<code>SÍ SE REPORTA — ROI + Cambio Grado de Riesgo</code>):</strong> El sistema ejecuta <strong>tres acciones atómicas simultáneas</strong>: <strong>(1)</strong> genera el Reporte de Operación Inusual (<code>ROI_OPERACION</code>, SITI Tipo <code>2</code>) con el monto en la Columna 11 y el criterio en la Columna 40, <strong>(2)</strong> actualiza el Perfil Transaccional y el Grado de Riesgo (<code>MEDIO</code> o <code>ALTO</code>), y <strong>(3)</strong> sella el evento Registro Inmutable <strong><code>SEMESTER_REVIEW_ESCALATED_TO_ROI</code></strong>.</li>
+<li><strong>Opción B (<code>NO SE REPORTA — Solo Perfil + Grado de Riesgo</code>):</strong> Actualiza únicamente el Perfil Transaccional quincenal y el Grado de Riesgo EBR sin generar reporte Inusual, y sella el evento Registro Inmutable <strong><code>SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI</code></strong>.</li>
 </ul>
 <ol>
-<li>Ingresa el sustento del Oficial de Cumplimiento (mínimo 10 caracteres) y presiona <strong><code>Firmar y Sellar Revisión Semestral WORM</code></strong>.</li>
+<li>Ingresa el sustento del Oficial de Cumplimiento (mínimo 10 caracteres) y presiona <strong><code>Firmar y Sellar Revisión Semestral Inmutable</code></strong>.</li>
 </ol>
 <hr/>
 <h2>6.4 Guía Paso a Paso: Catálogo Oficial de Listas GAFI y Regímenes Fiscales Preferentes (<code>SHCP ReFiPres</code>)</h2>
@@ -223,7 +223,7 @@
 <ul>
 <li><strong><code>GAFI_HIGH_RISK_JURISDICTIONS</code> (<code>Listas GAFI — Jurisdicciones de Alto Riesgo</code>):</strong> Países o jurisdicciones con deficiencias estratégicas en PLD/FT sujetos a llamado a la acción o monitoreo reforzado del GAFI.</li>
 <li><strong><code>SHCP_REFIPRES_TAX_HAVENS</code> (<code>SHCP ReFiPres — Regímenes Fiscales Preferentes / Paraísos Fiscales</code>):</strong> Territorios publicados por la SHCP / DOF como Regímenes Fiscales Preferentes.</li>
-<li>Al seleccionar cualquiera de estas dos listas en la pestaña <strong>10. Prevención PLD/FT</strong>, el sistema despliega los campos obligatorios <strong><code>ISO 3166-1 Alpha-2</code></strong> (ej. <code>KP</code>, <code>IR</code>, <code>KY</code>), <strong><code>Jurisdicción / País</code></strong>, <strong><code>URL Fuente Oficial (GAFI / DOF)</code></strong> y <strong><code>Fecha Publicación Oficial</code></strong>, validando <strong>cero duplicidad</strong> por país, tipo de lista y fecha de publicación, y sellando el evento WORM <strong><code>GAFI_REFIPRES_JURISDICTION_INGESTED</code></strong>.</li>
+<li>Al seleccionar cualquiera de estas dos listas en la pestaña <strong>10. Prevención PLD/FT</strong>, el sistema despliega los campos obligatorios <strong><code>ISO 3166-1 Alpha-2</code></strong> (ej. <code>KP</code>, <code>IR</code>, <code>KY</code>), <strong><code>Jurisdicción / País</code></strong>, <strong><code>URL Fuente Oficial (GAFI / DOF)</code></strong> y <strong><code>Fecha Publicación Oficial</code></strong>, validando <strong>cero duplicidad</strong> por país, tipo de lista y fecha de publicación, y sellando el evento Registro Inmutable <strong><code>GAFI_REFIPRES_JURISDICTION_INGESTED</code></strong>.</li>
 </ul>
 <hr/>
 <h3>✅ Checklist de Dominio del Día 3 (Fase 2)</h3>
@@ -260,11 +260,11 @@
 <h2>7.3 Guía Paso a Paso: Prórroga Extraordinaria CCC (+30 Días Naturales = 90 Días) y Escalamiento a Reportes de 24 Horas</h2>
 <p>Conforme a las Disposiciones del Art. 115 LIC (Capítulo VI y VII), dentro del panel <strong><code>Sesionar CCC</code></strong> de cualquier reporte en investigación, el Oficial de Cumplimiento dispone de dos herramientas regulatorias especiales:</p>
 <ol>
-<li><strong>Prórroga Extraordinaria de <code>+30 Días Naturales</code> (<code>Prórroga Extraordinaria +30 Días (90d WORM)</code>):</strong></li>
+<li><strong>Prórroga Extraordinaria de <code>+30 Días Naturales</code> (<code>Prórroga Extraordinaria +30 Días (90d Registro Inmutable)</code>):</strong></li>
 </ol>
 <ul>
 <li>En casos extraordinarios que requieran mayor investigación, amplía el plazo normativo de <strong>60 a 90 días naturales</strong> desde la fecha de detección.</li>
-<li>Genera un sello criptográfico inmutable <strong><code>CCC_EXTRAORDINARY_EXTENSION_GRANTED</code></strong> en la tabla WORM <code>pld_ccc_extension_worm_events</code> registrando el plazo original (60d), el nuevo plazo (90d), el hash <code>SHA-256</code> del expediente al momento de la prórroga y la justificación del Oficial de Cumplimiento. Una prórroga concedida no puede editarse (cualquier revocación requiere un evento compensatorio WORM <code>CCC_EXTENSION_REVOKED</code>).</li>
+<li>Genera un sello criptográfico inmutable <strong><code>CCC_EXTRAORDINARY_EXTENSION_GRANTED</code></strong> en la Registro Inmutable del Comité registrando el plazo original (60d), el nuevo plazo (90d), el hash <code>Folio de Integridad</code> del expediente al momento de la prórroga y la justificación del Oficial de Cumplimiento. Una prórroga concedida no puede editarse (cualquier revocación requiere un evento compensatorio Registro Inmutable <code>CCC_EXTENSION_REVOKED</code>).</li>
 </ul>
 <ol>
 <li><strong>Escalamiento Urgente a <code>&quot;Reporte de 24 Horas&quot;</code> (<code>Escalar a Reporte de 24 Horas (Col. 40 + Bypass CCC)</code>):</strong></li>
@@ -272,7 +272,7 @@
 <ul>
 <li>Cuando existan indicios o hechos concretos de recursos vinculados a LD/FT (tanto en Operaciones Inusuales como en Internas Preocupantes de 24 horas), fija inmutablemente el vencimiento de transmisión a <strong><code>detected_at + 24 horas naturales exactas</code></strong>.</li>
 <li>Inyecta determinísticamente al inicio de la <strong>Columna 40</strong> del layout SITI el prefijo obligatorio <strong><code>&quot;Reporte de 24 Horas. &quot;</code></strong>.</li>
-<li>Exime el reporte de dictamen previo del CCC (<code>DIRECT_24H_BYPASS_CCC</code>), agendando notificación para la próxima sesión ordinaria del CCC, y sella en la bitácora el evento WORM <strong><code>SITI_24H_REPORT_ESCALATED</code></strong>.</li>
+<li>Exime el reporte de dictamen previo del CCC (<code>DIRECT_24H_BYPASS_CCC</code>), agendando notificación para la próxima sesión ordinaria del CCC, y sella en la bitácora el evento Registro Inmutable <strong><code>SITI_24H_REPORT_ESCALATED</code></strong>.</li>
 </ul>
 <hr/>
 <h2>7.4 Guía Paso a Paso: Descarga del Layout Oficial <code>.TXT</code> de 41 Columnas para SITI CNBV/UIF</h2>
@@ -293,24 +293,24 @@
 <p>Por decisión estratégica de seguridad y autonomía de Microfinanciera Cruse, ningún expediente se inyecta de forma ciega en sistemas externos sin supervisión humana. En su lugar, la pestaña <strong>5. &quot;Expedientes&quot;</strong> incorpora el <strong>Panel de Control de Lotes CIB en 3 Pasos</strong>:</p>
 <h3>PASO 1: Generar Lote CIB Pre-Validado (Mesa de Control / Operaciones)</h3>
 <ol>
-<li>Entra a la pestaña <strong>5. &quot;Expedientes&quot;</strong> y ubica en la parte superior el panel <strong>&quot;Control de Lotes CIB (1. Generar Lote Pre-Validado → 2. Revisión Oficial de Cumplimiento → 3. Carga CIB y Bitácora WORM)&quot;</strong>.</li>
+<li>Entra a la pestaña <strong>5. &quot;Expedientes&quot;</strong> y ubica en la parte superior el panel <strong>&quot;Control de Lotes CIB (1. Generar Lote Pre-Validado → 2. Revisión Oficial de Cumplimiento → 3. Carga CIB y Bitácora Inmutable)&quot;</strong>.</li>
 <li>Haz clic en el botón verde <strong><code>Paso 1: Generar Lote CIB Validado</code></strong>.</li>
 <li>El sistema filtra automáticamente todos los expedientes capturados: <strong>incluye únicamente aquellos con lectura OCR válida (<code>&gt;= 80%</code> o corregida en Revisión Asistida) y cero alertas abiertas en listas negras PLD</strong>, excluyendo cualquier expediente incompleto o riesgoso.</li>
-<li>En ese mismo instante se descarga a tu computadora el archivo <code>.CSV</code> pre-validado (con sello criptográfico <code>SHA-256</code>) y el lote aparece en la tabla con estado amarillo <strong><code>GENERATED_PENDING_OC</code></strong>.</li>
+<li>En ese mismo instante se descarga a tu computadora el archivo <code>.CSV</code> pre-validado (con Folio de Integridad) y el lote aparece en la tabla con estado amarillo <strong><code>GENERATED_PENDING_OC</code></strong>.</li>
 </ol>
 <h3>PASO 2: Revisión y Firma del Oficial de Cumplimiento (Lic. Gerardo Olvera)</h3>
 <ol>
-<li>El Oficial de Cumplimiento revisa en la tabla del lote cuántos expedientes fueron incluidos, cuántos fueron excluidos preventivamente, el capital total y el sello <code>SHA-256</code>.</li>
+<li>El Oficial de Cumplimiento revisa en la tabla del lote cuántos expedientes fueron incluidos, cuántos fueron excluidos preventivamente, el capital total y el sello <code>Folio de Integridad</code>.</li>
 <li>En la columna derecha del lote, presiona el botón amarillo <strong><code>Paso 2: Aprobar OC</code></strong>.</li>
 <li>Verifica o complementa la nota de dictamen (<em>&quot;Expedientes validados con Score OCR &gt;= 80% y 0 hits en Listas Negras UIF/OFAC/69-B&quot;</em>) y presiona <strong><code>Firmar Aprobación OC (Sellar CIB_BATCH_VALIDATED)</code></strong>.</li>
-<li>El lote pasa a estado azul <strong><code>APPROVED_BY_OC</code></strong> y queda grabado de forma inborrable en la Bitácora Forense WORM de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).</li>
+<li>El lote pasa a estado azul <strong><code>APPROVED_BY_OC</code></strong> y queda grabado de forma inborrable en la Bitácora Inmutable de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).</li>
 </ol>
 <h3>PASO 3: Carga en Logic Systems CIB y Registro del Folio de Confirmación</h3>
 <ol>
 <li>Una vez aprobado por el Oficial de Cumplimiento, el área de Operaciones sube el archivo <code>.CSV</code> al sistema <strong>CIB (Logic Systems)</strong>.</li>
 <li>De regreso en la pestaña <strong>Expedientes</strong>, presiona el botón azul <strong><code>Paso 3: Confirmar Folio CIB</code></strong> en el renglón del lote.</li>
 <li>Escribe el número de folio o acuse arrojado por Logic Systems (por ejemplo: <code>CIB-LOGIC-CHIH-2026-0901</code>) y presiona <strong><code>Confirmar Carga en CIB</code></strong>.</li>
-<li>El lote queda cerrado con estado verde <strong><code>UPLOADED_TO_CIB</code></strong> y la leyenda <strong><code>Sellado en WORM</code></strong>, dejando trazabilidad completa de quién generó el archivo, quién lo autorizó y con qué folio quedó cargado.</li>
+<li>El lote queda cerrado con estado verde <strong><code>UPLOADED_TO_CIB</code></strong> y la leyenda <strong><code>Sellado en Registro Inmutable</code></strong>, dejando trazabilidad completa de quién generó el archivo, quién lo autorizó y con qué folio quedó cargado.</li>
 </ol>
 <hr/>
 <h3>✅ Checklist de Dominio del Día 5 (Fase 2)</h3>

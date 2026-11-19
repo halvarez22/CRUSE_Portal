@@ -105,12 +105,12 @@ export const ClientDigitalSignaturePanel: React.FC<ClientDigitalSignaturePanelPr
       `ID Solicitud de Firma   : ${sig.signatureRequestId}`,
       `Autoridad Certificadora : ${sig.pscProviderId}`,
       `Sello de Tiempo UTC     : ${sig.trustedTimestampIso}`,
-      `Hash SHA-256 Contrato   : ${sig.contractPreSignSha256}`,
+      `Folio de Integridad Contrato   : ${sig.contractPreSignSha256}`,
       `Hash Consentimiento CAT : ${sig.termsHash}`,
       `Hash Mandato Nómina     : ${sig.payrollDiscountHash}`,
       `Hash Biometría LFPDPPP  : ${sig.biometricConsentHash}`,
       `Evidencia Prueba Vida   : ${sig.biometricEvidenceSha256} (${sig.livenessDurationMs} ms / Score ${sig.livenessScore})`,
-      `Huella Constancia SHA256: ${sig.nom151ConstanciaSha256}`,
+      `Folio de Integridad Constancia: ${sig.nom151ConstanciaSha256}`,
       '--------------------------------------------------------------------',
       'ASN.1 Time-Stamp Token (Base64):',
       sig.nom151ConstanciaBase64,
@@ -154,7 +154,7 @@ export const ClientDigitalSignaturePanel: React.FC<ClientDigitalSignaturePanelPr
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] font-mono bg-slate-950/80 p-3.5 rounded-xl border border-white/10">
           <div>
-            <span className="text-slate-400 block">Huella SHA-256 del Contrato:</span>
+            <span className="text-slate-400 block">Huella Folio de Integridad del Contrato:</span>
             <span className="text-emerald-300 break-all">{sig.contractPreSignSha256.slice(0, 28)}...</span>
           </div>
           <div>

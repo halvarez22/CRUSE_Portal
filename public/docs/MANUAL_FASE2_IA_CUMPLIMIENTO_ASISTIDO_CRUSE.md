@@ -18,7 +18,7 @@
    - *Incluye: ✅ Checklist de Dominio del Día 2 (Fase 2)*
 6. **DÍA 3 (ENTREGABLE 3 — PARTE A): Tablero de Control de Lista Gris (¿Autoriza Dirección?), Revisión Semestral de Perfil Transaccional (180 Días), Catálogo GAFI/ReFiPres, Reportes Tentativos 24h y Buzón ROIP**
    - *Incluye: ✅ Checklist de Dominio del Día 3 (Fase 2)*
-7. **DÍA 4 (ENTREGABLE 3 — PARTE B): Detector de Operaciones Fraccionadas ($500 a $7,500 USD), Sesión del Comité (CCC), Prórroga Extraordinaria (+30 Días WORM), Reportes de 24 Horas, Reloj 60+3 Días Hábiles y Layout SITI de 41 Columnas**
+7. **DÍA 4 (ENTREGABLE 3 — PARTE B): Detector de Operaciones Fraccionadas ($500 a $7,500 USD), Sesión del Comité (CCC), Prórroga Extraordinaria (+30 Días Registro Inmutable), Reportes de 24 Horas, Reloj 60+3 Días Hábiles y Layout SITI de 41 Columnas**
    - *Incluye: ✅ Checklist de Dominio del Día 4 (Fase 2)*
 8. **DÍA 5 (ENTREGABLES 4 Y 5): Procedimiento Documentado de 3 Pasos para Carga Controlada a CIB (Logic Systems)**
    - *Incluye: ✅ Checklist de Dominio del Día 5 (Fase 2)*
@@ -48,7 +48,7 @@ En la Fase 2, la Inteligencia Artificial acelera el trabajo del Oficial de Cumpl
 | **Día 2 (Martes)** | **Manejo de Excepciones Documentales (< 80% de Confianza) y Detección de Duplicados** | Promotores, Mesa de Control y Oficial de Cumplimiento | Simular un documento borroso o con CURP inválida, comprobar el bloqueo automático de sincronización y destrabarlo mediante el botón **"Habilitar Revisión Asistida"**. |
 | **Día 3 (Miércoles)** | **Rama de Lista Gris (¿Autoriza Dirección?), Reportes Tentativos 24h y Buzón ROIP** | Dirección General y Oficial de Cumplimiento (Lic. Gerardo Olvera) | Dictaminar un caso en Lista Gris (**Autorizar con Riesgo Alto** vs. **Rechazar y Generar Reporte Inusual Tentativo SITI Tipo 2**) y registrar una denuncia interna anónima en el **Buzón ROIP (Tipo 3)**. |
 | **Día 4 (Jueves)** | **Operaciones Fraccionadas ($500-$7,500 USD), Sesiones del Comité (CCC), Reloj 60+3 Días y Layout SITI 41 Columnas** | Oficial de Cumplimiento y Comité de Comunicación y Control (CCC) | Ejecutar el simulador de operaciones fraccionadas en modo lectura, sesionar un reporte en el **CCC**, verificar el cálculo de los **3 días hábiles bancarios CNBV** y descargar el archivo **`.TXT` de 41 Columnas SITI**. |
-| **Día 5 (Viernes)** | **Procedimiento de 3 Pasos para Carga Controlada a CIB (Logic Systems)** | Oficial de Cumplimiento y Mesa de Control / Operaciones | Generar un lote CIB validado (Paso 1), aprobarlo con firma del Oficial de Cumplimiento en la bitácora WORM (Paso 2) y registrar el folio de confirmación de Logic Systems (Paso 3). |
+| **Día 5 (Viernes)** | **Procedimiento de 3 Pasos para Carga Controlada a CIB (Logic Systems)** | Oficial de Cumplimiento y Mesa de Control / Operaciones | Generar un lote CIB validado (Paso 1), aprobarlo con firma del Oficial de Cumplimiento en la Bitácora Inmutable (Paso 2) y registrar el folio de confirmación de Logic Systems (Paso 3). |
 
 ---
 
@@ -84,7 +84,7 @@ Cuando el Promotor o la Mesa de Control fotografía una credencial INE o un reci
 4. En segundos aparecerá la tarjeta **"Dictamen OCR Determinista & Matriz de Riesgo Inicial"** mostrando:
    - La etiqueta **`Confianza OCR: XX.XX%`** (en verde cuando es igual o mayor a `80.00%`).
    - La etiqueta **`Riesgo Inicial: BAJO / MEDIO / ALTO`** con su puntaje exacto.
-   - El sello **`CURP Mod-10 RENAPO: VÁLIDO`** y la huella **`SHA-256 Doc`** contra duplicados.
+   - El sello **`CURP Mod-10 RENAPO: VÁLIDO`** y la Folio de Integridad contra duplicados.
 5. Revisa que los datos en los recuadros coincidan con el documento físico y presiona **`Sincronizar y Purgar (Zero-PII)`**.
 
 ---
@@ -101,7 +101,7 @@ Cuando el Promotor o la Mesa de Control fotografía una credencial INE o un reci
 Para impedir que entren datos erróneos o documentos ilegibles a la base de datos de Microfinanciera Cruse, el sistema activa un **Bloqueo Preventivo Automático** en cualquiera de estos tres casos:
 1. Cuando el porcentaje de **`Confianza OCR`** es menor a **`80.00%`** (documento borroso, oscuro o cortado).
 2. Cuando la CURP, el RFC o la Clave de Elector no cumplen con el formato oficial o el dígito verificador RENAPO (**`LOW_CONFIDENCE_EXCEPTION`**).
-3. Cuando la huella digital de la fotografía (`SHA-256`) coincide con un documento que ya había sido subido previamente (**`DUPLICATE_DETECTED`**), previniendo expedientes duplicados o intentos de fraude interno.
+3. Cuando la huella digital de la fotografía (Huella Digital) coincide con un documento que ya había sido subido previamente (**`DUPLICATE_DETECTED`**), previniendo expedientes duplicados o intentos de fraude interno.
 
 ---
 
@@ -148,14 +148,14 @@ Conforme al Capítulo X de las Disposiciones de la CNBV, cualquier colaborador p
 Una vez establecida la relación comercial, las Disposiciones de Carácter General del Art. 115 LIC (Capítulo X, Fracción VIII) y el diagrama del Oficial de Cumplimiento exigen actualizar cada **6 meses (180 días)** el perfil transaccional del cliente respondiendo dos preguntas secuenciales obligatorias:
 
 1. En la sección **"Control de Lista Gris (¿Autoriza Dirección?), Excepciones OCR y Reportes Tentativos"**, ubica la fila del expediente y haz clic en el botón cyan **`Revisión 6M (YYYY-MM-DD)`**.
-2. Se abrirá el modal interactivo **"Revisión Semestral de Perfil Transaccional (Cada 6 Meses / 180 Días)"**, el cual muestra también el **Historial Inmutable WORM de Revisiones Semestrales** previas del mismo expediente.
+2. Se abrirá el modal interactivo **"Revisión Semestral de Perfil Transaccional (Cada 6 Meses / 180 Días)"**, el cual muestra también el **Historial Inmutable Registro Inmutable de Revisiones Semestrales** previas del mismo expediente.
 3. **Pregunta 1 Obligatoria — `¿Cambió algo en el perfil transaccional del cliente en los últimos 6 meses?`:**
    - **Si respondes `NO — Sin cambios en el perfil`:** El sistema renueva automáticamente la fecha de próxima revisión por **`+180 días`**, conserva el Grado de Riesgo actual y sella en la bitácora el evento inmutable **`SEMESTER_REVIEW_NO_CHANGES`**.
    - **Si respondes `SÍ — Se detectó desviación / cambio en el perfil`:** Se habilita de inmediato la **Pregunta 2 Obligatoria**.
 4. **Pregunta 2 Obligatoria — `¿El cambio detectado amerita Reporte de Operación Inusual (ROI)?`:**
-   - **Opción A (`SÍ SE REPORTA — ROI + Cambio Grado de Riesgo`):** El sistema ejecuta **tres acciones atómicas simultáneas**: **(1)** genera el Reporte de Operación Inusual (`ROI_OPERACION`, SITI Tipo `2`) con el monto en la Columna 11 y el criterio en la Columna 40, **(2)** actualiza el Perfil Transaccional y el Grado de Riesgo (`MEDIO` o `ALTO`), y **(3)** sella el evento WORM **`SEMESTER_REVIEW_ESCALATED_TO_ROI`**.
-   - **Opción B (`NO SE REPORTA — Solo Perfil + Grado de Riesgo`):** Actualiza únicamente el Perfil Transaccional quincenal y el Grado de Riesgo EBR sin generar reporte Inusual, y sella el evento WORM **`SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI`**.
-5. Ingresa el sustento del Oficial de Cumplimiento (mínimo 10 caracteres) y presiona **`Firmar y Sellar Revisión Semestral WORM`**.
+   - **Opción A (`SÍ SE REPORTA — ROI + Cambio Grado de Riesgo`):** El sistema ejecuta **tres acciones atómicas simultáneas**: **(1)** genera el Reporte de Operación Inusual (`ROI_OPERACION`, SITI Tipo `2`) con el monto en la Columna 11 y el criterio en la Columna 40, **(2)** actualiza el Perfil Transaccional y el Grado de Riesgo (`MEDIO` o `ALTO`), y **(3)** sella el evento Registro Inmutable **`SEMESTER_REVIEW_ESCALATED_TO_ROI`**.
+   - **Opción B (`NO SE REPORTA — Solo Perfil + Grado de Riesgo`):** Actualiza únicamente el Perfil Transaccional quincenal y el Grado de Riesgo EBR sin generar reporte Inusual, y sella el evento Registro Inmutable **`SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI`**.
+5. Ingresa el sustento del Oficial de Cumplimiento (mínimo 10 caracteres) y presiona **`Firmar y Sellar Revisión Semestral Inmutable`**.
 
 ---
 
@@ -163,7 +163,7 @@ Una vez establecida la relación comercial, las Disposiciones de Carácter Gener
 Conforme al Capítulo X Fracción X de las Disposiciones CNBV, el portal incorpora en el selector **`Tipo de Lista Oficial`** dos catálogos internacionales con trazabilidad obligatoria de fuente oficial:
 - **`GAFI_HIGH_RISK_JURISDICTIONS` (`Listas GAFI — Jurisdicciones de Alto Riesgo`):** Países o jurisdicciones con deficiencias estratégicas en PLD/FT sujetos a llamado a la acción o monitoreo reforzado del GAFI.
 - **`SHCP_REFIPRES_TAX_HAVENS` (`SHCP ReFiPres — Regímenes Fiscales Preferentes / Paraísos Fiscales`):** Territorios publicados por la SHCP / DOF como Regímenes Fiscales Preferentes.
-- Al seleccionar cualquiera de estas dos listas en la pestaña **10. Prevención PLD/FT**, el sistema despliega los campos obligatorios **`ISO 3166-1 Alpha-2`** (ej. `KP`, `IR`, `KY`), **`Jurisdicción / País`**, **`URL Fuente Oficial (GAFI / DOF)`** y **`Fecha Publicación Oficial`**, validando **cero duplicidad** por país, tipo de lista y fecha de publicación, y sellando el evento WORM **`GAFI_REFIPRES_JURISDICTION_INGESTED`**.
+- Al seleccionar cualquiera de estas dos listas en la pestaña **10. Prevención PLD/FT**, el sistema despliega los campos obligatorios **`ISO 3166-1 Alpha-2`** (ej. `KP`, `IR`, `KY`), **`Jurisdicción / País`**, **`URL Fuente Oficial (GAFI / DOF)`** y **`Fecha Publicación Oficial`**, validando **cero duplicidad** por país, tipo de lista y fecha de publicación, y sellando el evento Registro Inmutable **`GAFI_REFIPRES_JURISDICTION_INGESTED`**.
 
 ---
 
@@ -198,13 +198,13 @@ Todo reporte Inusual o Preocupante cuenta con un plazo máximo de **60 días nat
 ## 7.3 Guía Paso a Paso: Prórroga Extraordinaria CCC (+30 Días Naturales = 90 Días) y Escalamiento a Reportes de 24 Horas
 Conforme a las Disposiciones del Art. 115 LIC (Capítulo VI y VII), dentro del panel **`Sesionar CCC`** de cualquier reporte en investigación, el Oficial de Cumplimiento dispone de dos herramientas regulatorias especiales:
 
-1. **Prórroga Extraordinaria de `+30 Días Naturales` (`Prórroga Extraordinaria +30 Días (90d WORM)`):**
+1. **Prórroga Extraordinaria de `+30 Días Naturales` (`Prórroga Extraordinaria +30 Días (90d Registro Inmutable)`):**
    - En casos extraordinarios que requieran mayor investigación, amplía el plazo normativo de **60 a 90 días naturales** desde la fecha de detección.
-   - Genera un sello criptográfico inmutable **`CCC_EXTRAORDINARY_EXTENSION_GRANTED`** en la tabla WORM `pld_ccc_extension_worm_events` registrando el plazo original (60d), el nuevo plazo (90d), el hash `SHA-256` del expediente al momento de la prórroga y la justificación del Oficial de Cumplimiento. Una prórroga concedida no puede editarse (cualquier revocación requiere un evento compensatorio WORM `CCC_EXTENSION_REVOKED`).
+   - Genera un sello criptográfico inmutable **`CCC_EXTRAORDINARY_EXTENSION_GRANTED`** en la Registro Inmutable del Comité registrando el plazo original (60d), el nuevo plazo (90d), el hash `Folio de Integridad` del expediente al momento de la prórroga y la justificación del Oficial de Cumplimiento. Una prórroga concedida no puede editarse (cualquier revocación requiere un evento compensatorio Registro Inmutable `CCC_EXTENSION_REVOKED`).
 2. **Escalamiento Urgente a `"Reporte de 24 Horas"` (`Escalar a Reporte de 24 Horas (Col. 40 + Bypass CCC)`):**
    - Cuando existan indicios o hechos concretos de recursos vinculados a LD/FT (tanto en Operaciones Inusuales como en Internas Preocupantes de 24 horas), fija inmutablemente el vencimiento de transmisión a **`detected_at + 24 horas naturales exactas`**.
    - Inyecta determinísticamente al inicio de la **Columna 40** del layout SITI el prefijo obligatorio **`"Reporte de 24 Horas. "`**.
-   - Exime el reporte de dictamen previo del CCC (`DIRECT_24H_BYPASS_CCC`), agendando notificación para la próxima sesión ordinaria del CCC, y sella en la bitácora el evento WORM **`SITI_24H_REPORT_ESCALATED`**.
+   - Exime el reporte de dictamen previo del CCC (`DIRECT_24H_BYPASS_CCC`), agendando notificación para la próxima sesión ordinaria del CCC, y sella en la bitácora el evento Registro Inmutable **`SITI_24H_REPORT_ESCALATED`**.
 
 ---
 
@@ -227,22 +227,22 @@ Conforme a las Disposiciones del Art. 115 LIC (Capítulo VI y VII), dentro del p
 Por decisión estratégica de seguridad y autonomía de Microfinanciera Cruse, ningún expediente se inyecta de forma ciega en sistemas externos sin supervisión humana. En su lugar, la pestaña **5. "Expedientes"** incorpora el **Panel de Control de Lotes CIB en 3 Pasos**:
 
 ### PASO 1: Generar Lote CIB Pre-Validado (Mesa de Control / Operaciones)
-1. Entra a la pestaña **5. "Expedientes"** y ubica en la parte superior el panel **"Control de Lotes CIB (1. Generar Lote Pre-Validado → 2. Revisión Oficial de Cumplimiento → 3. Carga CIB y Bitácora WORM)"**.
+1. Entra a la pestaña **5. "Expedientes"** y ubica en la parte superior el panel **"Control de Lotes CIB (1. Generar Lote Pre-Validado → 2. Revisión Oficial de Cumplimiento → 3. Carga CIB y Bitácora Inmutable)"**.
 2. Haz clic en el botón verde **`Paso 1: Generar Lote CIB Validado`**.
 3. El sistema filtra automáticamente todos los expedientes capturados: **incluye únicamente aquellos con lectura OCR válida (`>= 80%` o corregida en Revisión Asistida) y cero alertas abiertas en listas negras PLD**, excluyendo cualquier expediente incompleto o riesgoso.
-4. En ese mismo instante se descarga a tu computadora el archivo `.CSV` pre-validado (con sello criptográfico `SHA-256`) y el lote aparece en la tabla con estado amarillo **`GENERATED_PENDING_OC`**.
+4. En ese mismo instante se descarga a tu computadora el archivo `.CSV` pre-validado (con Folio de Integridad) y el lote aparece en la tabla con estado amarillo **`GENERATED_PENDING_OC`**.
 
 ### PASO 2: Revisión y Firma del Oficial de Cumplimiento (Lic. Gerardo Olvera)
-1. El Oficial de Cumplimiento revisa en la tabla del lote cuántos expedientes fueron incluidos, cuántos fueron excluidos preventivamente, el capital total y el sello `SHA-256`.
+1. El Oficial de Cumplimiento revisa en la tabla del lote cuántos expedientes fueron incluidos, cuántos fueron excluidos preventivamente, el capital total y el sello `Folio de Integridad`.
 2. En la columna derecha del lote, presiona el botón amarillo **`Paso 2: Aprobar OC`**.
 3. Verifica o complementa la nota de dictamen (*"Expedientes validados con Score OCR >= 80% y 0 hits en Listas Negras UIF/OFAC/69-B"*) y presiona **`Firmar Aprobación OC (Sellar CIB_BATCH_VALIDATED)`**.
-4. El lote pasa a estado azul **`APPROVED_BY_OC`** y queda grabado de forma inborrable en la Bitácora Forense WORM de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).
+4. El lote pasa a estado azul **`APPROVED_BY_OC`** y queda grabado de forma inborrable en la Bitácora Inmutable de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).
 
 ### PASO 3: Carga en Logic Systems CIB y Registro del Folio de Confirmación
 1. Una vez aprobado por el Oficial de Cumplimiento, el área de Operaciones sube el archivo `.CSV` al sistema **CIB (Logic Systems)**.
 2. De regreso en la pestaña **Expedientes**, presiona el botón azul **`Paso 3: Confirmar Folio CIB`** en el renglón del lote.
 3. Escribe el número de folio o acuse arrojado por Logic Systems (por ejemplo: `CIB-LOGIC-CHIH-2026-0901`) y presiona **`Confirmar Carga en CIB`**.
-4. El lote queda cerrado con estado verde **`UPLOADED_TO_CIB`** y la leyenda **`Sellado en WORM`**, dejando trazabilidad completa de quién generó el archivo, quién lo autorizó y con qué folio quedó cargado.
+4. El lote queda cerrado con estado verde **`UPLOADED_TO_CIB`** y la leyenda **`Sellado en Registro Inmutable`**, dejando trazabilidad completa de quién generó el archivo, quién lo autorizó y con qué folio quedó cargado.
 
 ---
 

@@ -21,12 +21,20 @@ const STATUS_LABELS: Readonly<Record<string, string>> = {
   ROLLED_BACK: 'Revertido con Respaldo',
   ACTIVE_SUSPENSION: 'Licencia Activa',
   FROZEN_EXTRAJUDICIAL: 'Cobranza Extrajudicial',
+  INTERNAL_MTLS_HMAC_BUS: 'Canal Seguro Interno',
+  EXTERNAL_API_MTLS: 'Canal Seguro Externo',
+  REST_MTLS_HMAC: 'Canal Seguro de Integración',
 };
 
 export function getStatusLabel(enumValue?: string | null): string {
   const key = String(enumValue ?? '').trim().toUpperCase();
   if (!key) return 'Sin estatus';
   return STATUS_LABELS[key] ?? key.replace(/_/g, ' ');
+}
+
+export function sanitizeDisplayLabel(raw?: string | null): string {
+  const s = String(raw ?? '').trim();
+  return s.replace(/\s*\(mTLS\s*\+\s*HMAC-SHA256\)/gi, ' (Conexión Segura)');
 }
 
 export function formatSpanishDate(raw?: string | Date | null): string {

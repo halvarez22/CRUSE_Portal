@@ -84,7 +84,7 @@ export const SemesterReviewModal: React.FC<SemesterReviewModalProps> = ({
       return;
     }
     if (reviewJustificationNotes.trim().length < 10) {
-      onError('Ingresa al menos 10 caracteres de sustento regulatorio para sellar la revisión semestral en WORM.');
+      onError('Ingresa al menos 10 caracteres de sustento regulatorio para sellar la revisión semestral en Registro Inmutable.');
       return;
     }
 
@@ -121,10 +121,10 @@ export const SemesterReviewModal: React.FC<SemesterReviewModalProps> = ({
       const item = data.reviewItem;
       const summaryMsg =
         item.wormAction === 'SEMESTER_REVIEW_NO_CHANGES'
-          ? `Revisión Semestral (180d) sellada en WORM (${item.wormAction}): Sin cambios en perfil ($${item.updatedTransactionalProfileMxn} MXN). Próxima revisión programada: ${item.nextSemesterReviewAt.slice(0, 10)}.`
+          ? `Revisión Semestral (180d) sellada en Registro Inmutable (${item.wormAction}): Sin cambios en perfil ($${item.updatedTransactionalProfileMxn} MXN). Próxima revisión programada: ${item.nextSemesterReviewAt.slice(0, 10)}.`
           : item.wormAction === 'SEMESTER_REVIEW_ESCALATED_TO_ROI'
-            ? `Revisión Semestral sellada en WORM (${item.wormAction}): Generado simultáneamente Reporte Inusual ROI (${data.generatedReportId}) + Cambio de Grado de Riesgo (${item.previousRiskGrade} -> ${item.updatedRiskGrade}).`
-            : `Revisión Semestral sellada en WORM (${item.wormAction}): Actualizado Perfil Transaccional ($${item.previousTransactionalProfileMxn} -> $${item.updatedTransactionalProfileMxn} MXN) y Grado de Riesgo (${item.previousRiskGrade} -> ${item.updatedRiskGrade}) sin ROI.`;
+            ? `Revisión Semestral sellada en Registro Inmutable (${item.wormAction}): Generado simultáneamente Reporte Inusual ROI (${data.generatedReportId}) + Cambio de Grado de Riesgo (${item.previousRiskGrade} -> ${item.updatedRiskGrade}).`
+            : `Revisión Semestral sellada en Registro Inmutable (${item.wormAction}): Actualizado Perfil Transaccional ($${item.previousTransactionalProfileMxn} -> $${item.updatedTransactionalProfileMxn} MXN) y Grado de Riesgo (${item.previousRiskGrade} -> ${item.updatedRiskGrade}) sin ROI.`;
 
       await onCompleted(summaryMsg);
       onClose();
@@ -178,7 +178,7 @@ export const SemesterReviewModal: React.FC<SemesterReviewModalProps> = ({
                 <span>NO — Sin cambios en el perfil</span>
               </div>
               <p className="text-[11px] mt-1 text-slate-300">
-                Extiende reloj +180 días, mantiene grado de riesgo ({profile.currentRiskGrade}) y sella WORM <code className="text-[10px]">SEMESTER_REVIEW_NO_CHANGES</code>.
+                Extiende reloj +180 días, mantiene grado de riesgo ({profile.currentRiskGrade}) y sella Registro Inmutable <code className="text-[10px]">SEMESTER_REVIEW_NO_CHANGES</code>.
               </p>
             </button>
 
@@ -223,7 +223,7 @@ export const SemesterReviewModal: React.FC<SemesterReviewModalProps> = ({
                   <span>SÍ SE REPORTA (ROI + Cambio Grado de Riesgo)</span>
                 </div>
                 <p className="text-[11px] mt-1 text-slate-300">
-                  Genera simultáneamente (1) Reporte Inusual ROI SITI Tipo 2, (2) Cambio de Grado de Riesgo y (3) WORM <code className="text-[10px]">SEMESTER_REVIEW_ESCALATED_TO_ROI</code>.
+                  Genera simultáneamente (1) Reporte Inusual ROI SITI Tipo 2, (2) Cambio de Grado de Riesgo y (3) Registro Inmutable <code className="text-[10px]">SEMESTER_REVIEW_ESCALATED_TO_ROI</code>.
                 </p>
               </button>
 
@@ -241,7 +241,7 @@ export const SemesterReviewModal: React.FC<SemesterReviewModalProps> = ({
                   <span>NO SE REPORTA (Solo Perfil + Grado de Riesgo)</span>
                 </div>
                 <p className="text-[11px] mt-1 text-slate-300">
-                  Actualiza Perfil Transaccional y Grado de Riesgo sin emitir ROI y sella WORM <code className="text-[10px]">SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI</code>.
+                  Actualiza Perfil Transaccional y Grado de Riesgo sin emitir ROI y sella Registro Inmutable <code className="text-[10px]">SEMESTER_REVIEW_PROFILE_UPDATED_NO_ROI</code>.
                 </p>
               </button>
             </div>
@@ -321,7 +321,7 @@ export const SemesterReviewModal: React.FC<SemesterReviewModalProps> = ({
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
             <span className="flex items-center gap-1.5">
               <History className="w-3.5 h-3.5 text-[#00D1FF]" />
-              <span>Historial Inmutable WORM de Revisiones Semestrales ({history.length})</span>
+              <span>Historial Inmutable Registro Inmutable de Revisiones Semestrales ({history.length})</span>
             </span>
             {loadingHistory && <span className="text-slate-400">Cargando...</span>}
           </div>
@@ -368,7 +368,7 @@ export const SemesterReviewModal: React.FC<SemesterReviewModalProps> = ({
             disabled={submitting}
             className="px-4 py-2 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold shadow-lg"
           >
-            {submitting ? 'Sellando en WORM...' : 'Firmar y Sellar Revisión Semestral WORM'}
+            {submitting ? 'Sellando en Registro Inmutable...' : 'Firmar y Sellar Revisión Semestral Inmutable'}
           </button>
         </div>
       </div>

@@ -32,7 +32,7 @@ const REQUIRED_DOCS_META: ReadonlyArray<{
   {
     docType: 'INE_FRONT',
     label: '1. INE Vigente (Frente)',
-    helper: 'Fotografía clara del anverso sin reflejos (Purga automática EXIF/GPS).',
+    helper: 'Fotografía clara del anverso sin reflejos (Purga automática datos ocultos de la fotografía/GPS).',
   },
   {
     docType: 'INE_BACK',
@@ -152,7 +152,7 @@ export const ClientSelfServiceAppModal: React.FC<ClientSelfServiceAppModalProps>
       }
       setExpediente(data.expediente as ClientExpedienteSummary);
       setStatusBanner(
-        `✅ ${docType} sanitizado (Zero-EXIF/GPS en RAM) y cifrado con AES-256-GCM. Hash SHA-256: ${data.sanitizedMeta?.sanitizedSha256?.slice(0, 16)}...`
+        `✅ ${docType} sanitizado (Sin Datos Ocultos de Fotografía/GPS en RAM) y cifrado con AES-256-GCM. Folio de Integridad: ${data.sanitizedMeta?.sanitizedSha256?.slice(0, 16)}...`
       );
     } catch {
       setErrorMsg('Fallo al procesar y sanitizar el documento.');
@@ -189,7 +189,7 @@ export const ClientSelfServiceAppModal: React.FC<ClientSelfServiceAppModalProps>
                 </h3>
               </div>
               <p className="text-xs text-slate-300">
-                Sube tus 4 documentos con limpieza automática de ubicación GPS (Zero-EXIF) y firma tu contrato desde tu celular.
+                Sube tus 4 documentos con limpieza automática de ubicación GPS (Sin Datos Ocultos de Fotografía) y firma tu contrato desde tu celular.
               </p>
             </div>
           </div>
@@ -308,7 +308,7 @@ export const ClientSelfServiceAppModal: React.FC<ClientSelfServiceAppModalProps>
                 </div>
               </div>
 
-              {/* 4 Tarjetas de Documentos con Limpieza Zero-EXIF */}
+              {/* 4 Tarjetas de Documentos con Limpieza Sin Datos Ocultos de Fotografía */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {REQUIRED_DOCS_META.map((meta) => {
                   const uploaded = expediente.documents.find((d) => d.docType === meta.docType);
@@ -337,14 +337,14 @@ export const ClientSelfServiceAppModal: React.FC<ClientSelfServiceAppModalProps>
                         </div>
                         {uploaded && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
-                            Zero-EXIF ✓
+                            Sin Datos Ocultos de Fotografía ✓
                           </span>
                         )}
                       </div>
 
                       {uploaded && (
                         <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5 text-[11px] font-mono text-slate-300 space-y-0.5">
-                          <div>SHA-256: {uploaded.documentSha256.slice(0, 24)}...</div>
+                          <div>Folio de Integridad: {uploaded.documentSha256.slice(0, 24)}...</div>
                           {uploaded.isOverwrite && uploaded.previousDocumentSha256 && (
                             <div className="text-amber-300">
                               Reemplazó hash previo: {uploaded.previousDocumentSha256.slice(0, 16)}...
@@ -379,7 +379,7 @@ export const ClientSelfServiceAppModal: React.FC<ClientSelfServiceAppModalProps>
                           ) : (
                             <Sparkles className="w-3.5 h-3.5" />
                           )}
-                          <span>Carga Rápida Demo (Zero-EXIF)</span>
+                          <span>Carga Rápida Demo (Sin Datos Ocultos de Fotografía)</span>
                         </button>
                       </div>
                     </div>
@@ -395,7 +395,7 @@ export const ClientSelfServiceAppModal: React.FC<ClientSelfServiceAppModalProps>
                   onSignatureCompleted={(sig: ClientDigitalSignatureRecord) => {
                     setExpediente((prev) => (prev ? { ...prev, signatureRecord: sig } : prev));
                     setStatusBanner(
-                      `🎉 Contrato firmado con validez jurídica NOM-151 (Constancia SHA-256: ${sig.nom151ConstanciaSha256.slice(0, 16)}...).`
+                      `🎉 Contrato firmado con validez jurídica NOM-151 (Constancia Folio de Integridad: ${sig.nom151ConstanciaSha256.slice(0, 16)}...).`
                     );
                   }}
                 />

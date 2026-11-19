@@ -563,7 +563,7 @@ export const PublicCreditSimulator: React.FC = () => {
               {/* Modal Footer */}
               <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex justify-between items-center text-xs">
                 <span className="text-slate-600 dark:text-slate-400">
-                  Importes sujetos a redondeo y calendario de amortización definitivo. Verificado con Decimal.js.
+                  Importes sujetos a redondeo y calendario de amortización definitivo. Verificado con Cálculo Financiero Exacto.
                 </span>
                 <button
                   type="button"

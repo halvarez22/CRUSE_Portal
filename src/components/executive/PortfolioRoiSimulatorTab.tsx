@@ -137,14 +137,14 @@ export const PortfolioRoiSimulatorTab: React.FC<PortfolioRoiSimulatorTabProps> =
 
   return (
     <div className="space-y-6">
-      {/* Panel de Cartera Real en PostgreSQL 16 */}
+      {/* Panel de Cartera Real en Base de Datos Central */}
       <div className="bg-gradient-to-r from-slate-900 via-[#0D1B3E]/80 to-slate-900 border border-teal-500/30 rounded-2xl p-5 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-teal-400" />
             <div>
               <h3 className="text-sm font-extrabold text-white">
-                Conexión en Vivo a Cartera Real (Azure PostgreSQL 16)
+                Conexión en Vivo a Cartera Real (Azure Base de Datos Central)
               </h3>
               <p className="text-xs text-slate-400">
                 Datos operativos reales de préstamos activos y líneas de fondeo registradas en el sistema.

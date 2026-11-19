@@ -136,7 +136,7 @@ export const PreApplicationsInboxPanel: React.FC<PreApplicationsInboxPanelProps>
           inboxStatus: newStatus,
           promoterNotes: notesDraft.trim() || null,
         });
-        setFeedbackMsg(`Estatus actualizado a ${newStatus.replace('_', ' ')} y sellado en WORM.`);
+        setFeedbackMsg(`Estatus actualizado a ${newStatus.replace('_', ' ')} y Sellado en Registro Inmutable.`);
         void loadInbox();
       }
     } catch (err) {

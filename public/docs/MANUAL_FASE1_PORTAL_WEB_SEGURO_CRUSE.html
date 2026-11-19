@@ -92,10 +92,10 @@
 <tr><td><strong>1</strong></td><td><strong>Dashboard Cartera</strong></td><td>Muestra las 4 tarjetas de dinero en tiempo real, el desglose y botones para filtrar por <strong>Chihuahua, León o Cancún</strong>, el <strong>Semáforo de Morosidad (Verde, Amarillo y Rojo)</strong>, la Gráfica Ejecutiva de Distribución y la Tabla Maestra de Créditos con botón <strong>&quot;Exportar a Excel (.CSV)&quot;</strong>.</td></tr>
 <tr><td><strong>2</strong></td><td><strong>Buzón Pre-Solicitudes</strong></td><td>Bandeja tipo correo electrónico con contador de pendientes donde llegan las solicitudes enviadas desde el Simulador Público. Cambia automáticamente de <strong>No leído</strong> a <strong>Leído</strong> al abrir el detalle, permite marcar como <strong>Atendido</strong>, contactar por WhatsApp y exportar a Excel <code>.CSV</code>.</td></tr>
 <tr><td><strong>3</strong></td><td><strong>Suite Ejecutiva &amp; Negocio (5 Módulos)</strong></td><td>Contiene las 5 herramientas gerenciales: <strong>1. Pitch Inversionistas</strong>, <strong>2. Simulador ROI 36 Meses</strong>, <strong>3. Simulador &amp; Scoring Aprobador</strong>, <strong>4. Pizarra Competencia</strong> y <strong>5. Hubs Nacionales &amp; Manual</strong>.</td></tr>
-<tr><td><strong>4</strong></td><td><strong>Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))</strong></td><td>Caja negra inborrable que registra quién entró, qué consultó y qué modificó, con buscador de incidencias y botón <strong>&quot;Verificar Integridad SHA-256&quot;</strong> para auditorías de CNBV e Secretaría Anticorrupción y Buen Gobierno.</td></tr>
+<tr><td><strong>4</strong></td><td><strong>Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))</strong></td><td>Caja negra inborrable que registra quién entró, qué consultó y qué modificó, con buscador de incidencias y botón <strong>&quot;Verificar Integridad&quot;</strong> para auditorías de CNBV e Secretaría Anticorrupción y Buen Gobierno.</td></tr>
 <tr><td><strong>5</strong></td><td><strong>Expedientes</strong></td><td>Bandeja de solicitudes capturadas por los promotores en campo con filtros combinables, buscador global y descarga de layout SIF/CIB.</td></tr>
 <tr><td><strong>6</strong></td><td><strong>Conciliación Quincenal</strong></td><td>Emite el listado de cobro para el sindicato/dependencia, recibe el archivo de pagos de Tesorería, detecta diferencias automáticamente y descarga el archivo para <strong>SIF/CIB (Logic Systems)</strong>.</td></tr>
-<tr><td><strong>7</strong></td><td><strong>Fondeo e Inversionistas (3FN v4)</strong></td><td>Permite dar de alta inversionistas (<strong>&quot;+ Nuevo Inversionista&quot;</strong> → <strong>&quot;Guardar y Generar Pagaré&quot;</strong>), controla el capital (interés simple o compuesto, retención de ISR) y ejecuta el <strong>&quot;Corte Mensual con protección contra duplicados&quot;</strong>.</td></tr>
+<tr><td><strong>7</strong></td><td><strong>Fondeo e Inversionistas (Base de Datos Estructurada)</strong></td><td>Permite dar de alta inversionistas (<strong>&quot;+ Nuevo Inversionista&quot;</strong> → <strong>&quot;Guardar y Generar Pagaré&quot;</strong>), controla el capital (interés simple o compuesto, retención de ISR) y ejecuta el <strong>&quot;Corte Mensual con protección contra duplicados&quot;</strong>.</td></tr>
 <tr><td><strong>8</strong></td><td><strong>Círculo de Crédito (SIC)</strong></td><td>Previsualiza, valida y genera con un clic el archivo mensual oficial de reporte crediticio con clave de otorgante <strong><code>001496</code></strong>.</td></tr>
 <tr><td><strong>9</strong></td><td><strong>Cobranza, Convenios y Reestructuras</strong></td><td>Permite aplicar <strong>&quot;Suspensión Temporal&quot;</strong> por Licencia sin Goce de Sueldo, <strong>Congelar Mora</strong> por baja laboral/demanda, <strong>&quot;Consolidar en Nuevo Contrato&quot;</strong> hasta 4 créditos en 1 y revisar el <strong>Cotejo de Póliza de Seguro de Vida ($35,000 MXN)</strong>.</td></tr>
 <tr><td><strong>10</strong></td><td><strong>Prevención PLD/FT (UIF · ONU · OFAC (Bloqueo PLD/FT) y SAT 69-B (Lista Fiscal EFOS))</strong></td><td>Permite <strong>&quot;Ingestar Lista Oficial&quot;</strong> (69-B, UIF, OFAC), <strong>&quot;Previsualizar&quot;</strong>, <strong>&quot;Sellar e Ingresar a Base de Datos&quot;</strong>, ejecutar el barrido de cartera e inversionistas, descargar el acta para la CNBV y dictaminar alertas.</td></tr>
@@ -142,7 +142,7 @@
 <li><strong>Segundo paso (2FA):</strong></li>
 </ol>
 <ul>
-<li><strong>Dirección General / Administrador y Oficial de Cumplimiento (Roles Críticos):</strong> Código <strong>TOTP de 6 dígitos</strong> generado por <strong>App Autenticadora</strong> (Google Authenticator o Microsoft Authenticator, estándar RFC 6238), eliminando riesgos de clonación de chip SMS.</li>
+<li><strong>Dirección General / Administrador y Oficial de Cumplimiento (Roles Críticos):</strong> Código <strong>TOTP de 6 dígitos</strong> generado por <strong>App Autenticadora</strong> (Google Authenticator o Microsoft Authenticator, estándar App Autenticadora (Google / Microsoft)), eliminando riesgos de clonación de chip SMS.</li>
 <li><strong>Promotores en Campo:</strong> Código <strong>SMS de 6 dígitos</strong> enviado al teléfono celular registrado (con 8 códigos de respaldo de emergencia en caso de no tener señal).</li>
 </ul>
 <hr/>
@@ -170,7 +170,7 @@
 <ul>
 <li><strong>Nombre Completo:</strong> (ej. <em>Alma Operadora Cruse</em>).</li>
 <li><strong>Correo Institucional:</strong> (ej. <code>alma@cruse.com.mx</code>).</li>
-<li><strong>Rol de Acceso (RBAC):</strong> Selecciona <strong>Dirección / Administrador General</strong>, <strong>Oficial de Cumplimiento / Operaciones</strong> o <strong>Promotor en Campo</strong>.</li>
+<li><strong>Permisos por Perfil:</strong> Selecciona <strong>Dirección / Administrador General</strong>, <strong>Oficial de Cumplimiento / Operaciones</strong> o <strong>Promotor en Campo</strong>.</li>
 <li><strong>Teléfono Móvil de Respaldo (10 dígitos / +52 — Promotores en campo):</strong> Escribe el número celular del colaborador donde recibirá sus códigos SMS (ej. <code>+526141965449</code>).</li>
 </ul>
 <ol>
@@ -183,7 +183,7 @@
 </ol>
 <ul>
 <li><strong>Para actualizar su número celular de recepción de SMS:</strong> Haz clic en el enlace azul <strong>&quot;Cambiar Celular&quot;</strong> debajo de su correo, escribe el nuevo número (ej. <code>+524777241148</code>) y presiona <strong>&quot;Guardar&quot;</strong>.</li>
-<li><strong>Para cambiar su Rol:</strong> Selecciona el nuevo puesto directamente en el desplegable de la columna <strong>&quot;Rol RBAC&quot;</strong>.</li>
+<li><strong>Para cambiar su Rol:</strong> Selecciona el nuevo puesto directamente en el desplegable de la columna <strong>&quot;Permisos por Perfil&quot;</strong>.</li>
 <li><strong>Para entregarle una nueva contraseña temporal:</strong> Presiona el botón amarillo <strong>&quot;Clave Temp&quot;</strong>.</li>
 <li><strong>Para regenerar sus 8 códigos de emergencia:</strong> Presiona el botón azul <strong>&quot;Resetear 2FA / Códigos&quot;</strong>.</li>
 </ul>
@@ -264,7 +264,7 @@
 <h2>7.1 Guía Paso a Paso: Fondeo e Inversionistas (Base Comercial <code>365/30.4</code>, Split de Tramos e ISR <code>0.5%</code>, <code>0.9%</code>, <code>20%</code> o Exento)</h2>
 <p>Para registrar un nuevo inversionista y emitir su pagaré, simular tramos partidos o ejecutar el corte mensual:</p>
 <ol>
-<li>Haz clic en la pestaña <strong>'7. Inversionistas y Pagarés'</strong> (<em>Fondeo e Inversionistas 3FN v4</em>).</li>
+<li>Haz clic en la pestaña <strong>'7. Inversionistas y Pagarés'</strong> (<em>Fondeo e Inversionistas Base de Datos Estructurada</em>).</li>
 <li>Presiona el botón <strong>'+ Nuevo Inversionista'</strong>.</li>
 <li>Llena los campos <strong>'Nombre'</strong>, <strong>'Capital Inicial ($)'</strong>, <strong>'Tasa Anual'</strong> y selecciona la <strong>Convención de Días</strong> (<strong><code>365/30.4</code></strong> comercial de la Lic. Alma o <code>360/30</code> estándar) y el esquema de <strong>Retención de ISR</strong> (<strong><code>0.5%</code></strong>, <strong><code>0.9%</code></strong>, <strong><code>20%</code></strong> sobre intereses o <strong><code>Exento 0.0%</code></strong>).</li>
 </ol>
@@ -283,7 +283,7 @@
 <p>Para aplicar una licencia sin goce de sueldo, renovar créditos liberando capacidad de descuento LFT o emitir el padrón de seguro y la póliza contable:</p>
 <ol>
 <li>En la pestaña <strong>'6. Cobranza y Licencias'</strong>, busca el expediente en la barra de búsqueda superior.</li>
-<li><strong>Para una Licencia:</strong> Selecciona <strong>'Suspensión Temporal'</strong>, elige las quincenas de aplicación, anota el motivo en el cuadro de notas y presiona <strong>'Confirmar y Sellar WORM'</strong>. El crédito pasará a estado amarillo (<strong><code>PAUSA LICENCIA S/GOCE</code></strong>) sin generar recargos moratorios. <em>(Cuando el trabajador regrese a laborar, presiona <strong>'Reactivar Nómina'</strong>).</em></li>
+<li><strong>Para una Licencia:</strong> Selecciona <strong>'Suspensión Temporal'</strong>, elige las quincenas de aplicación, anota el motivo en el cuadro de notas y presiona <strong>'Confirmar y Sellar Registro Inmutable'</strong>. El crédito pasará a estado amarillo (<strong><code>PAUSA LICENCIA S/GOCE</code></strong>) sin generar recargos moratorios. <em>(Cuando el trabajador regrese a laborar, presiona <strong>'Reactivar Nómina'</strong>).</em></li>
 <li><strong>Para una Renovación o Reestructura N-a-1 con Liberación de Capacidad DTI (Tope <code>30% LFT</code>):</strong></li>
 </ol>
 <ul>
@@ -292,7 +292,7 @@
 </ul>
 <p><code>Ingreso Neto Ajustado = Ingreso Neto Actual + Descuento Quincenal Liberado de Créditos a Liquidar</code></p>
 <ul>
-<li><em>Ejemplo numérico real:</em> Si un trabajador percibe <code>$10,000.00 MXN</code> netos quincenales (tope legal <code>30% LFT</code> = <code>$3,000.00 MXN</code>), ya tiene un descuento vigente de <code>$1,800.00 MXN</code> que será liquidado en la renovación y solicita un nuevo crédito con cuota de <code>$2,200.00 MXN</code>, el sistema libera primero los <code>$1,800.00 MXN</code> (<code>DTI post-renovación = 22.00% &lt;= 30.00%</code>), valida que el monto del nuevo contrato cubra el saldo insoluto real, liquida los contratos previos en <code>$0.00</code> con clave <strong><code>RV</code></strong> y estampa el sello forense WORM <strong><code>DTI_CAPACITY_RELEASED_FOR_RENEWAL</code></strong>. <em>(Por regla de negocio, los créditos Express aparecen bloqueados para reestructura).</em></li>
+<li><em>Ejemplo numérico real:</em> Si un trabajador percibe <code>$10,000.00 MXN</code> netos quincenales (tope legal <code>30% LFT</code> = <code>$3,000.00 MXN</code>), ya tiene un descuento vigente de <code>$1,800.00 MXN</code> que será liquidado en la renovación y solicita un nuevo crédito con cuota de <code>$2,200.00 MXN</code>, el sistema libera primero los <code>$1,800.00 MXN</code> (<code>DTI post-renovación = 22.00% &lt;= 30.00%</code>), valida que el monto del nuevo contrato cubra el saldo insoluto real, liquida los contratos previos en <code>$0.00</code> con clave <strong><code>RV</code></strong> y estampa el sello forense Registro Inmutable <strong><code>DTI_CAPACITY_RELEASED_FOR_RENEWAL</code></strong>. <em>(Por regla de negocio, los créditos Express aparecen bloqueados para reestructura).</em></li>
 </ul>
 <ol>
 <li><strong>Padrón de Aseguradora (<code>$35,000 M.N.</code>) y Póliza Contable Aspel COI:</strong></li>
@@ -373,21 +373,21 @@
 <li>Selecciona el archivo CSV (69-B, UIF, OFAC) haciendo clic en <strong>'Seleccionar archivo CSV/TXT...'</strong> (o pega el listado en el recuadro).</li>
 <li>Presiona <strong>'Previsualizar'</strong> para confirmar el número de registros detectados y luego presiona el botón verde <strong>'Sellar e Ingresar a Base de Datos'</strong>.</li>
 <li><strong>Para revisar toda la cartera:</strong> Presiona el botón superior derecho <strong>'Ejecutar Barrido Integral (Cartera + Fondeo)'</strong> y enseguida haz clic en <strong>'Descargar Acta CNBV/UIF'</strong> para guardar el certificado oficial de cumplimiento.</li>
-<li><strong>Para resolver una alerta:</strong> En la tabla de alertas, haz clic en el botón <strong>'Dictaminar'</strong>, selecciona la resolución (<em>Confirmar Bloqueo Definitivo</em>, <em>Autorizado con Debida Diligencia Reforzada</em> o <em>Descartar por Homonimia</em>), escribe la justificación y presiona <strong>'Firmar y Sellar Dictamen WORM'</strong>.</li>
+<li><strong>Para resolver una alerta:</strong> En la tabla de alertas, haz clic en el botón <strong>'Dictaminar'</strong>, selecciona la resolución (<em>Confirmar Bloqueo Definitivo</em>, <em>Autorizado con Debida Diligencia Reforzada</em> o <em>Descartar por Homonimia</em>), escribe la justificación y presiona <strong>'Firmar y Sellar Dictamen Inmutable'</strong>.</li>
 </ol>
 <hr/>
 <h2>8.2 Guía Paso a Paso: Bitácora Forense de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV)</h2>
 <ol>
 <li>Haz clic en la pestaña <strong>'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'</strong>.</li>
 <li>Filtra por tipo de movimiento en el desplegable o escribe el correo del usuario en el buscador para inspeccionar la fecha, hora exacta, dirección IP y acción realizada.</li>
-<li>Presiona el botón verde superior derecho <strong>'Verificar Integridad SHA-256'</strong> para mostrar al auditor el sello verde que certifica que ningún registro histórico ha sido alterado.</li>
+<li>Presiona el botón verde superior derecho <strong>'Verificar Integridad'</strong> para mostrar al auditor el sello verde que certifica que ningún registro histórico ha sido alterado.</li>
 </ol>
 <hr/>
 <h3>✅ Checklist de Dominio del Día 4</h3>
 <ul>
 <li>[ ] El Oficial de Cumplimiento entró a <strong>'Prevención PLD/FT'</strong>, fue a <strong>'Ingestar Lista Oficial'</strong>, seleccionó un archivo CSV (69-B, UIF, OFAC), presionó <strong>'Previsualizar'</strong> y luego <strong>'Sellar e Ingresar a Base de Datos'</strong>.</li>
 <li>[ ] El Oficial de Cumplimiento ejecutó el <strong>'Barrido Integral (Cartera + Fondeo)'</strong>, descargó el <strong>Acta CNBV/UIF</strong> y dictaminó una alerta pendiente.</li>
-<li>[ ] Dirección y Cumplimiento consultaron la <strong>'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'</strong> y validaron el sello verde con el botón <strong>'Verificar Integridad SHA-256'</strong>.</li>
+<li>[ ] Dirección y Cumplimiento consultaron la <strong>'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'</strong> y validaron el sello verde con el botón <strong>'Verificar Integridad'</strong>.</li>
 </ul>
 <hr/>
 <h1>🚀 DÍA 5 (SECCIÓN 4): LOS 5 MÓDULOS EJECUTIVOS, MAPEO DE LOS 10 PUNTOS DE LA VISIÓN EJECUTIVA Y ASISTENTE IA 24/7</h1>
@@ -412,7 +412,7 @@
 <p>Guía de verificación directa para demostrar ante auditores de <strong>ASOFOM / CNBV</strong> e inversionistas exactamente en qué pantalla y columna del Portal vive cada compromiso contractual:</p>
 <table><thead><tr><th>Código</th><th>Punto de la Visión Ejecutiva</th><th>Ubicación Exacta en el Portal para Demostración en Vivo</th></tr></thead><tbody>
 <tr><td><strong>Punto C.1</strong></td><td><strong>Consolidación como SOFOM de Alta Calidad</strong></td><td>Se visualiza en <strong>'Dashboard Cartera'</strong> y en <strong>'Suite Ejecutiva → 1. Pitch Inversionistas (Láminas 1 y 2)'</strong>, operando sobre una base de datos central única que sustituye al 100% los archivos de Excel.</td></tr>
-<tr><td><strong>Punto C.2</strong></td><td><strong>Certificación y Calificación ASOFOM</strong></td><td>Se visualiza en la pestaña <strong>'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'</strong> mediante el botón verde <strong>'Verificar Integridad SHA-256'</strong> y en <strong>'Prevención PLD/FT'</strong> mediante el botón <strong>'Descargar Acta CNBV/UIF'</strong>.</td></tr>
+<tr><td><strong>Punto C.2</strong></td><td><strong>Certificación y Calificación ASOFOM</strong></td><td>Se visualiza en la pestaña <strong>'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'</strong> mediante el botón verde <strong>'Verificar Integridad'</strong> y en <strong>'Prevención PLD/FT'</strong> mediante el botón <strong>'Descargar Acta CNBV/UIF'</strong>.</td></tr>
 <tr><td><strong>Punto C.3</strong></td><td><strong>Trayectoria e Historia Institucional (más de 15 ciclos anuales de operación)</strong></td><td>Se visualiza en <strong>'Dashboard Cartera'</strong> y en <strong>'Fondeo e Inversionistas'</strong>, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo.</td></tr>
 <tr><td><strong>Punto C.4</strong></td><td><strong>Semáforo de Morosidad y Supervisión por 3 Hubs</strong></td><td>Se visualiza en el <strong>Dashboard Financiero ('Dashboard Cartera')</strong>, columna <strong>'Salud del Crédito / Semáforo'</strong> con íconos <strong>🟢 Verde</strong>, <strong>🟡 Amarillo</strong> y <strong>🔴 Rojo</strong>, y en los botones superiores de filtro por <strong>Chihuahua</strong>, <strong>León</strong> y <strong>Cancún</strong>.</td></tr>
 <tr><td><strong>Punto C.5</strong></td><td><strong>Enfoque en Crédito de Nómina Humano y Tecnológico</strong></td><td>Se visualiza en el <strong>Buzón Pre-Solicitudes</strong>, en el <strong>Escáner Móvil</strong> de promotores y en el <strong>'Asistente IA 24/7'</strong> (público e interno), que agilizan la atención al trabajador sin trámites engorrosos.</td></tr>

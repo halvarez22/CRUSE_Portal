@@ -179,7 +179,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
     const lines = [
       `CARTA DE BIENVENIDA Y ENTREGA FUERA DE BANDA (OUT-OF-BAND) — MICROFINANCIERA CRUSE`,
       `Operador: ${oneTimeBundle.targetName} (${oneTimeBundle.targetEmail})`,
-      `Rol RBAC: ${oneTimeBundle.targetRole}`,
+      `Permisos por Perfil: ${oneTimeBundle.targetRole}`,
       oneTimeBundle.registeredPhone
         ? `Teléfono Móvil Registrado para Código SMS 2FA: ${oneTimeBundle.registeredPhone}`
         : null,
@@ -247,7 +247,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Rol de Acceso (RBAC)</label>
+              <label className="block text-slate-300 font-semibold mb-1">Permisos por Perfil</label>
               <div className="relative">
                 <Shield className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <select
@@ -282,7 +282,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
             <div className="p-3 rounded-xl bg-[#00D1FF]/10 border border-[#00D1FF]/25 text-[11px] text-slate-300 space-y-1">
               <div className="font-semibold text-[#00D1FF] flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5" />
-                <span>Doble Factor por SMS sin Instalar Aplicaciones</span>
+                <span>App Autenticadora TOTP (Dirección/Control) · SMS (Promotor)</span>
               </div>
               <p>
                 El sistema enviará un código SMS de 6 dígitos al teléfono móvil registrado cada vez que el colaborador inicie sesión y le pedirá cambiar su contraseña temporal en el primer ingreso.
@@ -323,8 +323,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
               <thead className="bg-white/5 border-b border-white/10 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Operador & Celular SMS</th>
-                  <th className="py-3 px-4">Rol RBAC</th>
-                  <th className="py-3 px-4">Estado 2FA SMS</th>
+                  <th className="py-3 px-4">Permisos por Perfil</th>
+                  <th className="py-3 px-4">Estado 2FA</th>
                   <th className="py-3 px-4">Estado</th>
                   <th className="py-3 px-4 text-right">Acciones ABC (Kill-Switch)</th>
                 </tr>
@@ -377,7 +377,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
                         <select
                           disabled={isSelf}
                           value={u.role}
-                          onChange={(e) => handlePatchUser(u, { role: e.target.value as UserRole }, `Cambio de rol RBAC a ${e.target.value}`)}
+                          onChange={(e) => handlePatchUser(u, { role: e.target.value as UserRole }, `Cambio de perfil de acceso a ${e.target.value}`)}
                           className="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-slate-900 text-[#00D1FF] border border-[#00D1FF]/30 disabled:opacity-60"
                         >
                           <option value="admin">ADMIN / DIRECCIÓN</option>

@@ -171,7 +171,7 @@ export const ManualOverrideModal: React.FC<ManualOverrideModalProps> = ({
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 font-semibold">Cancelar</button>
             <button type="submit" disabled={!canSubmit} className="px-4 py-2 rounded-xl bg-[#249E82] hover:bg-[#1fa789] text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed">
-              {submitting ? 'Sellando en WORM...' : 'Confirmar Desglose Manual'}
+              {submitting ? 'Sellando en Registro Inmutable...' : 'Confirmar Desglose Manual'}
             </button>
           </div>
         </form>

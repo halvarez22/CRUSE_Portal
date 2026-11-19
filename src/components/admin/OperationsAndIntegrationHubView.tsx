@@ -18,6 +18,7 @@ import {
   OperationsIntegrationHubOverview,
 } from '../../types';
 import { FinancialParametersAdminCard } from './FinancialParametersAdminCard';
+import { getStatusLabel, sanitizeDisplayLabel } from '../../utils/uiStatusLabels';
 
 interface OperationsAndIntegrationHubViewProps {
   session: AuthSession;
@@ -150,17 +151,17 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
       if (!res.ok) {
         setFeedback({
           type: 'err',
-          text: `🛡️ Defensa Zero-Trust Activa: ${data.error}`,
+          text: `🛡️ Defensa Conexión Segura Activa: ${data.error}`,
         });
         return;
       }
       if (data.overview) setOverview(data.overview as OperationsIntegrationHubOverview);
       setFeedback({
         type: 'ok',
-        text: `✅ Conector ${code} sincronizado con certificado mTLS + firma HMAC-SHA256 válida dentro de la ventana de 300s.`,
+        text: `✅ Conector ${code} sincronizado con Conexión Segura y Firma Digital Segura válida dentro de la ventana de 300s.`,
       });
     } catch {
-      setFeedback({ type: 'err', text: 'Error probando conector Zero-Trust.' });
+      setFeedback({ type: 'err', text: 'Error probando conector Conexión Segura.' });
     }
   };
 
@@ -417,7 +418,7 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
         </div>
       </div>
 
-      {/* Tabla de Conectores Internos y Bus Zero-Trust */}
+      {/* Tabla de Conectores Internos y Bus Conexión Segura */}
       <div className="rounded-3xl glass-panel border border-white/10 overflow-hidden">
         <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
           <Network className="w-4 h-4 text-emerald-400" />
@@ -433,7 +434,7 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
                 <th className="py-3 px-4">Hub</th>
                 <th className="py-3 px-4">Formato / Transporte</th>
                 <th className="py-3 px-4">Sincronizaciones</th>
-                <th className="py-3 px-4 text-right">Pruebas de Defensa Zero-Trust</th>
+                <th className="py-3 px-4 text-right">Verificación de Conexión Segura</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -441,11 +442,13 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
                 <tr key={c.id} className="hover:bg-white/[0.02]">
                   <td className="py-3 px-4">
                     <div className="font-mono font-bold text-[#00D1FF]">{c.connectorCode}</div>
-                    <div className="text-slate-200 font-semibold">{c.displayName}</div>
+                    <div className="text-slate-200 font-semibold">
+                      {sanitizeDisplayLabel(c.displayName)}
+                    </div>
                   </td>
                   <td className="py-3 px-4 font-bold text-emerald-300">{c.hubRegion}</td>
                   <td className="py-3 px-4 font-mono text-[11px] text-slate-300">
-                    {c.defaultLayoutFormat} · {c.transportMode}
+                    {c.defaultLayoutFormat} · {getStatusLabel(c.transportMode)}
                   </td>
                   <td className="py-3 px-4 font-mono font-bold text-white">
                     {c.totalExchangesCount}

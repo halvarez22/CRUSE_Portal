@@ -78,7 +78,7 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
 
       onNotifyFeedback({
         type: 'success',
-        message: `Layout Oficial .TXT SITI 41 Columnas descargado (${data.totalRows} registros separados por ';' y CRLF) | SHA-256: ${data.sha256Hash?.slice(0, 16)}...`,
+        message: `Layout Oficial .TXT SITI 41 Columnas descargado (${data.totalRows} registros separados por ';' y CRLF) | Folio de Integridad: ${data.sha256Hash?.slice(0, 16)}...`,
       });
     } catch (err: unknown) {
       onNotifyFeedback({
@@ -161,7 +161,7 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
         setLastDryRunPreview(null);
         onNotifyFeedback({
           type: 'success',
-          message: `Reporte Formal de Operación Fraccionada persistido (${firstHit.reportId}) por $${firstHit.accumulatedAmountMxn} MXN ($${firstHit.accumulatedAmountUsd} USD) y sellado en WORM.`,
+          message: `Reporte Formal de Operación Fraccionada persistido (${firstHit.reportId}) por $${firstHit.accumulatedAmountMxn} MXN ($${firstHit.accumulatedAmountUsd} USD) y Sellado en Registro Inmutable.`,
         });
         await onRefreshRequested();
       }
@@ -282,7 +282,7 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
       if (!res.ok) throw new Error(data.error || 'Error concediendo prórroga extraordinaria CCC');
       onNotifyFeedback({
         type: 'success',
-        message: `Prórroga Extraordinaria CCC (+30 días naturales) sellada en WORM (CCC_EXTRAORDINARY_EXTENSION_GRANTED). Plazo 60d (${data.originalDeadline?.slice(0, 10)}) -> Nuevo Plazo 90d (${data.newDeadline?.slice(0, 10)}) | Hash Expediente: ${data.expedienteSha256?.slice(0, 16)}...`,
+        message: `Prórroga Extraordinaria CCC (+30 días naturales) sellada en Registro Inmutable (CCC_EXTRAORDINARY_EXTENSION_GRANTED). Plazo 60d (${data.originalDeadline?.slice(0, 10)}) -> Nuevo Plazo 90d (${data.newDeadline?.slice(0, 10)}) | Hash Expediente: ${data.expedienteSha256?.slice(0, 16)}...`,
       });
       setSelectedReportForCcc(null);
       setExtensionNotes('');
@@ -532,7 +532,7 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
                   disabled={submitting}
                   className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-bold text-[11px]"
                 >
-                  Prórroga Extraordinaria +30 Días (90d WORM)
+                  Prórroga Extraordinaria +30 Días (90d Registro Inmutable)
                 </button>
               )}
               {!selectedReportForCcc.isEscalated24h && (
