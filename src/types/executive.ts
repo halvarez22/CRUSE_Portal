@@ -8,7 +8,7 @@ import { AmortizationRow, ProductId } from './index';
 
 export type HubRegion = 'CHIHUAHUA' | 'LEON' | 'CANCUN';
 export type HubFilterOption = 'ALL' | HubRegion;
-export type DelinquencySemaphore = 'VERDE' | 'AMARILLO' | 'ROJO';
+export type DelinquencySemaphore = 'VERDE' | 'AMARILLO' | 'NARANJA' | 'ROJO';
 export type RiskLevelClassification = 'BAJO' | 'MEDIO' | 'ALTO';
 
 export type ExecutiveTabId =

@@ -210,8 +210,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">+ Nuevo Usuario (Alta 2FA SMS)</h2>
-              <p className="text-[11px] text-slate-400">Código SMS al Celular Registrado (Cero Apps Externas)</p>
+              <h2 className="text-sm font-bold text-white">+ Nuevo Usuario (Alta 2FA TOTP / SMS)</h2>
+              <p className="text-[11px] text-slate-400">App Autenticadora TOTP (Dirección/Control) · SMS (Promotor) · SoD Activo</p>
             </div>
           </div>
 
@@ -386,15 +386,18 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ session 
                         </select>
                       </td>
                       <td className="py-3.5 px-4 space-y-1">
-                        {u.totpEnrolled ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#00D1FF]/10 text-[#00D1FF] border border-[#00D1FF]/30">
-                            <Smartphone className="w-3 h-3" /> 2FA SMS ACTIVO
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                            <Smartphone className="w-3 h-3" /> PENDIENTE 1ER SMS
-                          </span>
-                        )}
+                        {(() => {
+                          const usesTotp = u.role === 'admin' || u.role === 'oficial_cumplimiento';
+                          return u.totpEnrolled ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#00D1FF]/10 text-[#00D1FF] border border-[#00D1FF]/30">
+                              <Smartphone className="w-3 h-3" /> {usesTotp ? '2FA TOTP ACTIVO' : '2FA SMS ACTIVO'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                              <Smartphone className="w-3 h-3" /> {usesTotp ? 'PENDIENTE TOTP' : 'PENDIENTE 1ER SMS'}
+                            </span>
+                          );
+                        })()}
                         {u.mustChangePassword && <div className="text-[10px] text-amber-400 font-mono">Cambio clave pendiente</div>}
                       </td>
                       <td className="py-3.5 px-4">

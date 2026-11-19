@@ -49,7 +49,7 @@ interface DecimalHubAccumulator {
   capitalColocadoDec: Decimal;
   capitalVigenteDec: Decimal;
   carteraVencidaDec: Decimal;
-  semaphoreCounts: { VERDE: number; AMARILLO: number; ROJO: number };
+  semaphoreCounts: { VERDE: number; AMARILLO: number; NARANJA: number; ROJO: number; LICENCIA: number };
 }
 
 export function decimalToJsonNumberStrict(dec: Decimal): number {
@@ -114,7 +114,12 @@ export function computeLoanSemaphore(
     return 'ROJO';
   }
 
-  // Mora temprana/media (1..89 DPD) o Reestructurado en Observación CNBV (< 3 pagos sostenidos)
+  // Mora media / Etapa 2 (31..89 DPD)
+  if (dpd >= 31) {
+    return 'NARANJA';
+  }
+
+  // Mora temprana (1..30 DPD) o Reestructurado en Observación CNBV (< 3 pagos sostenidos)
   // Nota B.1: LICENCIA_SIN_GOCE y trámites en curso NO se clasifican como mora crediticia.
   const inSustainedObservation = originatedFromArrearsRestructure && sustainedPaymentsCompletedCount < 3;
   if (dpd >= 1 || inSustainedObservation) {
@@ -157,21 +162,21 @@ export function aggregateDashboardKpisDeterministic(
       capitalColocadoDec: new Decimal('0.00'),
       capitalVigenteDec: new Decimal('0.00'),
       carteraVencidaDec: new Decimal('0.00'),
-      semaphoreCounts: { VERDE: 0, AMARILLO: 0, ROJO: 0 },
+      semaphoreCounts: { VERDE: 0, AMARILLO: 0, NARANJA: 0, ROJO: 0, LICENCIA: 0 },
     },
     LEON: {
       loansCount: 0,
       capitalColocadoDec: new Decimal('0.00'),
       capitalVigenteDec: new Decimal('0.00'),
       carteraVencidaDec: new Decimal('0.00'),
-      semaphoreCounts: { VERDE: 0, AMARILLO: 0, ROJO: 0 },
+      semaphoreCounts: { VERDE: 0, AMARILLO: 0, NARANJA: 0, ROJO: 0, LICENCIA: 0 },
     },
     CANCUN: {
       loansCount: 0,
       capitalColocadoDec: new Decimal('0.00'),
       capitalVigenteDec: new Decimal('0.00'),
       carteraVencidaDec: new Decimal('0.00'),
-      semaphoreCounts: { VERDE: 0, AMARILLO: 0, ROJO: 0 },
+      semaphoreCounts: { VERDE: 0, AMARILLO: 0, NARANJA: 0, ROJO: 0, LICENCIA: 0 },
     },
   };
 
@@ -179,7 +184,7 @@ export function aggregateDashboardKpisDeterministic(
   let capitalVigenteDec = new Decimal('0.00');
   let carteraVencidaDec = new Decimal('0.00');
   let creditosActivos = 0;
-  const semaphoreCounts = { VERDE: 0, AMARILLO: 0, ROJO: 0 };
+  const semaphoreCounts = { VERDE: 0, AMARILLO: 0, NARANJA: 0, ROJO: 0, LICENCIA: 0 };
 
   const seenExpedientesGlobal = new Set<string>();
 
@@ -221,6 +226,9 @@ export function aggregateDashboardKpisDeterministic(
     hb.capitalVigenteDec = hb.capitalVigenteDec.plus(currentBalDec);
     hb.carteraVencidaDec = hb.carteraVencidaDec.plus(overdueBalDec);
     hb.semaphoreCounts[sem] += 1;
+    if (r.suspension_reason === 'LICENCIA_SIN_GOCE') {
+      hb.semaphoreCounts.LICENCIA += 1;
+    }
 
     if (hubFilter && hub !== hubFilter) {
       continue;
@@ -230,6 +238,9 @@ export function aggregateDashboardKpisDeterministic(
     capitalVigenteDec = capitalVigenteDec.plus(currentBalDec);
     carteraVencidaDec = carteraVencidaDec.plus(overdueBalDec);
     semaphoreCounts[sem] += 1;
+    if (r.suspension_reason === 'LICENCIA_SIN_GOCE') {
+      semaphoreCounts.LICENCIA += 1;
+    }
 
     if (isActiveOrCaptured) {
       creditosActivos += 1;

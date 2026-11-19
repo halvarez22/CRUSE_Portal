@@ -9,7 +9,9 @@ export interface HubMetricsSummary {
   semaphoreCounts: {
     VERDE: number;
     AMARILLO: number;
+    NARANJA?: number;
     ROJO: number;
+    LICENCIA?: number;
   };
 }
 
@@ -21,7 +23,9 @@ export interface DashboardKPIs {
   semaphoreCounts?: {
     VERDE: number;
     AMARILLO: number;
+    NARANJA?: number;
     ROJO: number;
+    LICENCIA?: number;
   };
   hubBreakdown?: Record<HubRegion, HubMetricsSummary>;
 }

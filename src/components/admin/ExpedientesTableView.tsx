@@ -378,8 +378,8 @@ export const ExpedientesTableView: React.FC<ExpedientesTableViewProps> = ({ expe
                   </td>
                 </tr>
               ) : (
-                filteredAndSorted.map((exp) => (
-                  <tr key={exp.id} className="hover:bg-white/[0.03] transition-colors">
+                filteredAndSorted.map((exp, idx) => (
+                  <tr key={`${exp.id}-${exp.createdAt || idx}`} className="hover:bg-white/[0.03] transition-colors">
                     <td className="py-3 px-4 font-mono text-[#00D1FF] font-semibold">{exp.id}</td>
                     <td className="py-3 px-4 font-semibold text-slate-300">{exp.convenio || 'STSGECH'}</td>
                     <td className="py-3 px-4 font-medium text-white">{exp.fullName}</td>
@@ -396,16 +396,16 @@ export const ExpedientesTableView: React.FC<ExpedientesTableViewProps> = ({ expe
                         {exp.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => {
                           setSelectedExpedientId(exp.id);
                           setIsModalOpen(true);
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-[#00D1FF]/10 hover:bg-[#00D1FF]/20 text-[#00D1FF] font-semibold inline-flex items-center gap-1 transition-colors"
+                        className="px-2.5 py-1 rounded-lg bg-[#00D1FF]/10 hover:bg-[#00D1FF]/20 text-[#00D1FF] font-semibold inline-flex items-center gap-1 whitespace-nowrap transition-colors"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-3.5 h-3.5 shrink-0" />
                         <span>Ver Detalle</span>
                       </button>
                     </td>

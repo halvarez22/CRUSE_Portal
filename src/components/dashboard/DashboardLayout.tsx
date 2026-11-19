@@ -64,22 +64,32 @@ export const DashboardLayout: React.FC = () => {
             </p>
           </div>
 
-          {/* Semáforo Ejecutivo de Morosidad (Verde, Amarillo, Rojo) */}
+          {/* Semáforo Ejecutivo de Morosidad (4 Niveles DPD + Licencias Separadas — Guardrail 5 APO-073) */}
           <div className="flex flex-wrap items-center gap-2 bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span className="text-slate-300 font-medium">Al Corriente:</span>
+              <span className="text-slate-300 font-medium">Al Corriente (0d):</span>
               <strong className="text-emerald-400 font-bold">{semCounts.VERDE}</strong>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-              <span className="text-slate-300 font-medium">Preventivo / Licencia:</span>
+              <span className="text-slate-300 font-medium">Mora Temprana (1–30d):</span>
               <strong className="text-amber-400 font-bold">{semCounts.AMARILLO}</strong>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+              <span className="text-slate-300 font-medium">Mora Media (31–89d):</span>
+              <strong className="text-orange-400 font-bold">{semCounts.NARANJA ?? 0}</strong>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-              <span className="text-slate-300 font-medium">Morosidad / Congelado:</span>
+              <span className="text-slate-300 font-medium">Cartera Vencida (≥90d):</span>
               <strong className="text-rose-400 font-bold">{semCounts.ROJO}</strong>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-700/30 border border-slate-500/30 text-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+              <span className="text-slate-300 font-medium">En Licencia / Trámite:</span>
+              <strong className="text-slate-100 font-bold">{semCounts.LICENCIA ?? 0}</strong>
             </div>
           </div>
         </header>

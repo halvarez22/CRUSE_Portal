@@ -350,8 +350,16 @@ expedientesRouter.get('/expedientes', requireAuth('expedientes:list'), async (re
       ORDER BY e.created_at DESC, e.id DESC
     `);
 
+    // Guardrail 3 (CRUSE-APO-2026-073): Deduplicar por e.id para evitar filas repetidas en relaciones 1:N con loan_accounts
+    const seenExpedienteIds = new Set<string>();
+    const uniqueRows = result.rows.filter((r) => {
+      if (!r.id || seenExpedienteIds.has(r.id)) return false;
+      seenExpedienteIds.add(r.id);
+      return true;
+    });
+
     const expedientes: ExpedienteItem[] = await Promise.all(
-      result.rows.map(async (r) => {
+      uniqueRows.map(async (r) => {
         const reqAmt = sanitizeDecimalString(String(r.requested_amount), '0').toNumber();
         const fortPay = sanitizeDecimalString(String(r.fortnightly_payment ?? '0'), '0').toNumber();
         const termF = sanitizeDecimalString(String(r.term_fortnights), '24').toNumber();

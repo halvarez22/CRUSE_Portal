@@ -313,7 +313,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-[#00D1FF]" />
-                <h4 className="text-sm font-bold text-white">Dictamen Inmutable del Oficial de Cumplimiento (WORM)</h4>
+                <h4 className="text-sm font-bold text-white">Dictamen Inmutable del Oficial de Cumplimiento</h4>
               </div>
               <button onClick={() => setSelectedAlert(null)} className="text-slate-400 hover:text-white">
                 <X className="w-4 h-4" />
@@ -331,9 +331,9 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
                 onChange={(e) => setResolutionStatus(e.target.value as 'CONFIRMED_BLOCKED' | 'CLEARED_EDD' | 'FALSE_POSITIVE')}
                 className="w-full px-3 py-2 rounded-xl glass-input text-xs text-slate-100"
               >
-                <option value="CONFIRMED_BLOCKED" className="bg-slate-900">CONFIRMED_BLOCKED — Confirmar Bloqueo Definitivo (Rechazar Expediente)</option>
-                <option value="CLEARED_EDD" className="bg-slate-900">CLEARED_EDD — Autorizado con Debida Diligencia Reforzada (Liberar)</option>
-                <option value="FALSE_POSITIVE" className="bg-slate-900">FALSE_POSITIVE — Descartar por Homonimia / Falso Positivo (Liberar)</option>
+                <option value="CONFIRMED_BLOCKED" className="bg-slate-900">Confirmar Bloqueo Definitivo (Rechazar Expediente)</option>
+                <option value="CLEARED_EDD" className="bg-slate-900">Autorizado con Debida Diligencia Reforzada (Liberar)</option>
+                <option value="FALSE_POSITIVE" className="bg-slate-900">Descartar por Homonimia / Falso Positivo (Liberar)</option>
               </select>
             </div>
             <div>
@@ -353,7 +353,7 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
                 disabled={resolveLoading}
                 className="px-4 py-2 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold shadow-lg disabled:opacity-50"
               >
-                {resolveLoading ? 'Sellando...' : 'Firmar y Sellar Dictamen WORM'}
+                {resolveLoading ? 'Sellando...' : 'Firmar y Sellar Dictamen Inmutable'}
               </button>
             </div>
           </div>

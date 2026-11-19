@@ -64,7 +64,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           </nav>
 
           {/* Actions & Utilities */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Theme Toggle Button */}
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 
@@ -73,12 +73,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               <button
                 onClick={onOpenClientSelfService}
                 type="button"
-                className="px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 border border-emerald-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
+                className="px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 border border-emerald-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
                 aria-label="Abrir App Cruse para Subir Documentos y Firmar Contrato con Folio"
               >
-                <Smartphone className="w-3.5 h-3.5 text-white" />
-                <span className="hidden lg:inline">Subir mis Documentos (Con Folio)</span>
-                <span className="lg:hidden">App Cruse</span>
+                <Smartphone className="w-3.5 h-3.5 text-white shrink-0" />
+                <span className="hidden xl:inline">Subir mis Documentos (Con Folio)</span>
+                <span className="xl:hidden">App Cruse</span>
               </button>
             )}
 
@@ -86,11 +86,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             <button
               onClick={onOpenInstitutionalAccess}
               type="button"
-              className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#041734] to-[#396CAE] dark:from-[#396CAE] dark:to-[#249E82] text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-2 border border-slate-800/20 dark:border-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
+              className="px-2.5 sm:px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#041734] to-[#396CAE] dark:from-[#396CAE] dark:to-[#249E82] text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 border border-slate-800/20 dark:border-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
               aria-label="Acceso Institucional Seguro con Autenticación de Doble Factor"
             >
-              <Lock className="w-3.5 h-3.5 text-[#00D1FF] dark:text-white" />
-              <span className="hidden sm:inline">Acceso Institucional (2FA)</span>
+              <Lock className="w-3.5 h-3.5 text-[#00D1FF] dark:text-white shrink-0" />
+              <span className="hidden lg:inline">Acceso Institucional (2FA)</span>
+              <span className="hidden sm:inline lg:hidden">Acceso 2FA</span>
               <span className="sm:hidden">2FA</span>
             </button>
 

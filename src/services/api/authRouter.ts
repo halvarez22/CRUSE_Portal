@@ -105,7 +105,7 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     if (!user || !passwordOk || Number(user.active) !== 1) {
       loginPasswordRateLimiter.recordFailure(loginRateKey);
       await auditEventStore.append({
-        actorEmail: email,
+        actorEmail: maskEmailForAudit(email),
         actorRole: 'sistema',
         action: 'LOGIN_FAILURE',
         outcome: 'failure',

@@ -422,7 +422,7 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
         <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
           <Network className="w-4 h-4 text-emerald-400" />
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-white">
-            Conectores Internos y Bus de Integración Zero-Trust (mTLS + HMAC-SHA256 + Ventana 300s)
+            Conectores Internos y Bus de Integración Seguro (Firma Digital y Ventana 300s)
           </h3>
         </div>
         <div className="overflow-x-auto">
@@ -457,7 +457,7 @@ export const OperationsAndIntegrationHubView: React.FC<OperationsAndIntegrationH
                       className="px-3 py-1.5 rounded-xl bg-emerald-600/25 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold inline-flex items-center gap-1"
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>Sync HMAC Válido</span>
+                      <span>Sincronizar Conector</span>
                     </button>
                     {!import.meta.env.PROD && (
                       <button

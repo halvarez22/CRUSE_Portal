@@ -133,7 +133,7 @@ export const MODULE_GUIDES: Readonly<Record<FriendlyGuideModuleId, ModuleGuideIt
   },
   funding: {
     id: 'funding',
-    title: '6. Fondeo, Inversionistas y Póliza Aspel COI',
+    title: '7. Fondeo, Inversionistas y Póliza Aspel COI',
     phaseBadge: 'FASE 1',
     contractRef: 'Contrato Fase 1 — Entregable 1.5 (Control de Inversionistas y Póliza Contable)',
     plainSummary:
@@ -150,7 +150,7 @@ export const MODULE_GUIDES: Readonly<Record<FriendlyGuideModuleId, ModuleGuideIt
   },
   collections: {
     id: 'collections',
-    title: '7. Cobranza, Licencias y Reestructuras',
+    title: '6. Cobranza, Licencias y Reestructuras',
     phaseBadge: 'FASE 1',
     contractRef: 'Contrato Fase 1 — Entregable 1.6 (Gestión de Cartera y Pago Sostenido)',
     plainSummary:

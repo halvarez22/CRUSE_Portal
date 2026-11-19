@@ -209,7 +209,7 @@ export const NationalHubsAndManualTab: React.FC = () => {
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#249E82] to-[#396CAE] hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Descargar Manual Amigable Fase 1 (Guía de los 11 Módulos)</span>
+              <span>Descargar Manual Amigable Fase 1 (Guía de los 13 Módulos)</span>
             </button>
           </div>
         </div>

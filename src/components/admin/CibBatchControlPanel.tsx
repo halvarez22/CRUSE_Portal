@@ -9,6 +9,7 @@ import {
   Hash,
 } from 'lucide-react';
 import { CibExportBatchItem } from '../../types';
+import { getStatusLabel } from '../../utils/uiStatusLabels';
 
 interface CibBatchControlPanelProps {
   token: string;
@@ -226,7 +227,7 @@ export const CibBatchControlPanel: React.FC<CibBatchControlPanelProps> = ({ toke
               <th className="py-2 px-3">Capital / Cuota Quincenal</th>
               <th className="py-2 px-3">Hash SHA-256</th>
               <th className="py-2 px-3">Estado Flujo 3 Pasos</th>
-              <th className="py-2 px-3 text-right">Accióniguiente</th>
+              <th className="py-2 px-3 text-right">Acción Siguiente</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -257,7 +258,7 @@ export const CibBatchControlPanel: React.FC<CibBatchControlPanelProps> = ({ toke
                           : 'bg-amber-500/20 text-amber-300'
                     }`}
                   >
-                    {b.workflowStatus}
+                    {getStatusLabel(b.workflowStatus)}
                     {b.cibConfirmationFolio ? ` (${b.cibConfirmationFolio})` : ''}
                   </span>
                 </td>
@@ -287,7 +288,7 @@ export const CibBatchControlPanel: React.FC<CibBatchControlPanelProps> = ({ toke
                   )}
                   {b.workflowStatus === 'UPLOADED_TO_CIB' && (
                     <span className="text-[11px] text-emerald-400 font-semibold">
-                      Sellado en WORM
+                      Sellado en Registro Inmutable
                     </span>
                   )}
                 </td>

@@ -53,7 +53,10 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
   const [invCapital, setInvCapital] = useState('250000');
   const [invRate, setInvRate] = useState('18');
   const [invType, setInvType] = useState<'SIMPLE' | 'COMPOUND'>('SIMPLE');
-  const [invIsrOption, setInvIsrOption] = useState<'RETENCION_0_9' | 'EXENTO'>('RETENCION_0_9');
+  const [invTaxRegime, setInvTaxRegime] = useState<
+    'SISTEMA_FINANCIERO_ART54' | 'MUTUO_PF_ART160' | 'PERSONA_MORAL_SIN_RETENCION'
+  >('MUTUO_PF_ART160');
+  const [invDayCount, setInvDayCount] = useState<'ACTUAL_365' | 'ACTUAL_365_30_4'>('ACTUAL_365');
   const [creatingInv, setCreatingInv] = useState(false);
 
   const fetchOverview = useCallback(async () => {
@@ -102,8 +105,10 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
           capital: Number(invCapital),
           annualRate: Number(invRate),
           interestType: invType,
-          appliesIsr: invIsrOption === 'RETENCION_0_9' ? 1 : 0,
-          isrRetentionRate: 0.009,
+          taxRegime: invTaxRegime,
+          dayCountConvention: invDayCount,
+          fundingLegalClassification: 'FONDEO_PRIVADO_EXENTO_ART103_LIC',
+          appliesIsr: invTaxRegime === 'PERSONA_MORAL_SIN_RETENCION' ? 0 : 1,
         }),
       });
       const data = await res.json();
@@ -257,16 +262,38 @@ export const FundingManagementView: React.FC<FundingManagementViewProps> = ({ se
               </select>
             </div>
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Régimen de Retención ISR</label>
+              <label className="block text-slate-300 font-semibold mb-1">Régimen Fiscal de Retención ISR</label>
               <select
-                value={invIsrOption}
-                onChange={(e) => setInvIsrOption(e.target.value as 'RETENCION_0_9' | 'EXENTO')}
+                value={invTaxRegime}
+                onChange={(e) =>
+                  setInvTaxRegime(
+                    e.target.value as
+                      | 'SISTEMA_FINANCIERO_ART54'
+                      | 'MUTUO_PF_ART160'
+                      | 'PERSONA_MORAL_SIN_RETENCION'
+                  )
+                }
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/15 text-white"
               >
-                <option value="RETENCION_0_9">Retención ISR: 0.9%</option>
-                <option value="EXENTO">Exento de ISR: 0.0%</option>
+                <option value="MUTUO_PF_ART160">Mutuo Persona Física — 20% sobre Interés (Art. 160 LISR)</option>
+                <option value="SISTEMA_FINANCIERO_ART54">Sistema Financiero — 0.9% / 0.5% sobre Capital (Art. 54 LISR)</option>
+                <option value="PERSONA_MORAL_SIN_RETENCION">Persona Moral / Exento de Retención (0.0%)</option>
               </select>
             </div>
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Convención de Días de Cálculo</label>
+              <select
+                value={invDayCount}
+                onChange={(e) => setInvDayCount(e.target.value as 'ACTUAL_365' | 'ACTUAL_365_30_4')}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/15 text-white"
+              >
+                <option value="ACTUAL_365">Días Reales Calendario (Base 365)</option>
+                <option value="ACTUAL_365_30_4">Convención Mensual Estándar (30.4 días)</option>
+              </select>
+            </div>
+          </div>
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200 leading-relaxed">
+            <strong>Aviso Legal (Art. 103 LIC):</strong> El fondeo con Personas Físicas bajo Mutuo Mercantil está sujeto a las exenciones del Art. 103 de la Ley de Instituciones de Crédito. No constituye captación del público.
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setShowNewModal(false)} className="px-4 py-2 rounded-xl bg-white/10 text-slate-300 font-semibold">

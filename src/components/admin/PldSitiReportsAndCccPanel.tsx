@@ -339,15 +339,17 @@ export const PldSitiReportsAndCccPanel: React.FC<PldSitiReportsAndCccPanelProps>
           </span>
         </h4>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void handleFractionedEvaluation(true)}
-            disabled={submitting}
-            className="px-2.5 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-[11px] font-bold flex items-center gap-1"
-          >
-            <FlaskConical className="w-3.5 h-3.5" />
-            <span>Simular Fraccionadas ($500-$7.5k USD · Read-Only)</span>
-          </button>
+          {!import.meta.env.PROD && (
+            <button
+              type="button"
+              onClick={() => void handleFractionedEvaluation(true)}
+              disabled={submitting}
+              className="px-2.5 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-[11px] font-bold flex items-center gap-1"
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span>Simular Fraccionadas ($500-$7.5k USD · Read-Only)</span>
+            </button>
+          )}
           {lastDryRunPreview && (
             <button
               type="button"

@@ -212,11 +212,11 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
           <div className="flex items-center gap-2.5">
             <FileSpreadsheet className="w-5 h-5 text-[#00D1FF]" />
             <h2 className="text-lg font-bold text-white">
-              Motor Automatizado de Reporte a Círculo de Crédito (`001496_MICROFINANCIERACRUSE`)
+              Motor Automatizado de Reporte a Círculo de Crédito (001496_MICROFINANCIERACRUSE)
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Generación determinista desde PostgreSQL 16 (`READ ONLY`), Cifras de Control exactas con Decimal.js y Sello WORM SHA-256 (RN-05 / RN-06).
+            Generación determinista en modo solo lectura, Cifras de Control exactas y Sello Digital Inmutable (RN-05 / RN-06).
           </p>
         </div>
 
@@ -231,7 +231,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
             onClick={() => setSubTab('history')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${subTab === 'history' ? 'bg-[#396CAE] text-white' : 'text-slate-400 hover:text-white'}`}
           >
-            Historial WORM ({historicalReports.length})
+            Historial Inmutable ({historicalReports.length})
           </button>
           <button
             onClick={() => setSubTab('catalogs')}
@@ -343,7 +343,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#249E82] to-emerald-600 hover:from-[#1f8a71] hover:to-emerald-500 text-white text-xs font-bold shadow-lg shadow-[#249E82]/25 flex items-center gap-2 transition-all"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Sellar y Descargar CSV Oficial (`001496...csv`)</span>
+                  <span>Sellar y Descargar CSV Oficial (001496.csv)</span>
                 </button>
                 <button
                   onClick={() => handleGenerateAndDownload('PIPE_PF')}
@@ -351,7 +351,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
                   className="px-4 py-2 rounded-xl bg-[#396CAE] hover:bg-[#2f5b94] text-white text-xs font-bold flex items-center gap-2 transition-all"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span>Descargar Layout Pipe (`.txt`)</span>
+                  <span>Descargar Layout Pipe (.txt)</span>
                 </button>
                 <button
                   onClick={() => handleGenerateAndDownload('TXT_PM_V5')}
@@ -359,7 +359,7 @@ export const CreditBureauView: React.FC<CreditBureauViewProps> = ({ session }) =
                   className="px-3.5 py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Layout PM v5 (`.txt`)</span>
+                  <span>Layout PM v5 (.txt)</span>
                 </button>
                 <button
                   onClick={() => handleDownloadInsuranceOrCoi('ROSTER')}

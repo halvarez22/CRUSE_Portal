@@ -184,15 +184,17 @@ export const CloudMigrationAndRollbackView: React.FC<CloudMigrationAndRollbackVi
             <span>Ingestar y Sanear Sábana Histórica Excel (Idempotente)</span>
           </button>
 
-          <button
-            type="button"
-            disabled={ingesting}
-            onClick={() => void handleIngestHistoricalExcel(true)}
-            className="px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all"
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Simular Descuadre $0.01 (Prueba Aborto)</span>
-          </button>
+          {!import.meta.env.PROD && (
+            <button
+              type="button"
+              disabled={ingesting}
+              onClick={() => void handleIngestHistoricalExcel(true)}
+              className="px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Simular Descuadre $0.01 (Prueba Aborto)</span>
+            </button>
+          )}
         </div>
       </div>
 
