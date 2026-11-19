@@ -145,7 +145,7 @@ export function validateLegalPaymentCapacityLft110(
       adjustedNetIncome: '0.00',
       capacityReleasedAmount: dReleasedDiscount.toFixed(2),
       netDisbursementCheckAmount: dNetCheck.toFixed(2),
-      errorMessage: 'Excede el límite legal de descuento del 30% conforme al Art. 110 LFT',
+      errorMessage: 'Excede el límite máximo de descuento del 30% conforme al convenio institucional aplicable o Art. 110 Fracc. IV LFT (sector privado)',
     };
   }
 
@@ -164,7 +164,7 @@ export function validateLegalPaymentCapacityLft110(
     capacityReleasedAmount: dReleasedDiscount.toFixed(2),
     netDisbursementCheckAmount: dNetCheck.toFixed(2),
     errorMessage: exceedsLimit
-      ? 'Excede el límite legal de descuento del 30% conforme al Art. 110 LFT'
+      ? 'Excede el límite máximo de descuento del 30% conforme al convenio institucional aplicable o Art. 110 Fracc. IV LFT (sector privado)'
       : null,
   };
 }

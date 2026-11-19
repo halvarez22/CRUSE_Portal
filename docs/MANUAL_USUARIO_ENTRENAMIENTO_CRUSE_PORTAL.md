@@ -1,16 +1,16 @@
-# 📘 MANUAL OFICIAL DE USUARIO, ADMINISTRACIÓN Y GUÍA DE ENTRENAMIENTO (FASE 1)
+﻿# 📘 MANUAL OFICIAL DE USUARIO, ADMINISTRACIÓN Y GUÍA DE ENTRENAMIENTO (FASE 1)
 ## Portal Web Seguro Integral — Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
 
 **Versión:** Edición Institucional Definitiva 2026 (100% No Técnica — Alcance Exclusivo Fase 1: Bloques A, B, C y D — 2FA vía Código SMS al Celular Registrado + Buzón de Pre-Solicitudes y Exportación Excel)  
 **Dirigido a:** Dirección General, Oficial de Cumplimiento, Mesa de Control / Administración y Promotores en Campo  
-**Propósito:** Servir como guía paso a paso durante la **Semana de Entrenamiento de Fase 1 (Día 1 al Día 5)** y como manual de consulta diaria para administrar usuarios, atender el Buzón de Pre-Solicitudes, operar todos los módulos del portal, presentar los 5 módulos ejecutivos de valor y cumplir ante la **CNBV, CONDUSEF, ASOFOM, SAT/UIF e INAI**. *(Nota de alcance: La automatización avanzada con OCR + IA, Lista Gris, SITI 41 Columnas y Lotes CIB en 3 pasos se documenta por separado en el **Manual Oficial de Fase 2**).*
+**Propósito:** Servir como guía paso a paso durante la **Semana de Entrenamiento de Fase 1 (Día 1 al Día 5)** y como manual de consulta diaria para administrar usuarios, atender el Buzón de Pre-Solicitudes, operar todos los módulos del portal, presentar los 5 módulos ejecutivos de valor y cumplir ante la **CNBV, CONDUSEF, ASOFOM, SAT/UIF e Secretaría Anticorrupción y Buen Gobierno**. *(Nota de alcance: La automatización avanzada con OCR + IA, Lista Gris, SITI 41 Columnas y Lotes CIB en 3 pasos se documenta por separado en el **Manual Oficial de Fase 2**).*
 
 ---
 
 ## 📑 ÍNDICE GENERAL DEL MANUAL (FASE 1)
 
 1. **Calendario de la Semana de Entrenamiento de Fase 1 (5 Días)**
-2. **Mapa General de las 11 Pestañas del Portal Administrativo**
+2. **Mapa General de las 13 Módulos (Fases 1, 2 y 3) del Portal Administrativo**
 3. **SECCIÓN 1 — Plan Formal de Desactivación Ordenada de Accesos Remotos, Excel y WhatsApp (Bloque A.1)**
 4. **SECCIÓN 2 — Matriz Oficial de Roles, Permisos y Decálogo de Seguridad Operativa (Bloque A.6)**
 5. **DÍA 1: Acceso Seguro con Doble Verificación (Código SMS de 6 Dígitos al Celular Registrado — Sin Instalar Apps) y Administración de Usuarios (Altas, Bajas y Cambios)**
@@ -19,7 +19,7 @@
    - *Incluye: ✅ Checklist de Dominio del Día 2*
 7. **DÍA 3 (SECCIÓN 3): Guías Paso a Paso (Clic por Clic) de Conciliación Quincenal, Círculo de Crédito, Cobranza/Reestructuras y Fondeo de Inversionistas**
    - *Incluye: ✅ Checklist de Dominio del Día 3*
-8. **DÍA 4 (SECCIÓN 3): Guía Paso a Paso de Prevención de Lavado de Dinero Base (PLD/FT ante CNBV) y Bitácora de Auditoría de 5 Años**
+8. **DÍA 4 (SECCIÓN 3): Guía Paso a Paso de Prevención de Lavado de Dinero Base (PLD/FT ante CNBV) y Bitácora de Auditoría de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV)**
    - *Incluye: ✅ Checklist de Dominio del Día 4*
 9. **DÍA 5 (SECCIÓN 4): Los 5 Módulos Ejecutivos de Valor, Mapeo de los 10 Puntos de la Visión Ejecutiva y el Asistente IA 24/7**
    - *Incluye: ✅ Checklist de Dominio del Día 5*
@@ -34,27 +34,27 @@
 | **Día 1 (Lunes)** | **Acceso Seguro 2FA por Código SMS al Celular, Administración de Usuarios (Altas, Bajas, Cambios) y Apagado de Accesos Remotos** | Administrador, Dirección y todo el personal | Que cada colaborador reciba su código SMS de 6 dígitos en su celular (sin instalar apps), cambie su contraseña temporal y el Administrador domine altas, cambios y bajas inmediatas (*Kill-Switch*). |
 | **Día 2 (Martes)** | **Buzón de Pre-Solicitudes, Captura en Campo con Escáner Móvil y Tablero Central con Exportación a Excel** | Promotores, Srita. Alma (Mesa de Control) y Dirección | Atender el **Buzón Pre-Solicitudes** (`No leído` → `Leído` → `Atendido`), capturar expedientes desde el celular con borrado automático local, filtrar la cartera por los **3 Hubs (Chihuahua, León y Cancún)**, supervisar el **Semáforo de Morosidad** y exportar a Excel `.CSV`. |
 | **Día 3 (Miércoles)** | **Conciliación Quincenal, Layouts SIF/CIB, Círculo de Crédito, Cobranza/Reestructuras y Fondeo** | Mesa de Control, Aprobadores y Administración | Conciliar la nómina quincenal en minutos, descargar el archivo para **SIF/CIB** y **Círculo de Crédito (`001496`)**, aplicar licencias/reestructuras y dar de alta inversionistas y pagarés. |
-| **Día 4 (Jueves)** | **Blindaje Base en Prevención de Lavado de Dinero (PLD/FT ante CNBV) y Bitácora de 5 Años** | Oficial de Cumplimiento y Dirección General | Cargar listas oficiales (**69-B SAT, UIF, OFAC, PEPs**), ejecutar el barrido general de cartera en 1 clic, dictaminar alertas y auditar movimientos en la Bitácora de 5 años. |
+| **Día 4 (Jueves)** | **Blindaje Base en Prevención de Lavado de Dinero (PLD/FT ante CNBV) y Bitácora de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV)** | Oficial de Cumplimiento y Dirección General | Cargar listas oficiales (**69-B SAT, UIF, OFAC, PEPs**), ejecutar el barrido general de cartera en 1 clic, dictaminar alertas y auditar movimientos en la Bitácora de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV). |
 | **Día 5 (Viernes)** | **Los 5 Módulos de Valor de Negocio, los 10 Puntos de la Visión Ejecutiva y el Asistente IA 24/7** | Dirección General, Inversionistas y Equipo Comercial | Dominar el Pitch de 10 láminas, el Simulador ROI a 36 meses, el Evaluador de Scoring, la Pizarra de Competencia y el Asistente IA Operativo Interno. |
 
 ---
 
-## 2. 🧭 MAPA GENERAL DE LAS 11 PESTAÑAS DEL PORTAL ADMINISTRATIVO
+## 2. 🧭 MAPA GENERAL DE LAS 13 Módulos (Fases 1, 2 y 3) DEL PORTAL ADMINISTRATIVO
 
-Al ingresar con tu cuenta y el código SMS de 6 dígitos enviado a tu celular, en la parte superior del portal verás la barra principal con las **11 pestañas operativas y ejecutivas** (más el botón dorado del **Asistente IA Interno 24/7**):
+Al ingresar con tu cuenta y el código SMS de 6 dígitos enviado a tu celular, en la parte superior del portal verás la barra principal con las **13 Módulos (Fases 1, 2 y 3) operativas y ejecutivas** (más el botón dorado del **Asistente IA Interno 24/7**):
 
 | # | Nombre Exacto del Botón en Pantalla | ¿Para qué sirve en el día a día? |
 | :---: | :--- | :--- |
 | **1** | **Dashboard Cartera** | Muestra las 4 tarjetas de dinero en tiempo real, el desglose y botones para filtrar por **Chihuahua, León o Cancún**, el **Semáforo de Morosidad (Verde, Amarillo y Rojo)**, la Gráfica Ejecutiva de Distribución y la Tabla Maestra de Créditos con botón **"Exportar a Excel (.CSV)"**. |
 | **2** | **Buzón Pre-Solicitudes** | Bandeja tipo correo electrónico con contador de pendientes donde llegan las solicitudes enviadas desde el Simulador Público. Cambia automáticamente de **No leído** a **Leído** al abrir el detalle, permite marcar como **Atendido**, contactar por WhatsApp y exportar a Excel `.CSV`. |
 | **3** | **Suite Ejecutiva & Negocio (5 Módulos)** | Contiene las 5 herramientas gerenciales: **1. Pitch Inversionistas**, **2. Simulador ROI 36 Meses**, **3. Simulador & Scoring Aprobador**, **4. Pizarra Competencia** y **5. Hubs Nacionales & Manual**. |
-| **4** | **Bitácora Forense (5 Años)** | Caja negra inborrable que registra quién entró, qué consultó y qué modificó, con buscador de incidencias y botón **"Verificar Integridad SHA-256"** para auditorías de CNBV e INAI. |
+| **4** | **Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))** | Caja negra inborrable que registra quién entró, qué consultó y qué modificó, con buscador de incidencias y botón **"Verificar Integridad SHA-256"** para auditorías de CNBV e Secretaría Anticorrupción y Buen Gobierno. |
 | **5** | **Expedientes** | Bandeja de solicitudes capturadas por los promotores en campo con filtros combinables, buscador global y descarga de layout SIF/CIB. |
 | **6** | **Conciliación Quincenal** | Emite el listado de cobro para el sindicato/dependencia, recibe el archivo de pagos de Tesorería, detecta diferencias automáticamente y descarga el archivo para **SIF/CIB (Logic Systems)**. |
-| **7** | **Fondeo e Inversionistas (3FN v4)** | Permite dar de alta inversionistas (**"+ Nuevo Inversionista"** → **"Guardar y Generar Pagaré"**), controla el capital (interés simple o compuesto, retención de ISR) y ejecuta el **"Corte Mensual Idempotente"**. |
+| **7** | **Fondeo e Inversionistas (3FN v4)** | Permite dar de alta inversionistas (**"+ Nuevo Inversionista"** → **"Guardar y Generar Pagaré"**), controla el capital (interés simple o compuesto, retención de ISR) y ejecuta el **"Corte Mensual con protección contra duplicados"**. |
 | **8** | **Círculo de Crédito (SIC)** | Previsualiza, valida y genera con un clic el archivo mensual oficial de reporte crediticio con clave de otorgante **`001496`**. |
 | **9** | **Cobranza, Convenios y Reestructuras** | Permite aplicar **"Suspensión Temporal"** por Licencia sin Goce de Sueldo, **Congelar Mora** por baja laboral/demanda, **"Consolidar en Nuevo Contrato"** hasta 4 créditos en 1 y revisar el **Cotejo de Póliza de Seguro de Vida ($35,000 MXN)**. |
-| **10** | **Prevención PLD/FT (69-B / UIF)** | Permite **"Ingestar Lista Oficial"** (69-B, UIF, OFAC), **"Previsualizar"**, **"Sellar e Ingresar a Base de Datos"**, ejecutar el barrido de cartera e inversionistas, descargar el acta para la CNBV y dictaminar alertas. |
+| **10** | **Prevención PLD/FT (UIF · ONU · OFAC (Bloqueo PLD/FT) y SAT 69-B (Lista Fiscal EFOS))** | Permite **"Ingestar Lista Oficial"** (69-B, UIF, OFAC), **"Previsualizar"**, **"Sellar e Ingresar a Base de Datos"**, ejecutar el barrido de cartera e inversionistas, descargar el acta para la CNBV y dictaminar alertas. |
 | **11** | **Usuarios y Accesos 2FA** | *(Exclusivo Administrador)* Permite dar de **Alta** usuarios registrando su teléfono celular para SMS 2FA, hacer **Cambios** de rol o número celular y aplicar **Bajas inmediatas (*Kill-Switch*)**. |
 | **★** | **Botón Dorado: Asistente IA Interno 24/7** | *(Esquina superior derecha)* Abre el chat privado para que Dirección y Cumplimiento hagan preguntas en lenguaje natural sobre la cartera en tiempo real. |
 
@@ -68,7 +68,7 @@ Lista de verificación ejecutiva accionable por la Dirección General y el área
 - [ ] **Día 2:** Migración de la carpeta local "Excel_Cartera_Antigua" a una unidad de red con permisos de **"Solo Lectura Histórica"**. Queda prohibida la edición o creación de nuevos archivos Excel sueltos para control de cartera.
 - [ ] **Día 3:** Comunicación formal por correo institucional a todo el personal (especialmente promotores) prohibiendo terminantemente el envío de INEs, recibos de nómina o comprobantes de domicilio por WhatsApp personal o Telegram. *(El WhatsApp de promoción solo se utiliza para agendar la cita presencial a partir del folio generado en el Portal; la captura de documentos se realiza exclusivamente en el Escáner Móvil del Portal).*
 - [ ] **Día 4:** Verificación de que el 100% de los colaboradores activos cuentan con su teléfono celular registrado en la pestaña **"Usuarios y Accesos 2FA"** y reciben su código SMS de 6 dígitos.
-- [ ] **Día 5:** Revisión en la pestaña **"Bitácora Forense (5 Años)"** para certificar que la totalidad de las consultas, pre-solicitudes, capturas y conciliaciones de la semana se ejecutaron dentro del Portal Seguro.
+- [ ] **Día 5:** Revisión en la pestaña **"Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))"** para certificar que la totalidad de las consultas, pre-solicitudes, capturas y conciliaciones de la semana se ejecutaron dentro del Portal Seguro.
 
 ---
 
@@ -82,7 +82,7 @@ Esta matriz establece de forma estricta qué funciones puede realizar cada puest
 | :--- | :--- | :--- |
 | **Promotor** (`promotor`) | ✅ Puede consultar y atender el **Buzón Pre-Solicitudes** (`No leído` → `Leído` → `Atendido`) para agendar citas en campo.<br>✅ Puede capturar expedientes y tomar fotos desde el Escáner Móvil.<br>✅ Puede recabar el consentimiento del Aviso de Privacidad y sincronizar la solicitud al Portal. | ❌ **NO PUEDE** ver la lista completa de créditos activos de otros promotores.<br>❌ **NO PUEDE** aprobar créditos.<br>❌ **NO PUEDE** acceder a la Bitácora de Auditoría ni a módulos de Fondeo, Conciliación o Listas PLD.<br>❌ **NO PUEDE** conservar fotos de clientes en la galería de su teléfono celular. |
 | **Oficial de Cumplimiento / Operaciones** (`oficial_cumplimiento`) | ✅ Puede consultar y atender el **Buzón Pre-Solicitudes**, revisar expedientes, conciliar nómina quincenal, ejecutar barridos PLD y consultar la Bitácora.<br>✅ Puede operar Círculo de Crédito, Cobranza/Reestructuras, Suite Ejecutiva y Asistente IA Interno. | ❌ **NO PUEDE** dar de alta o modificar usuarios del sistema (función exclusiva del Administrador).<br>❌ **NO PUEDE** ejecutar el cierre de corte mensual de intereses de inversionistas.<br>❌ **NO PUEDE** borrar ni modificar renglones de la Bitácora de Auditoría. |
-| **Administrador (Dirección)** (`admin`) | ✅ Acceso total a las 11 pestañas del Portal, Buzón de Pre-Solicitudes, Suite Ejecutiva, Fondeo e Inversionistas y Administración de Usuarios.<br>✅ Puede dar de alta usuarios, cambiar roles, actualizar teléfonos móviles para SMS y ejecutar bajas inmediatas (*Kill-Switch*). | ❌ **NO PUEDE** desactivar su propia cuenta (auto-baja prohibida por sistema).<br>❌ **NO PUEDE** degradar su propio rol de Administrador.<br>❌ **NO PUEDE** eliminar ni alterar registros históricos en la Bitácora de Auditoría de 5 Años. |
+| **Administrador (Dirección)** (`admin`) | ✅ Acceso total a las 13 Módulos (Fases 1, 2 y 3) del Portal, Buzón de Pre-Solicitudes, Suite Ejecutiva, Fondeo e Inversionistas y Administración de Usuarios.<br>✅ Puede dar de alta usuarios, cambiar roles, actualizar teléfonos móviles para SMS y ejecutar bajas inmediatas (*Kill-Switch*). | ❌ **NO PUEDE** desactivar su propia cuenta (auto-baja prohibida por sistema).<br>❌ **NO PUEDE** degradar su propio rol de Administrador.<br>❌ **NO PUEDE** eliminar ni alterar registros históricos en la Bitácora de Auditoría de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV). |
 
 ### 4.2 Decálogo de Seguridad Operativa (7 Reglas de Oro)
 
@@ -123,7 +123,7 @@ Cuando el Administrador te da de alta, te entrega personalmente tu **Carta de Bi
 Haz clic en la pestaña **11. "Usuarios y Accesos 2FA"**.
 
 ### A. Cómo dar de ALTA a un nuevo usuario
-1. En el panel izquierdo **"+ Nuevo Usuario (Alta 2FA SMS)"**, llena los 4 campos:
+1. En el panel izquierdo **"+ Nuevo Usuario (Alta 2FA (App Autenticadora TOTP en roles críticos / SMS respaldo campo))"**, llena los 4 campos:
    - **Nombre Completo:** (ej. *Alma Operadora Cruse*).
    - **Correo Institucional:** (ej. `alma@cruse.com.mx`).
    - **Rol de Acceso (RBAC):** Selecciona **Dirección / Administrador General**, **Oficial de Cumplimiento / Operaciones** o **Promotor en Campo**.
@@ -209,7 +209,7 @@ Para registrar un nuevo inversionista y emitir su pagaré, simular tramos partid
    - *Ejemplo numérico real (Pagaré Martha Alicia — ISR `20%`):* Cuando el inversionista opera bajo retención del **`20%`**, sobre un interés bruto de `$10,000.00 MXN` el sistema retiene exactamente `$2,000.00 MXN` de ISR y liquida `$8,000.00 MXN` netos.
 4. **Partición de Tramos por Días Calendario Reales (Split-Tranche):** Si un inversionista inyecta capital o renueva tasa a mitad de mes, el motor divide automáticamente el periodo calculando los **días calendario reales** del Tramo 1 (`fecha_cambio - fecha_inicio`) y asigna al Tramo 2 el remanente exacto (`30.4 - días_Tramo_1`), evitando cualquier sobrepago de intereses.
 5. Presiona **'Guardar y Generar Pagaré'**. El nuevo pagaré aparecerá de inmediato en la tabla de inversiones activas.
-6. **Para el cierre de mes:** Selecciona la fecha en el calendario superior derecho y presiona el botón verde **'Ejecutar Corte Mensual Idempotente'**. El sistema calcula los intereses del mes, aplica la retención de ISR y, en los pagarés compuestos, suma el rendimiento al capital automáticamente sin duplicar cobros.
+6. **Para el cierre de mes:** Selecciona la fecha en el calendario superior derecho y presiona el botón verde **'Ejecutar Corte Mensual con protección contra duplicados'**. El sistema calcula los intereses del mes, aplica la retención de ISR y, en los pagarés compuestos, suma el rendimiento al capital automáticamente sin duplicar cobros.
 7. **Para agregar anotaciones:** Presiona el botón **'Ver Notas'** en el renglón de cualquier inversión y escribe tus observaciones en el **Block de Notas Operativas**.
 
 ---
@@ -264,18 +264,18 @@ Para aplicar una licencia sin goce de sueldo, renovar créditos liberando capaci
 ---
 
 ### ✅ Checklist de Dominio del Día 3
-- [ ] El Administrador entró a **'7. Inversionistas y Pagarés'**, presionó **'+ Nuevo Inversionista'**, probó la convención **`365/30.4`** y las tasas de **Retención ISR (`0.5%`, `0.9%`, `20%` o Exento)** y ejecutó el **'Corte Mensual Idempotente'**.
+- [ ] El Administrador entró a **'7. Inversionistas y Pagarés'**, presionó **'+ Nuevo Inversionista'**, probó la convención **`365/30.4`** y las tasas de **Retención ISR (`0.5%`, `0.9%`, `20%` o Exento)** y ejecutó el **'Corte Mensual con protección contra duplicados'**.
 - [ ] El equipo entró a **'6. Cobranza y Licencias'**, aplicó una **'Suspensión Temporal'**, verificó la liberación de capacidad LFT (`DTI_CAPACITY_RELEASED_FOR_RENEWAL`) en una renovación y descargó el **`Padrón de Aseguradora ($35,000 M.N.)`** junto con la **`Póliza Contable Aspel COI`**.
 - [ ] Mesa de Control procesó una **'5. Conciliación Quincenal'**, descargó el layout para **SIF/CIB** y verificó los 3 regímenes de IVA en **Crédito Especial** (`EXEMPT_SOFOM`, `ADDITIVE_16`, `INCLUDED_1_16`).
 - [ ] El Oficial de Cumplimiento generó el archivo de **Círculo de Crédito (`001496`)**, descargó el **`"Layout PM v5"`** de Personas Morales y consultó el filtro **`"BAJA_LABORAL_ACTIVA"`**.
 
 ---
 
-# 🛡️ DÍA 4 (SECCIÓN 3): GUÍA PASO A PASO DE PREVENCIÓN PLD/FT BASE Y BITÁCORA DE 5 AÑOS
+# 🛡️ DÍA 4 (SECCIÓN 3): GUÍA PASO A PASO DE PREVENCIÓN PLD/FT BASE Y BITÁCORA DE 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV)
 
 ## 8.1 Guía Paso a Paso: Carga de Listas PLD y Barrido de Cartera (Alcance Fase 1)
 Para actualizar los catálogos oficiales de riesgo y revisar toda la cartera ante la CNBV:
-1. Ve a la pestaña **'Prevención PLD/FT (69-B / UIF)'**.
+1. Ve a la pestaña **'Prevención PLD/FT (UIF · ONU · OFAC (Bloqueo PLD/FT) y SAT 69-B (Lista Fiscal EFOS))'**.
 2. En la sección **'Ingestar Lista Oficial'**, elige el tipo de lista en el desplegable (*SAT Art. 69-B Definitivo*, *SAT Art. 69-B Presunto*, *UIF Lista de Personas Bloqueadas*, *OFAC SDN* o *PEP*) y escribe el número de oficio o publicación del Diario Oficial.
 3. Selecciona el archivo CSV (69-B, UIF, OFAC) haciendo clic en **'Seleccionar archivo CSV/TXT...'** (o pega el listado en el recuadro).
 4. Presiona **'Previsualizar'** para confirmar el número de registros detectados y luego presiona el botón verde **'Sellar e Ingresar a Base de Datos'**.
@@ -284,8 +284,8 @@ Para actualizar los catálogos oficiales de riesgo y revisar toda la cartera ant
 
 ---
 
-## 8.2 Guía Paso a Paso: Bitácora Forense de 5 Años
-1. Haz clic en la pestaña **'Bitácora Forense (5 Años)'**.
+## 8.2 Guía Paso a Paso: Bitácora Forense de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV)
+1. Haz clic en la pestaña **'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'**.
 2. Filtra por tipo de movimiento en el desplegable o escribe el correo del usuario en el buscador para inspeccionar la fecha, hora exacta, dirección IP y acción realizada.
 3. Presiona el botón verde superior derecho **'Verificar Integridad SHA-256'** para mostrar al auditor el sello verde que certifica que ningún registro histórico ha sido alterado.
 
@@ -294,7 +294,7 @@ Para actualizar los catálogos oficiales de riesgo y revisar toda la cartera ant
 ### ✅ Checklist de Dominio del Día 4
 - [ ] El Oficial de Cumplimiento entró a **'Prevención PLD/FT'**, fue a **'Ingestar Lista Oficial'**, seleccionó un archivo CSV (69-B, UIF, OFAC), presionó **'Previsualizar'** y luego **'Sellar e Ingresar a Base de Datos'**.
 - [ ] El Oficial de Cumplimiento ejecutó el **'Barrido Integral (Cartera + Fondeo)'**, descargó el **Acta CNBV/UIF** y dictaminó una alerta pendiente.
-- [ ] Dirección y Cumplimiento consultaron la **'Bitácora Forense (5 Años)'** y validaron el sello verde con el botón **'Verificar Integridad SHA-256'**.
+- [ ] Dirección y Cumplimiento consultaron la **'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'** y validaron el sello verde con el botón **'Verificar Integridad SHA-256'**.
 
 ---
 
@@ -321,8 +321,8 @@ Guía de verificación directa para demostrar ante auditores de **ASOFOM / CNBV*
 | Código | Punto de la Visión Ejecutiva | Ubicación Exacta en el Portal para Demostración en Vivo |
 | :---: | :--- | :--- |
 | **Punto C.1** | **Consolidación como SOFOM de Alta Calidad** | Se visualiza en **'Dashboard Cartera'** y en **'Suite Ejecutiva → 1. Pitch Inversionistas (Láminas 1 y 2)'**, operando sobre una base de datos central única que sustituye al 100% los archivos de Excel. |
-| **Punto C.2** | **Certificación y Calificación ASOFOM** | Se visualiza en la pestaña **'Bitácora Forense (5 Años)'** mediante el botón verde **'Verificar Integridad SHA-256'** y en **'Prevención PLD/FT'** mediante el botón **'Descargar Acta CNBV/UIF'**. |
-| **Punto C.3** | **Trayectoria e Historia Institucional (+15 años)** | Se visualiza en **'Dashboard Cartera'** y en **'Fondeo e Inversionistas'**, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo. |
+| **Punto C.2** | **Certificación y Calificación ASOFOM** | Se visualiza en la pestaña **'Bitácora Forense (10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))'** mediante el botón verde **'Verificar Integridad SHA-256'** y en **'Prevención PLD/FT'** mediante el botón **'Descargar Acta CNBV/UIF'**. |
+| **Punto C.3** | **Trayectoria e Historia Institucional (+110 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))** | Se visualiza en **'Dashboard Cartera'** y en **'Fondeo e Inversionistas'**, resguardando el historial íntegro de contratos activos, liquidados y pagarés de fondeo. |
 | **Punto C.4** | **Semáforo de Morosidad y Supervisión por 3 Hubs** | Se visualiza en el **Dashboard Financiero ('Dashboard Cartera')**, columna **'Salud del Crédito / Semáforo'** con íconos **🟢 Verde**, **🟡 Amarillo** y **🔴 Rojo**, y en los botones superiores de filtro por **Chihuahua**, **León** y **Cancún**. |
 | **Punto C.5** | **Enfoque en Crédito de Nómina Humano y Tecnológico** | Se visualiza en el **Buzón Pre-Solicitudes**, en el **Escáner Móvil** de promotores y en el **'Asistente IA 24/7'** (público e interno), que agilizan la atención al trabajador sin trámites engorrosos. |
 | **Punto C.6** | **Retención Directa Gubernamental y Sindical** | Se visualiza en la pestaña **'Conciliación Quincenal'**, mediante el botón **'Generar Layout de Cobro Sindical'** y la aplicación automática de descuentos de nómina. |
@@ -345,7 +345,7 @@ Guía de verificación directa para demostrar ante auditores de **ASOFOM / CNBV*
 ## 10. ✍️ FORMATO DE ACTA DE CIERRE DE CAPACITACIÓN Y RECEPCIÓN OPERATIVA (FASE 1)
 
 **Empresa:** Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.  
-**Fase Entregada y Capacitada:** Fase 1 — Portal Web Seguro Integral (Blindaje Operativo 2FA vía SMS + Buzón de Pre-Solicitudes + Automatización + Los 5 Módulos Ejecutivos de Valor + Cumplimiento PLD/FT Base y Bitácora de 5 Años)
+**Fase Entregada y Capacitada:** Fase 1 — Portal Web Seguro Integral (Blindaje Operativo 2FA con App Autenticadora (TOTP) obligatorio para Dirección y Oficial de Cumplimiento (SMS como respaldo para promotores en campo) + Buzón de Pre-Solicitudes + Automatización + Los 5 Módulos Ejecutivos de Valor + Cumplimiento PLD/FT Base y Bitácora de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV))
 
 Por medio de la presente constancia, los participantes confirman haber recibido el entrenamiento práctico de los Días 1 al 5 de la Fase 1 y validado en vivo todas las listas de verificación diarias:
 

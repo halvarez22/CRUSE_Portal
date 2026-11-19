@@ -1,4 +1,4 @@
-# 📗 MANUAL OFICIAL DE USUARIO, CUMPLIMIENTO ASISTIDO Y GUÍA DE ENTRENAMIENTO (FASE 2)
+﻿# 📗 MANUAL OFICIAL DE USUARIO, CUMPLIMIENTO ASISTIDO Y GUÍA DE ENTRENAMIENTO (FASE 2)
 ## Inteligencia Artificial, OCR Determinista y Cumplimiento Asistido CNBV/UIF — Microfinanciera Cruse, S.A. de C.V. SOFOM E.N.R.
 
 **Versión:** Edición Institucional Definitiva 2026 (100% No Técnica — Alcance Exclusivo Fase 2: OCR + IA, Excepciones y Duplicados, Tablero de Lista Gris y Operaciones Fraccionadas, Layout SITI 41 Columnas y Carga Controlada a CIB en 3 Pasos)  
@@ -125,7 +125,7 @@ Para impedir que entren datos erróneos o documentos ilegibles a la base de dato
 ## 6.1 Guía Paso a Paso: Cómo dictaminar un expediente en Lista Gris (`¿Autoriza Dirección?`)
 Cuando un solicitante coincide con una **Lista Gris** (por ejemplo, es una Persona Políticamente Expuesta `PEP` o aparece como `69-B Presunto`), el sistema no lo rechaza a ciegas ni lo aprueba solo: lo coloca en estado **`PENDING_DIRECTION`** para que la Dirección General y el Oficial de Cumplimiento tomen la decisión:
 
-1. Entra a la pestaña **10. "Prevención PLD/FT (69-B / UIF)"** y desplázate a la sección **"Control de Lista Gris (¿Autoriza Dirección?), Excepciones OCR y Reportes Tentativos (SITI Tipo 2)"**.
+1. Entra a la pestaña **10. "Prevención PLD/FT (UIF · ONU · OFAC (Bloqueo PLD/FT) y SAT 69-B (Lista Fiscal EFOS))"** y desplázate a la sección **"Control de Lista Gris (¿Autoriza Dirección?), Excepciones OCR y Reportes Tentativos (SITI Tipo 2)"**.
 2. Ubica el expediente en la tabla (donde verás su porcentaje de Confianza OCR, su ingreso quincenal, su Matriz de Riesgo Inicial y el estatus **`PENDING_DIRECTION`**) y presiona el botón amarillo **`Dictaminar Dirección`**.
 3. En la ventana emergente elige una de las dos decisiones institucionales:
    - **Opción A — `Autorizar (CLEARED_EDD)`:** Si la Dirección General aprueba continuar con el cliente, el expediente se libera clasificándolo automáticamente en **Grado de Riesgo ALTO** con **Debida Diligencia Reforzada** (revisión semestral cada 180 días).
@@ -236,7 +236,7 @@ Por decisión estratégica de seguridad y autonomía de Microfinanciera Cruse, n
 1. El Oficial de Cumplimiento revisa en la tabla del lote cuántos expedientes fueron incluidos, cuántos fueron excluidos preventivamente, el capital total y el sello `SHA-256`.
 2. En la columna derecha del lote, presiona el botón amarillo **`Paso 2: Aprobar OC`**.
 3. Verifica o complementa la nota de dictamen (*"Expedientes validados con Score OCR >= 80% y 0 hits en Listas Negras UIF/OFAC/69-B"*) y presiona **`Firmar Aprobación OC (Sellar CIB_BATCH_VALIDATED)`**.
-4. El lote pasa a estado azul **`APPROVED_BY_OC`** y queda grabado de forma inborrable en la Bitácora Forense WORM de 5 años.
+4. El lote pasa a estado azul **`APPROVED_BY_OC`** y queda grabado de forma inborrable en la Bitácora Forense WORM de 10 años mínimos (DCG Art. 95 Bis LGOAAC / CNBV).
 
 ### PASO 3: Carga en Logic Systems CIB y Registro del Folio de Confirmación
 1. Una vez aprobado por el Oficial de Cumplimiento, el área de Operaciones sube el archivo `.CSV` al sistema **CIB (Logic Systems)**.

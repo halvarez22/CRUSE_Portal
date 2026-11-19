@@ -138,11 +138,11 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
           <div className="flex items-center gap-2.5">
             <ShieldAlert className="w-6 h-6 text-[#00D1FF]" />
             <h2 className="text-lg font-bold text-white">
-              Motor Automatizado PLD/FT — Listas 69-B SAT, UIF, OFAC y PEPs (Zero-PII)
+              Motor Automatizado PLD/FT — Listas de Bloqueo (UIF · ONU · OFAC) y Debida Diligencia / Riesgo Fiscal (PEP · GAFI · SAT 69-B)
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Cruce criptográfico mediante Blind Indexing HMAC-SHA256 (CURP · RFC · Nombre Normalizado) sin exponer PII (Art. 95 Bis LGOAAC / CNBV).
+            Cruce criptográfico Zero-PII (CURP · RFC · Nombre Normalizado) diferenciando listas oficiales de bloqueo PLD/FT (Art. 95 Bis LGOAAC / CNBV) de alertas fiscales EFOS (SAT Art. 69-B CFF).
           </p>
         </div>
 

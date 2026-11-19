@@ -187,7 +187,7 @@ async function main(): Promise<void> {
       baseName: 'MANUAL_FASE1_PORTAL_WEB_SEGURO_CRUSE',
       sourceMdPath: path.join(publicDocsDir, 'MANUAL_FASE1_PORTAL_WEB_SEGURO_CRUSE.md'),
       title: 'Manual Oficial de Usuario, Administración y Entrenamiento (Fase 1) — CRUSE Fintech Portal',
-      subtitle: 'Documento Oficial Fase 1 Homologado (CRUSE-APO-2026-063 / 064) • 2FA SMS • Base 365/30.4 • 3 Regímenes IVA',
+      subtitle: 'Documento Oficial Fase 1 Homologado (CRUSE-APO-2026-067 / 068) • 2FA TOTP Roles Críticos • Base 365/30.4 • 3 Regímenes IVA',
       badge: 'FASE 1 CERTIFICADA',
       syncTrainingAlias: true,
     },

@@ -125,7 +125,7 @@ Para impedir que entren datos erróneos o documentos ilegibles a la base de dato
 ## 6.1 Guía Paso a Paso: Cómo dictaminar un expediente en Lista Gris (`¿Autoriza Dirección?`)
 Cuando un solicitante coincide con una **Lista Gris** (por ejemplo, es una Persona Políticamente Expuesta `PEP` o aparece como `69-B Presunto`), el sistema no lo rechaza a ciegas ni lo aprueba solo: lo coloca en estado **`PENDING_DIRECTION`** para que la Dirección General y el Oficial de Cumplimiento tomen la decisión:
 
-1. Entra a la pestaña **10. "Prevención PLD/FT (69-B / UIF)"** y desplázate a la sección **"Control de Lista Gris (¿Autoriza Dirección?), Excepciones OCR y Reportes Tentativos (SITI Tipo 2)"**.
+1. Entra a la pestaña **10. "Prevención PLD/FT (UIF · ONU · OFAC (Bloqueo PLD/FT) y SAT 69-B (Lista Fiscal EFOS))"** y desplázate a la sección **"Control de Lista Gris (¿Autoriza Dirección?), Excepciones OCR y Reportes Tentativos (SITI Tipo 2)"**.
 2. Ubica el expediente en la tabla (donde verás su porcentaje de Confianza OCR, su ingreso quincenal, su Matriz de Riesgo Inicial y el estatus **`PENDING_DIRECTION`**) y presiona el botón amarillo **`Dictaminar Dirección`**.
 3. En la ventana emergente elige una de las dos decisiones institucionales:
    - **Opción A — `Autorizar (CLEARED_EDD)`:** Si la Dirección General aprueba continuar con el cliente, el expediente se libera clasificándolo automáticamente en **Grado de Riesgo ALTO** con **Debida Diligencia Reforzada** (revisión semestral cada 180 días).

@@ -14,13 +14,21 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '5mb' }));
 
-// Healthcheck
+const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-068';
+const BUILD_COMMIT = process.env.VITE_BUILD_COMMIT || 'a5c645f+apo068';
+const BUILD_TIMESTAMP = process.env.VITE_BUILD_TIMESTAMP || '2026-11-18T18:25:00-06:00';
+
+// Healthcheck (Guardrail 3 APO-068: máximo 8 campos, cero secretos)
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
     company: COMPANY_INFO.name,
     aiModel: GROQ_MODEL,
     timestamp: new Date().toISOString(),
+    releaseExpediente: RELEASE_EXPEDIENTE,
+    buildCommit: BUILD_COMMIT,
+    buildTimestamp: BUILD_TIMESTAMP,
+    phase3Active: true,
   });
 });
 
