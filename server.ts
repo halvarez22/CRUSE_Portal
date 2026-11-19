@@ -14,12 +14,25 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+// Guardrail 1 (CRUSE-APO-2026-072): Cabeceras HTTP de Seguridad OWASP ASVS sin romper escáner PWA
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
 app.use(express.json({ limit: '5mb' }));
 
 declare const __GIT_COMMIT__: string | undefined;
 declare const __BUILD_TIMESTAMP__: string | undefined;
 
-const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-071';
+const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-072';
 const BUILD_COMMIT = typeof __GIT_COMMIT__ !== 'undefined' ? __GIT_COMMIT__ : 'local-dev';
 const BUILD_TIMESTAMP =
   typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : new Date().toISOString();

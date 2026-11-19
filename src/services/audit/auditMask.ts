@@ -16,6 +16,20 @@ export function maskCurp(curp?: string | null): string {
 }
 
 /**
+ * Enmascara correo electrónico para eventos WORM (LFPDPPP / CRUSE-APO-2026-072):
+ * admin@cruse.com.mx → a***n@cruse.com.mx
+ */
+export function maskEmailForAudit(email?: string | null): string {
+  const raw = String(email ?? '').trim().toLowerCase();
+  const atIdx = raw.indexOf('@');
+  if (atIdx <= 0) return '***';
+  const local = raw.slice(0, atIdx);
+  const domain = raw.slice(atIdx);
+  if (local.length <= 2) return `${local[0] ?? '*'}***${domain}`;
+  return `${local[0]}***${local[local.length - 1]}${domain}`;
+}
+
+/**
  * Normaliza y resume el User-Agent para registro forense limpio.
  */
 export function briefUserAgent(ua?: string | null): string {

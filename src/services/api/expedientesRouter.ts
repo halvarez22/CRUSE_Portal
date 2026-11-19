@@ -24,6 +24,7 @@ import { handleGetExpedientDetails, decryptExpedientePiiIfAuthorized } from './d
 import { maskFullName } from '../etl/runETL';
 import { screenSingleSubjectInRealtime } from '../pld/pldScreeningService';
 import { extractAndEvaluateDocumentZeroPii } from '../ai/ocrDocumentExtractorService';
+import { validateImageBase64MagicBytes } from '../scanner/imageMagicBytesValidator';
 import { upsertExpedienteComplianceProfile } from '../pld/grayListDirectionWorkflowService';
 import { sanitizeDecimalString } from '../../config/riskMatrixWeights';
 import {
@@ -55,6 +56,13 @@ expedientesRouter.post(
       };
 
       const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
+      // Guardrail 3 (CRUSE-APO-2026-072): Validar magic bytes solo si imageBase64 no está vacío
+      const magicCheck = validateImageBase64MagicBytes(imageBase64);
+      if (!magicCheck.valid) {
+        return res.status(400).json({
+          error: magicCheck.error ?? 'Formato binario de imagen no permitido.',
+        });
+      }
       const rawDocType = typeof body.documentType === 'string' ? body.documentType : 'INE_FRONT';
       const documentType: OcrDocumentSourceType = (
         ['INE_FRONT', 'INE_BACK', 'PAYSTUB', 'PROOF_OF_ADDRESS'] as const

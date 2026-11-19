@@ -172,7 +172,12 @@ export class MultiTierSmsRateLimiter {
   }
 }
 
-// Limitadores institucionales para verificación 2FA SMS, prevención Anti-SMS-Pumping y rotación de sesión
+// Limitadores institucionales para login paso 1 (CRUSE-APO-2026-072), verificación 2FA, Anti-SMS-Pumping y sesión
+export function buildLoginPasswordRateKey(ip: string, email: string): string {
+  return `login_pwd_${ip.trim()}_${email.trim().toLowerCase()}`;
+}
+
+export const loginPasswordRateLimiter = new StrictRateLimiter(5, 15, 15);
 export const totpRateLimiter = new StrictRateLimiter(5, 15, 15);
 export const smsSendRateLimiter = new MultiTierSmsRateLimiter();
 export const smsIpRateLimiter = new StrictRateLimiter(15, 60, 60);

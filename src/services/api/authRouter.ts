@@ -21,6 +21,8 @@ import { Router, Request, Response } from 'express';
 import { LoginChallengeResponse } from '../../types';
 import { db } from '../db/connectionPool';
 import {
+  loginPasswordRateLimiter,
+  buildLoginPasswordRateKey,
   totpRateLimiter,
   smsSendRateLimiter,
   smsIpRateLimiter,
@@ -52,7 +54,7 @@ import {
   rotateSession,
 } from '../auth/sessionStore';
 import { auditEventStore } from '../audit/auditEventStore';
-import { extractClientIp, buildSourceSummary } from '../audit/auditMask';
+import { extractClientIp, buildSourceSummary, maskEmailForAudit } from '../audit/auditMask';
 import { CREDENTIAL_LIMITS } from '../../config/authConfig';
 
 export const authRouter = Router();
@@ -74,12 +76,34 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Credenciales incompletas o con formato inválido' });
     }
 
+    // Guardrail 2 (CRUSE-APO-2026-072): Rate limit paso 1 con clave compuesta ip+email ANTES de verifyPassword
+    const loginRateKey = buildLoginPasswordRateKey(ip, email);
+    const pwdRateCheck = loginPasswordRateLimiter.check(loginRateKey);
+    if (!pwdRateCheck.allowed) {
+      const retryAfterSeconds = pwdRateCheck.retryAfterSeconds ?? 900;
+      const maskedEmail = maskEmailForAudit(email);
+      await auditEventStore.append({
+        actorEmail: maskedEmail,
+        actorRole: 'sistema',
+        action: 'LOGIN_RATE_LIMIT_EXCEEDED',
+        outcome: 'denied',
+        sourceIp: ip,
+        sourceSummary,
+        details: `Bloqueo temporal paso 1 de login (5 intentos fallidos en 15 min) para ${maskedEmail} desde IP ${ip}. Reintentar en ${retryAfterSeconds} s.`,
+      });
+      return res.status(429).json({
+        error: `Demasiados intentos fallidos de inicio de sesión. Intenta nuevamente en ${retryAfterSeconds} segundos.`,
+        retryAfterSeconds,
+      });
+    }
+
     const user = await findUserByEmail(email);
     const passwordOk = user
       ? await verifyPassword(password, user.password_hash)
       : await verifyPasswordAgainstDummy(password);
 
     if (!user || !passwordOk || Number(user.active) !== 1) {
+      loginPasswordRateLimiter.recordFailure(loginRateKey);
       await auditEventStore.append({
         actorEmail: email,
         actorRole: 'sistema',
@@ -91,6 +115,9 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       });
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
+
+    // Limpieza inmediata del contador tras validación exitosa de contraseña
+    loginPasswordRateLimiter.reset(loginRateKey);
 
     const rateKeyIp = `sms_send_ip_${ip}`;
     const userRateCheck = smsSendRateLimiter.check(user.id);
