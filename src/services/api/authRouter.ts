@@ -133,7 +133,7 @@ authRouter.post('/login', async (req: Request, res: Response) => {
         : '15 SMS/hora por IP';
 
       await auditEventStore.append({
-        actorEmail: user.email,
+        actorEmail: maskEmailForAudit(user.email),
         actorRole: 'sistema',
         action: 'SMS_RATE_LIMIT_EXCEEDED',
         outcome: 'denied',
@@ -162,9 +162,9 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       if (smsErr instanceof SmsDeliveryError) {
         smsDelivered = false;
         smsWarning =
-          'El canal SMS externo (Twilio) se encuentra en validación regulatoria KYC. Puedes ingresar inmediatamente utilizando cualquiera de tus Códigos de Recuperación de Emergencia (XXXX-XXXX).';
+          'No fue posible enviar el código SMS en este momento. Puedes reintentar en unos segundos o ingresar con tu Código de Recuperación de Emergencia.';
         await auditEventStore.append({
-          actorEmail: user.email,
+          actorEmail: maskEmailForAudit(user.email),
           actorRole: 'sistema',
           action: 'LOGIN_FAILURE',
           outcome: 'failure',
@@ -228,7 +228,7 @@ authRouter.post('/resend-otp', async (req: Request, res: Response) => {
         : '15 SMS/hora por IP';
 
       await auditEventStore.append({
-        actorEmail: user.email,
+        actorEmail: maskEmailForAudit(user.email),
         actorRole: 'sistema',
         action: 'SMS_RATE_LIMIT_EXCEEDED',
         outcome: 'denied',
@@ -290,7 +290,7 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     const rateCheck = totpRateLimiter.check(rateLimitKey);
     if (!rateCheck.allowed) {
       await auditEventStore.append({
-        actorEmail: user.email,
+        actorEmail: maskEmailForAudit(user.email),
         actorRole: 'sistema',
         action: 'LOGIN_FAILURE',
         outcome: 'denied',
@@ -372,7 +372,7 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     if (!valid2FA) {
       const failure = totpRateLimiter.recordFailure(rateLimitKey);
       await auditEventStore.append({
-        actorEmail: authUser.email,
+        actorEmail: maskEmailForAudit(authUser.email),
         actorRole: authUser.role,
         action: 'LOGIN_FAILURE',
         outcome: 'failure',
@@ -402,7 +402,7 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
     totpRateLimiter.reset(rateLimitKey);
 
     await auditEventStore.append({
-      actorEmail: authUser.email,
+      actorEmail: maskEmailForAudit(authUser.email),
       actorRole: authUser.role,
       action: 'LOGIN_2FA_SUCCESS',
       outcome: 'success',
@@ -479,7 +479,7 @@ authRouter.post('/logout', async (req: Request, res: Response) => {
     }
     await revokeSession(session.sessionId);
     await auditEventStore.append({
-      actorEmail: session.user.email,
+      actorEmail: maskEmailForAudit(session.user.email),
       actorRole: session.user.role,
       action: 'LOGOUT',
       outcome: 'success',

@@ -32,7 +32,7 @@ app.use(express.json({ limit: '5mb' }));
 declare const __GIT_COMMIT__: string | undefined;
 declare const __BUILD_TIMESTAMP__: string | undefined;
 
-const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-075';
+const RELEASE_EXPEDIENTE = 'CRUSE-APO-2026-076';
 const BUILD_COMMIT = typeof __GIT_COMMIT__ !== 'undefined' ? __GIT_COMMIT__ : 'local-dev';
 const BUILD_TIMESTAMP =
   typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : new Date().toISOString();

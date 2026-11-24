@@ -199,7 +199,6 @@ export async function sendSmsOtp(
           to: targetPhone,
           channel: 'sms',
           locale: 'es',
-          customFriendlyName: AUTH_ISSUER_NAME,
         });
 
       otpMap.set(userId, {
