@@ -1,8 +1,14 @@
 import React from 'react';
-import { Shield, Sparkles, ArrowRight, ChevronDown } from 'lucide-react';
+import { Shield, Sparkles, ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
 import { COMPANY_INFO } from '../../data/cruseData';
 
-export const HeroPedestalSection: React.FC = () => {
+interface HeroPedestalSectionProps {
+  onOpenClientSelfService?: () => void;
+}
+
+export const HeroPedestalSection: React.FC<HeroPedestalSectionProps> = ({
+  onOpenClientSelfService,
+}) => {
   return (
     <section className="relative overflow-hidden pt-8 pb-16 lg:pt-14 lg:pb-24">
       {/* Background Ambient Glow Elements (Neutralizados en Modo Claro conforme a Guardrail 3; intactos en Modo Oscuro) */}
@@ -104,15 +110,27 @@ export const HeroPedestalSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          {/* Action Buttons (Guardrail 3 APO-077: Contraste WCAG >=4.5:1 en Modo Claro y Oscuro) */}
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
             <a
               href="#simulador"
-              className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#249E82] to-[#1E9F81] text-white font-bold text-sm shadow-md glow-teal hover:opacity-95 transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
+              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#0F766E] to-[#1E9F81] dark:from-[#249E82] dark:to-[#1E9F81] text-white font-bold text-sm shadow-md glow-teal hover:opacity-95 transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#249E82]"
             >
               <span>Simular mi Crédito Oficial</span>
               <ArrowRight className="w-4 h-4" />
             </a>
+
+            {onOpenClientSelfService && (
+              <button
+                type="button"
+                onClick={onOpenClientSelfService}
+                aria-label="Abrir App Cruse para Subir Documentos y Firmar Contrato con Folio"
+                className="px-6 py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2 border border-emerald-800/30 dark:border-emerald-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <Smartphone className="w-4 h-4 shrink-0" />
+                <span>Subir mis Documentos (Con Folio)</span>
+              </button>
+            )}
 
             <a
               href="#alianzas"

@@ -180,7 +180,7 @@ export default function App() {
 
       {/* Main Public Content */}
       <main className="space-y-4 pt-4">
-        <HeroPedestalSection />
+        <HeroPedestalSection onOpenClientSelfService={() => setShowClientSelfServiceModal(true)} />
         <PublicCreditSimulator />
         <RequirementsGlassSlabs />
         <OperationalPhases />
