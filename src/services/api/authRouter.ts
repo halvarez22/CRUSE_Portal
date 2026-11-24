@@ -339,12 +339,14 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
 
     let valid2FA = false;
     let usedRecoveryCode = false;
+    let authMethod: 'TOTP_RFC6238' | 'SMS_FALLBACK' | 'RECOVERY_CODE' = 'SMS_FALLBACK';
 
     if (isSixDigitSms) {
-      // Guardrail Forense 5 (CRUSE-APO-2026-067):
-      // Validar TOTP RFC 6238 (Google/Microsoft Authenticator) en roles críticos cuando tengan semilla enrolada;
-      // mantener SMS OTP como respaldo operativo para promotores en campo o cuentas en transición.
-      const { verifyTotpToken, isCriticalTotpRole } = await import('../auth/totpService');
+      // Guardrail Forense 1 (CRUSE-APO-2026-078):
+      // Priorizar TOTP RFC 6238 cuando exista semilla enrolada; si no coincide, permitir
+      // explícitamente la validación vía SMS OTP (verifySmsOtp) para todos los roles
+      // (incluyendo admin y oficial_cumplimiento con totp_enrolled=1) para evitar bloqueos.
+      const { verifyTotpToken } = await import('../auth/totpService');
       const { decryptEnvelope } = await import('../crypto/cryptoService');
       const { getServerKms } = await import('../crypto/serverKeyring');
       if (user.totp_secret_enc) {
@@ -354,19 +356,27 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
           const totpCheck = await verifyTotpToken(rawCode, plainSecret, 1, 30);
           if (totpCheck.valid) {
             valid2FA = true;
+            authMethod = 'TOTP_RFC6238';
           }
         } catch {
           // Si la semilla no está en formato envelope estándar, continuar con verificación SMS/respaldo
         }
       }
-      if (!valid2FA && (!isCriticalTotpRole(authUser.role) || !authUser.totpEnrolled)) {
-        valid2FA = await verifySmsOtp(user.id, rawCode);
+      if (!valid2FA) {
+        const smsOk = await verifySmsOtp(user.id, rawCode);
+        if (smsOk) {
+          valid2FA = true;
+          authMethod = 'SMS_FALLBACK';
+        }
       }
     }
 
     if (!valid2FA && isRecoveryCode) {
       valid2FA = await verifyAndConsumeBackupCode(user.id, rawCode);
       usedRecoveryCode = valid2FA;
+      if (valid2FA) {
+        authMethod = 'RECOVERY_CODE';
+      }
     }
 
     if (!valid2FA) {
@@ -409,10 +419,10 @@ authRouter.post('/verify-totp', async (req: Request, res: Response) => {
       sourceIp: ip,
       sourceSummary,
       details: firstEnrollment
-        ? `Verificación inicial 2FA vía SMS en teléfono móvil completada${mustChangePassword ? ' con cambio de contraseña temporal' : ''} (Sesión persistente 8h emitida)`
+        ? `[${authMethod}] Verificación inicial 2FA completada${mustChangePassword ? ' con cambio de contraseña temporal' : ''} (Sesión persistente 8h emitida)`
         : usedRecoveryCode
-          ? 'Acceso autorizado mediante código de respaldo de emergencia de un solo uso (Sesión persistente 8h emitida)'
-          : `Acceso seguro mediante código SMS 2FA al móvil registrado autorizado correctamente${mustChangePassword ? ' (contraseña temporal actualizada)' : ''} (Sesión persistente 8h emitida)`,
+          ? `[${authMethod}] Acceso autorizado mediante código de respaldo de emergencia de un solo uso (Sesión persistente 8h emitida)`
+          : `[${authMethod}] Acceso seguro 2FA autorizado correctamente${mustChangePassword ? ' (contraseña temporal actualizada)' : ''} (Sesión persistente 8h emitida)`,
     });
 
     return res.json({

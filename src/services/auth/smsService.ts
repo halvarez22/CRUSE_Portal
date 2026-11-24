@@ -9,6 +9,7 @@ interface PendingOtpRecord {
   mode: SmsDispatchMode;
   targetPhone: string;
   serviceSid?: string;
+  verificationSid?: string;
   /** Guardrail Forense 1 (CRUSE-APO-2026-038): Solo hash SHA-256 (64 hex chars), jamás OTP en texto plano */
   codeHash?: string;
   expires: number;
@@ -16,6 +17,7 @@ interface PendingOtpRecord {
 
 let client: twilio.Twilio | null = null;
 let clientSidKey: string | null = null;
+let testClientOverride: twilio.Twilio | null = null;
 let cachedVerifyServiceSid: string | null = null;
 let cachedSenderPhone: string | null = null;
 
@@ -31,6 +33,9 @@ export function hashOtpCode(code: unknown): string {
 }
 
 function getTwilioClient(): twilio.Twilio | null {
+  if (testClientOverride && getServerEnv().nodeEnv !== 'production') {
+    return testClientOverride;
+  }
   const env = getServerEnv();
   if (!env.twilioAccountSid || !env.twilioAuthToken) {
     return null;
@@ -175,6 +180,19 @@ export function registerHashedOtpForTest(
   });
 }
 
+/**
+ * Inyección exclusiva de pruebas SQA (prohibida en producción) para espiar llamadas a Twilio Verify.
+ */
+export function setTwilioClientForTest(mockClient: twilio.Twilio | null): void {
+  const env = getServerEnv();
+  if (env.nodeEnv === 'production') {
+    throw new Error('setTwilioClientForTest está prohibido en entorno de producción.');
+  }
+  testClientOverride = mockClient;
+  cachedVerifyServiceSid = null;
+  cachedSenderPhone = null;
+}
+
 export async function sendSmsOtp(
   userId: string,
   toPhone?: string | null
@@ -193,7 +211,26 @@ export async function sendSmsOtp(
   if (twilioClient) {
     try {
       const serviceSid = await resolveVerifyServiceSid(twilioClient);
-      await twilioClient.verify.v2
+
+      // Guardrail Forense 2 (CRUSE-APO-2026-078): Cancelar verificación previa pendiente (try/catch tolerante, sin PII)
+      // para forzar a Twilio Verify v2 a generar un código OTP nuevo y variable en cada intento/reenvío.
+      const prevRecord = otpMap.get(userId);
+      if (prevRecord?.mode === 'verify' && prevRecord.serviceSid && prevRecord.verificationSid) {
+        try {
+          await twilioClient.verify.v2
+            .services(prevRecord.serviceSid)
+            .verifications(prevRecord.verificationSid)
+            .update({ status: 'canceled' });
+          console.log(`[SMS Verify] Verificación previa (${prevRecord.verificationSid}) cancelada para rotar código OTP.`);
+        } catch (cancelErr: unknown) {
+          const cancelMsg = cancelErr instanceof Error ? cancelErr.message : String(cancelErr);
+          console.warn(
+            `[SMS Verify] Cancelación previa omitida/tolerada (${prevRecord.verificationSid}): ${cancelMsg}`
+          );
+        }
+      }
+
+      const verification = await twilioClient.verify.v2
         .services(serviceSid)
         .verifications.create({
           to: targetPhone,
@@ -205,6 +242,7 @@ export async function sendSmsOtp(
         mode: 'verify',
         targetPhone,
         serviceSid,
+        verificationSid: verification?.sid,
         expires: Date.now() + OTP_TTL_MS,
       });
       console.log(`[SMS Verify] OTP despachado vía Twilio Verify (${serviceSid}) a ${maskedPhone}.`);
