@@ -19,11 +19,20 @@ import {
   CanonicalPldColumnRole,
   ColumnDetectionSource,
   InferredColumnProfile,
-  PatternDensityTier,
   PldColumnMappingOverride,
-  ZeroPiiColumnStructuralDescriptor,
   ZeroPiiStructuralPromptPayload,
 } from '../../types/pldSmartIngestion';
+import {
+  maskCellToIrreversibleSyntheticPattern,
+  assertZeroPiiInPromptString,
+  buildZeroPiiStructuralPromptPayload,
+} from './pldZeroPiiBarrier';
+
+export {
+  maskCellToIrreversibleSyntheticPattern,
+  assertZeroPiiInPromptString,
+  buildZeroPiiStructuralPromptPayload,
+} from './pldZeroPiiBarrier';
 
 const CURP_CLEAN_REGEX = /^[A-Z]{4}\d{6}[HMX][A-Z]{5}[A-Z\d]\d$/;
 const RFC_CLEAN_REGEX = /^[A-ZÑ&]{3,4}\d{6}(?:[A-Z\d]{3})?$/;
@@ -242,65 +251,6 @@ export function discoverTableStructure(nonEmptyLines: ReadonlyArray<string>): Ta
   };
 }
 
-/**
- * Guardrail 2 + Prueba Adicional A: Enmascaramiento sintético matemáticamente irreversible (no inyectivo).
- * Toda letra se colapsa a 'A' y todo dígito a '9'. Imposible recuperar iniciales, fechas o homoclaves.
- */
-export function maskCellToIrreversibleSyntheticPattern(raw: string): string {
-  const trimmed = String(raw ?? '').trim().slice(0, 40);
-  if (!trimmed) return '';
-  return trimmed
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[A-Za-zÑñ]/g, 'A')
-    .replace(/\d/g, '9')
-    .replace(/\s+/g, ' ');
-}
-
-function toDensityTier(ratio: Decimal): PatternDensityTier {
-  if (ratio.greaterThanOrEqualTo(new Decimal('75'))) return 'HIGH';
-  if (ratio.greaterThanOrEqualTo(new Decimal('35'))) return 'MEDIUM';
-  if (ratio.greaterThan(new Decimal('0'))) return 'LOW';
-  return 'NONE';
-}
-
-function sanitizeHeaderForZeroPiiPrompt(rawHeader: string, colIndex: number, hasHeaderRow: boolean): string {
-  if (!hasHeaderRow) return `COL_${colIndex}`;
-  const cleanId = cleanIdCandidate(rawHeader);
-  if (CURP_CLEAN_REGEX.test(cleanId) || RFC_CLEAN_REGEX.test(cleanId) || /^\d+$/.test(cleanId)) {
-    return `COL_${colIndex}`;
-  }
-  const safe = String(rawHeader ?? '')
-    .replace(/[\r\n"'`{};|\\]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 50);
-  return safe.length > 0 ? safe : `COL_${colIndex}`;
-}
-
-/**
- * Guardrail 2: Barrera de salida Zero-PII que certifica que el JSON serializado hacia Groq
- * no contenga ningún CURP real, RFC real ni hashes hexadecimales de 32-64 caracteres.
- */
-export function assertZeroPiiInPromptString(serializedPrompt: string): void {
-  const curpCandidates = serializedPrompt.match(/[A-Z]{4}\d{6}[HMX][A-Z]{5}[A-Z\d]\d/gi) ?? [];
-  for (const token of curpCandidates) {
-    if (token.toUpperCase() !== 'AAAA999999AAAAAA99') {
-      throw new Error('ZERO_PII_BARRIER_TRIGGERED: Patrón CURP no sintético detectado antes de llamada LLM.');
-    }
-  }
-  const rfcCandidates = serializedPrompt.match(/[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}/gi) ?? [];
-  for (const token of rfcCandidates) {
-    const up = token.toUpperCase();
-    if (up !== 'AAA999999AAA' && up !== 'AAAA999999AAA') {
-      throw new Error('ZERO_PII_BARRIER_TRIGGERED: Patrón RFC no sintético detectado antes de llamada LLM.');
-    }
-  }
-  if (/\b[a-f0-9]{32,64}\b/i.test(serializedPrompt)) {
-    throw new Error('ZERO_PII_BARRIER_TRIGGERED: Hash hexadecimal detectado en prompt estructural.');
-  }
-}
-
 export function computeColumnStatisticalMetrics(
   colCount: number,
   dataRows: ReadonlyArray<ReadonlyArray<string>>
@@ -383,35 +333,6 @@ export function computeColumnStatisticalMetrics(
   }
 
   return metrics;
-}
-
-export function buildZeroPiiStructuralPromptPayload(input: {
-  fileExtensionHint: string;
-  hasHeaderRow: boolean;
-  rawHeaders: ReadonlyArray<string>;
-  metrics: ReadonlyArray<ColumnStatisticalMetrics>;
-}): ZeroPiiStructuralPromptPayload {
-  return {
-    fileExtensionHint: String(input.fileExtensionHint || 'CSV').toUpperCase().slice(0, 10),
-    hasDetectedHeaderRow: input.hasHeaderRow,
-    totalColumns: input.metrics.length,
-    columns: input.metrics.map((m) => ({
-      columnIndex: m.columnIndex,
-      sanitizedHeaderLabel: sanitizeHeaderForZeroPiiPrompt(
-        input.rawHeaders[m.columnIndex] ?? '',
-        m.columnIndex,
-        input.hasHeaderRow
-      ),
-      structuralMasks: m.structuralMasks,
-      curpPatternTier: toDensityTier(m.curpMatchRatio),
-      rfcPatternTier: toDensityTier(m.rfcMatchRatio),
-      corporatePatternTier: toDensityTier(m.corporateRatio),
-      personNamePatternTier: toDensityTier(m.personNameRatio),
-      datePatternTier: toDensityTier(m.dateMatchRatio),
-      officialRefPatternTier: toDensityTier(m.officialRefRatio),
-      sat69bStatusPatternTier: toDensityTier(m.sat69bStatusRatio),
-    })),
-  };
 }
 
 async function queryGroqSemanticZeroPiiMapping(
