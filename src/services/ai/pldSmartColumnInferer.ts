@@ -11,6 +11,7 @@ import Groq from 'groq-sdk';
 import { getServerEnv } from '../../config/serverEnv';
 import {
   PLD_EMPTY_ID_PLACEHOLDERS,
+  PLD_ENTITY_CATEGORY_VALUES,
   PLD_HEADER_ROLE_SYNONYMS,
   PLD_SAT_69B_CLEARED_KEYWORDS,
 } from '../../data/cruseData';
@@ -47,6 +48,7 @@ const BANNER_PHRASE_REGEX =
   /^(?:INFORMACION ACTUALIZADA|LISTADO COMPLETO DE CONTRIBUYENTES|ARTICULO 69|LISTA DE PERSONAS BLOQUEADAS|UNIDAD DE INTELIGENCIA FINANCIERA|REPORTE GENERADO|FECHA DE CORTE)/;
 
 const EMPTY_PLACEHOLDER_SET = new Set<string>(PLD_EMPTY_ID_PLACEHOLDERS);
+const ENTITY_CATEGORY_SET = new Set<string>(PLD_ENTITY_CATEGORY_VALUES);
 
 export interface ColumnStatisticalMetrics {
   readonly columnIndex: number;
@@ -59,6 +61,7 @@ export interface ColumnStatisticalMetrics {
   readonly dateMatchRatio: Decimal;
   readonly officialRefRatio: Decimal;
   readonly sat69bStatusRatio: Decimal;
+  readonly entityCategoryRatio: Decimal;
   readonly structuralMasks: ReadonlyArray<string>;
   readonly firstNonEmptyRaw: string;
 }
@@ -268,6 +271,7 @@ export function computeColumnStatisticalMetrics(
     let dateHits = 0;
     let refHits = 0;
     let sat69bHits = 0;
+    let entityCategoryHits = 0;
     const maskSet = new Set<string>();
     let firstNonEmptyRaw = '';
 
@@ -297,6 +301,8 @@ export function computeColumnStatisticalMetrics(
         PLD_SAT_69B_CLEARED_KEYWORDS.some((kw) => normText.includes(kw))
       ) {
         sat69bHits++;
+      } else if (ENTITY_CATEGORY_SET.has(normText)) {
+        entityCategoryHits++;
       } else if (DATE_CELL_REGEX.test(upper)) {
         dateHits++;
       } else if (OFFICIAL_REF_TOKEN_REGEX.test(upper)) {
@@ -327,6 +333,7 @@ export function computeColumnStatisticalMetrics(
       dateMatchRatio: ratio(dateHits),
       officialRefRatio: ratio(refHits),
       sat69bStatusRatio: ratio(sat69bHits),
+      entityCategoryRatio: ratio(entityCategoryHits),
       structuralMasks: Array.from(maskSet),
       firstNonEmptyRaw,
     });
@@ -434,6 +441,9 @@ export async function inferPldColumnsHybridZeroPii(input: InferPldColumnsInput):
     }
     if (m.sat69bStatusRatio.greaterThanOrEqualTo(new Decimal('60'))) {
       return { role: 'SAT_69B_STATUS', conf: m.sat69bStatusRatio, source: 'DETERMINISTIC_CONTENT', ambiguous: false };
+    }
+    if (m.entityCategoryRatio.greaterThanOrEqualTo(new Decimal('80'))) {
+      return { role: 'IGNORE', conf: m.entityCategoryRatio, source: 'DETERMINISTIC_CONTENT', ambiguous: false };
     }
     if (headerRole && headerRole !== 'IGNORE') {
       return { role: headerRole, conf: new Decimal('94.00'), source: 'DETERMINISTIC_HEADER', ambiguous: false };

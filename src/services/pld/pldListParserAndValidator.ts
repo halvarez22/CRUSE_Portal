@@ -34,6 +34,8 @@ import {
   extractUifLpbEmbeddedMetadata,
   shouldUseUifLpbExtractor,
 } from './uifLpbCommentExtractor';
+import { splitCsvRecordsRespectingQuotes } from './rfc4180CsvSplitter';
+import { validateInternationalLegalName } from './intlNameNormalizer';
 
 export interface ValidatedPldRiskRow {
   listType: PldListType;
@@ -75,7 +77,6 @@ const STRICT_CURP_REGEX = /^[A-Z]{4}\d{6}[HMX][A-Z]{5}[A-Z\d]\d$/;
 const STRICT_RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}(?:[A-Z\d]{3})?$/;
 const GENERIC_RFC_SET = new Set(['XAXX010101000', 'XEXX010101000', 'XXXX010101000']);
 const EMPTY_ID_SET = new Set<string>(PLD_EMPTY_ID_PLACEHOLDERS);
-const LEGAL_NAME_REGEX = /^[A-Z0-9ÑÁÉÍÓÚÜ\s.,&()/'"+-]+$/;
 const FOOTER_NOISE_REGEX = /^(?:TOTAL|SUBTOTAL|FIN DE LISTA|FIN DEL REPORTE|---+|\*\*\*+)$/;
 
 const VALID_LIST_TYPES: ReadonlySet<PldListType> = new Set<PldListType>([
@@ -213,7 +214,7 @@ export async function parseAndValidatePldCsvZeroPii(
     content = content.slice(1);
   }
 
-  const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const lines = splitCsvRecordsRespectingQuotes(content);
   if (lines.length === 0) {
     throw new Error('El archivo de lista de riesgo PLD/FT está vacío.');
   }
@@ -353,15 +354,14 @@ export async function parseAndValidatePldCsvZeroPii(
       keyForBlindIndex = isoCandidate;
       rawDisplayId = isoCandidate;
       isValid = true;
-    } else if (
-      assembledRawName.length >= 2 &&
-      normalizedAlphaName.length >= 2 &&
-      LEGAL_NAME_REGEX.test(assembledRawName)
-    ) {
-      idType = 'NOMBRE';
-      keyForBlindIndex = normalizedAlphaName;
-      rawDisplayId = assembledRawName;
-      isValid = true;
+    } else {
+      const intlNameCheck = validateInternationalLegalName(assembledRawName, normalizedAlphaName);
+      if (intlNameCheck.isValid) {
+        idType = 'NOMBRE';
+        keyForBlindIndex = intlNameCheck.blindIndexKey;
+        rawDisplayId = assembledRawName;
+        isValid = true;
+      }
     }
 
     const fallbackAuditSeed = keyForBlindIndex || rawCurpCell || rawRfcCell || rawGenCell || `ROW_${lineNo}`;
