@@ -217,7 +217,7 @@ export type AuditAction =
   | 'CREDIT_BUREAU_REPORT_GENERATED' | 'CREDIT_BUREAU_CATALOG_UPDATED'
   | 'LOAN_FROZEN_EXTRAJUDICIAL' | 'LOAN_AGREEMENT_REGISTERED' | 'LOAN_SUSPENSION_UPDATED' | 'LOAN_RESTRUCTURED'
   | 'PAYROLL_EMISSION_GENERATED' | 'PAYROLL_FILE_PREVIEWED'
-  | 'PLD_LIST_INGESTED' | 'PLD_LIST_ANALYZED' | 'PLD_PORTFOLIO_SCREENED' | 'PLD_HIT_DETECTED' | 'PLD_ALERT_RESOLVED'
+  | 'PLD_LIST_INGESTED' | 'PLD_LIST_ANALYZED' | 'PLD_PORTFOLIO_SCREENED' | 'PLD_HIT_DETECTED' | 'PLD_ALERT_RESOLVED' | 'PLD_ALERT_PII_REVEALED'
   | 'FILE_INTEGRITY_TAMPERED' | 'PLD_ANALYZE_RATE_LIMIT_EXCEEDED' | 'XLSX_DYNAMIC_IMPORT_FAILED'
   | 'SCORING_EVALUATED' | 'COMPETITOR_BENCHMARK_UPDATED' | 'INTERNAL_AI_QUERY'
   | 'TOOL_CALL_RATE_LIMIT_EXCEEDED' | 'CIB_BATCH_VALIDATED' | 'PLD_SLA_CLOCK_EVALUATED' | 'PLD_SITI_LAYOUT_GENERATED'
@@ -543,6 +543,14 @@ export interface PldHitAlertItem {
   riskLevel: PldRiskLevel; officialReference: string; exposureAmount: string;
   detectionChannel: 'BATCH_SCREENING' | 'REALTIME_ORIGINATION'; projectedStatus: PldAlertStatus;
   latestResolutionNotes: string | null; latestResolvedBy: string | null; latestResolvedAt: string | null; createdAt: string;
+}
+
+export interface PldAlertRulingDossier {
+  alertId: string; entityType: 'EXPEDIENTE' | 'INVESTOR'; entityId: string;
+  subjectFullName: string; subjectCurp: string | null; subjectRfc: string | null;
+  listType: PldListType; riskLevel: PldRiskLevel; officialReference: string;
+  exposureAmount: string; detectionChannel: 'BATCH_SCREENING' | 'REALTIME_ORIGINATION';
+  projectedStatus: PldAlertStatus; createdAt: string; auditEventSealed: true;
 }
 
 export interface PldScreeningBatchSummary {

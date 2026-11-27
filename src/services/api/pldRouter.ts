@@ -14,6 +14,7 @@ import {
   resolvePldHitAlert,
   runFullPortfolioPldScreening,
 } from '../pld/pldScreeningService';
+import { getPldAlertRulingDossier } from '../pld/pldAlertDossierService';
 import {
   handleAnalyzePldWatchlist,
   handleIngestPldWatchlist,
@@ -92,6 +93,36 @@ pldRouter.post('/screen-portfolio', requireAuth('pld:screen'), async (req: Reque
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error ejecutando barrido integral PLD/FT';
     return res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * GET /api/pld/alerts/:alertId/dossier
+ * Revela de forma efímera y auditada (WORM ANTES de descifrar) la identidad real del expediente/inversionista
+ * exclusivamente al Oficial de Cumplimiento / Admin para dictaminar la alerta (CRUSE-APO-2026-082).
+ */
+pldRouter.get('/alerts/:alertId/dossier', requireAuth('pld:resolve_alert'), async (req: Request, res: Response) => {
+  try {
+    const { user } = getAuth(req);
+    const ip = extractClientIp(req.headers);
+    const alertId = String(req.params.alertId ?? '').trim();
+
+    const dossier = await getPldAlertRulingDossier({
+      alertId,
+      actorEmail: user.email,
+      actorRole: user.role,
+      sourceIp: ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    return res.json({ ok: true, dossier });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'ALERT_NOT_FOUND') {
+      return res.status(404).json({ error: 'Alerta no encontrada.' });
+    }
+    return res.status(500).json({ error: 'No fue posible consultar el expediente de dictamen.' });
   }
 });
 

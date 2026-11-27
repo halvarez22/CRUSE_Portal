@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldAlert, Search, Download, RefreshCw, CheckCircle2, AlertTriangle, FileText, X } from 'lucide-react';
+import { ShieldAlert, Search, Download, RefreshCw, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { AuthSession, PldComplianceOverview, PldHitAlertItem, PldListType } from '../../types';
 import { PldGrayListDirectionPanel } from './PldGrayListDirectionPanel';
 import { PldWatchlistIngestionCard } from './PldWatchlistIngestionCard';
+import { PldAlertRulingModal } from './PldAlertRulingModal';
 
 interface PldComplianceViewProps {
   session: AuthSession;
@@ -308,56 +309,21 @@ export const PldComplianceView: React.FC<PldComplianceViewProps> = ({ session })
       <PldGrayListDirectionPanel session={session} onDecisionCompleted={() => void fetchOverview()} />
 
       {selectedAlert && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-lg w-full rounded-3xl bg-slate-900 border border-white/15 p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#00D1FF]" />
-                <h4 className="text-sm font-bold text-white">Dictamen Inmutable del Oficial de Cumplimiento</h4>
-              </div>
-              <button onClick={() => setSelectedAlert(null)} className="text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1">
-              <p className="text-slate-300"><span className="text-slate-400">Alerta:</span> <span className="font-mono font-bold">{selectedAlert.id}</span></p>
-              <p className="text-slate-300"><span className="text-slate-400">Sujeto Protegido:</span> {selectedAlert.entityMaskedName} ({selectedAlert.entityMaskedId})</p>
-              <p className="text-slate-300"><span className="text-slate-400">Lista Coincidente:</span> {selectedAlert.listType} ({selectedAlert.officialReference})</p>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-300 mb-1 font-semibold">Resolución Regulatoria</label>
-              <select
-                value={resolutionStatus}
-                onChange={(e) => setResolutionStatus(e.target.value as 'CONFIRMED_BLOCKED' | 'CLEARED_EDD' | 'FALSE_POSITIVE')}
-                className="w-full px-3 py-2 rounded-xl glass-input text-xs text-slate-100"
-              >
-                <option value="CONFIRMED_BLOCKED" className="bg-slate-900">Confirmar Bloqueo Definitivo (Rechazar Expediente)</option>
-                <option value="CLEARED_EDD" className="bg-slate-900">Autorizado con Debida Diligencia Reforzada (Liberar)</option>
-                <option value="FALSE_POSITIVE" className="bg-slate-900">Descartar por Homonimia / Falso Positivo (Liberar)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-300 mb-1 font-semibold">Justificación Forense Obligatoria (mínimo 10 caracteres)</label>
-              <textarea
-                rows={3}
-                value={justificationNotes}
-                onChange={(e) => setJustificationNotes(e.target.value)}
-                placeholder="Detalle el sustento documental del expediente u oficio SAT/UIF verificado..."
-                className="w-full p-3 rounded-xl glass-input text-xs text-slate-100 placeholder-slate-500"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setSelectedAlert(null)} className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-slate-300 font-semibold">Cancelar</button>
-              <button
-                onClick={handleResolveAlert}
-                disabled={resolveLoading}
-                className="px-4 py-2 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold shadow-lg disabled:opacity-50"
-              >
-                {resolveLoading ? 'Sellando...' : 'Firmar y Sellar Dictamen Inmutable'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PldAlertRulingModal
+          session={session}
+          alert={selectedAlert}
+          listTypeLabels={LIST_TYPE_LABELS}
+          resolutionStatus={resolutionStatus}
+          justificationNotes={justificationNotes}
+          resolveLoading={resolveLoading}
+          onResolutionStatusChange={setResolutionStatus}
+          onJustificationNotesChange={setJustificationNotes}
+          onSubmit={handleResolveAlert}
+          onClose={() => {
+            setSelectedAlert(null);
+            setJustificationNotes('');
+          }}
+        />
       )}
     </div>
   );
