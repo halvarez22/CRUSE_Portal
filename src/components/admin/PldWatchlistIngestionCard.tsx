@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Lock,
   Upload,
@@ -8,6 +8,10 @@ import {
   Sparkles,
   FileSpreadsheet,
   SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  X,
+  FileText,
 } from 'lucide-react';
 import { AuthSession, PldListType } from '../../types';
 import {
@@ -24,6 +28,10 @@ import {
   prepareUploadedWatchlistBrowserFile,
   XlsxDynamicImportError,
 } from '../../utils/pldWatchlistClientHelper';
+import {
+  resolveActiveIngestionCsv,
+  shouldAutoExpandAdvancedMapping,
+} from '../../utils/pldIngestionUiState';
 
 interface PldWatchlistIngestionCardProps {
   session: AuthSession;
@@ -47,15 +55,36 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
   const [analyzing, setAnalyzing] = useState(false);
   const [ingestLoading, setIngestLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showManualPaste, setShowManualPaste] = useState(false);
+  const [showAdvancedMapping, setShowAdvancedMapping] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const requestSeqRef = useRef<number>(0);
 
   const [jurisdictionIso2, setJurisdictionIso2] = useState('KP');
   const [jurisdictionName, setJurisdictionName] = useState('REPUBLICA POPULAR DEMOCRATICA DE COREA');
-  const [sourceUrl, setSourceUrl] = useState('https://www.fatf-gafi.org/en/publications/High-risk-and-other-monitored-jurisdictions.html');
+  const [sourceUrl, setSourceUrl] = useState(
+    'https://www.fatf-gafi.org/en/publications/High-risk-and-other-monitored-jurisdictions.html'
+  );
   const [officialPubDate, setOfficialPubDate] = useState('2026-10-25');
 
   const isJurisdictionList =
     selectedListType === 'GAFI_HIGH_RISK_JURISDICTIONS' ||
     selectedListType === 'SHCP_REFIPRES_TAX_HAVENS';
+
+  const purgeIngestionMemoryState = () => {
+    requestSeqRef.current += 1;
+    setPreparedFile(null);
+    setCsvContent('');
+    setAnalysis(null);
+    setMappingOverride({});
+    setShowAdvancedMapping(false);
+    setShowManualPaste(false);
+    setAnalyzing(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const buildMultipartOrJsonRequest = (
     targetCsv: string,
@@ -100,15 +129,17 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
   const runSmartAnalysis = async (
     targetCsv: string,
     fileMeta: PreparedClientWatchlistPayload | null,
-    overrideObj: Record<number, CanonicalPldColumnRole>
+    overrideObj: Record<number, CanonicalPldColumnRole>,
+    expectedSeq?: number
   ) => {
     if (!targetCsv.trim()) {
       onFeedback({
         type: 'error',
-        message: 'Selecciona o suelta un archivo (.xlsx, .csv, .txt, .xml, .json) o pega registros para analizar.',
+        message: 'Selecciona o suelta un archivo (.xlsx, .csv, .txt, .xml, .json) o ingresa registros manualmente.',
       });
       return;
     }
+    const reqSeq = expectedSeq ?? ++requestSeqRef.current;
     setAnalyzing(true);
     onFeedback(null);
     try {
@@ -119,32 +150,43 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
         body: reqInit.body,
       });
       const data = (await res.json()) as { analysis?: SmartPldFileAnalysisResult; error?: string };
+      if (requestSeqRef.current !== reqSeq) return;
       if (!res.ok || !data.analysis) {
         throw new Error(data.error || 'Error ejecutando análisis inteligente de layout');
       }
       setAnalysis(data.analysis);
+      setShowAdvancedMapping(shouldAutoExpandAdvancedMapping(data.analysis));
     } catch (err: unknown) {
+      if (requestSeqRef.current !== reqSeq) return;
       setAnalysis(null);
+      setShowAdvancedMapping(false);
       onFeedback({
         type: 'error',
         message: err instanceof Error ? err.message : 'Error analizando estructura de lista PLD/FT',
       });
     } finally {
-      setAnalyzing(false);
+      if (requestSeqRef.current === reqSeq) {
+        setAnalyzing(false);
+      }
     }
   };
 
   const processSelectedBrowserFile = async (file: File) => {
     onFeedback(null);
+    const reqSeq = ++requestSeqRef.current;
     setAnalyzing(true);
     try {
       const rawBuffer = await file.arrayBuffer();
       const prepared = await prepareUploadedWatchlistBrowserFile(file.name, rawBuffer);
+      if (requestSeqRef.current !== reqSeq) return;
+      // CRUSE-APO-2026-081 (Zero-Display): el contenido del archivo permanece únicamente en RAM privada
       setPreparedFile(prepared);
-      setCsvContent(prepared.normalizedCsvContent);
+      setCsvContent('');
+      setShowManualPaste(false);
       setMappingOverride({});
-      await runSmartAnalysis(prepared.normalizedCsvContent, prepared, {});
+      await runSmartAnalysis(prepared.normalizedCsvContent, prepared, {}, reqSeq);
     } catch (err: unknown) {
+      if (requestSeqRef.current !== reqSeq) return;
       setAnalyzing(false);
       if (err instanceof XlsxDynamicImportError) {
         void fetch('/api/pld/lists/client-fault', {
@@ -160,14 +202,29 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
     }
   };
 
+  const handleManualPasteChange = (nextText: string) => {
+    requestSeqRef.current += 1;
+    setPreparedFile(null);
+    setAnalysis(null);
+    setMappingOverride({});
+    setShowAdvancedMapping(false);
+    setCsvContent(nextText);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleColumnRoleChange = async (colIdx: number, newRole: CanonicalPldColumnRole) => {
     const nextOverride = { ...mappingOverride, [colIdx]: newRole };
     setMappingOverride(nextOverride);
-    await runSmartAnalysis(csvContent, preparedFile, nextOverride);
+    const activeCsv = resolveActiveIngestionCsv(preparedFile, csvContent);
+    await runSmartAnalysis(activeCsv, preparedFile, nextOverride);
   };
 
   const handleIngestConfirmed = async () => {
-    if (isJurisdictionList && !csvContent.trim()) {
+    const activeCsv = resolveActiveIngestionCsv(preparedFile, csvContent);
+
+    if (isJurisdictionList && !activeCsv.trim()) {
       setIngestLoading(true);
       onFeedback(null);
       try {
@@ -204,7 +261,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
       return;
     }
 
-    if (!csvContent.trim()) {
+    if (!activeCsv.trim()) {
       onFeedback({ type: 'error', message: 'Carga un archivo o ingresa registros antes de sellar en Registro Inmutable.' });
       return;
     }
@@ -212,7 +269,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
     setIngestLoading(true);
     onFeedback(null);
     try {
-      const reqInit = buildMultipartOrJsonRequest(csvContent, preparedFile, mappingOverride);
+      const reqInit = buildMultipartOrJsonRequest(activeCsv, preparedFile, mappingOverride);
       const res = await fetch('/api/pld/lists/ingest', {
         method: 'POST',
         headers: reqInit.headers,
@@ -229,10 +286,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
         type: 'success',
         message: `Lista oficial sellada en Registro Inmutable con Búsqueda Protegida (sin exponer datos) Zero-PII. Folio de Integridad Original: ${data.sourceFileHash?.slice(0, 16)}... | Nuevos: ${data.insertedCount ?? 0} | Omitidos idempotentes: ${data.skippedDuplicatesCount ?? 0}`,
       });
-      setCsvContent('');
-      setPreparedFile(null);
-      setAnalysis(null);
-      setMappingOverride({});
+      purgeIngestionMemoryState();
       await onIngestionCompleted();
     } catch (err: unknown) {
       onFeedback({
@@ -337,6 +391,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
                 : 'Subir .XLSX, .CSV, .TXT, .XML o .JSON...'}
             </span>
             <input
+              ref={fileInputRef}
               type="file"
               accept=".csv,.txt,.xlsx,.xls,.xml,.json"
               onChange={(e) => {
@@ -370,16 +425,52 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
         </div>
       )}
 
-      <textarea
-        rows={3}
-        value={csvContent}
-        onChange={(e) => {
-          setCsvContent(e.target.value);
-          setPreparedFile(null);
-        }}
-        placeholder={'Pega registros en cualquier orden o sube tu Excel/CSV/TXT/XML oficial de SITI o SAT sin editarlo...'}
-        className="w-full p-3 rounded-xl glass-input text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none"
-      />
+      {preparedFile ? (
+        <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-[#249E82]/40 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <ShieldCheck className="w-4 h-4 text-[#249E82] shrink-0" />
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-white truncate">
+                Archivo confidencial en memoria protegida (Zero-Display): {preparedFile.fileName}
+                {preparedFile.selectedSheetName ? ` · Hoja: ${preparedFile.selectedSheetName}` : ''}
+              </div>
+              <div className="text-[11px] font-mono text-slate-400">
+                SHA-256: {preparedFile.originalFileSha256.slice(0, 24)}... · El contenido de la lista se procesa internamente sin mostrarse en pantalla.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={purgeIngestionMemoryState}
+            disabled={ingestLoading}
+            className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-rose-500/20 border border-white/15 text-[11px] text-slate-300 hover:text-rose-200 flex items-center gap-1 transition-colors disabled:opacity-50"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Quitar archivo</span>
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowManualPaste((prev) => !prev)}
+            className="text-[11px] text-slate-400 hover:text-[#00D1FF] flex items-center gap-1.5 transition-colors"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>{showManualPaste ? 'Ocultar captura manual de registros' : '¿Prefieres pegar registros manualmente? (Opcional)'}</span>
+            {showManualPaste ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+          {showManualPaste && (
+            <textarea
+              rows={3}
+              value={csvContent}
+              onChange={(e) => handleManualPasteChange(e.target.value)}
+              placeholder={'Pega registros puntuales en CSV/TXT si no deseas subir archivo...'}
+              className="w-full p-3 rounded-xl glass-input text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none"
+            />
+          )}
+        </div>
+      )}
 
       {analyzing && (
         <div className="p-4 rounded-2xl bg-[#00D1FF]/10 border border-[#00D1FF]/30 flex items-center gap-3 text-xs text-[#00D1FF]">
@@ -391,89 +482,74 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
       {analysis && !analyzing && (
         <div className="p-4 rounded-2xl bg-slate-900/90 border border-emerald-500/30 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Sparkles className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-bold text-white">Radiografía Inteligente del Archivo</span>
+              <span className="text-xs font-bold text-white">Validación Interna Lista para Sellado Zero-PII</span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
                 Confianza: {analysis.overallConfidencePct}%
               </span>
               <span className="px-2 py-0.5 rounded-full bg-white/10 text-slate-300 text-[10px] font-mono">
-                Folio de Integridad: {analysis.sourceFileHash.slice(0, 16)}...
+                Folio: {analysis.sourceFileHash.slice(0, 16)}...
               </span>
             </div>
-            <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowAdvancedMapping((prev) => !prev)}
+              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-[11px] text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors"
+            >
               <SlidersHorizontal className="w-3.5 h-3.5 text-[#00D1FF]" />
-              Puedes ajustar cualquier columna antes de sellar
-            </span>
+              <span>{showAdvancedMapping ? 'Ocultar mapeo avanzado' : 'Ajustar mapeo de columnas (Avanzado)'}</span>
+              {showAdvancedMapping ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
           </div>
 
           <p className="text-xs text-slate-200 leading-relaxed">{analysis.humanFriendlyExplanation}</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {analysis.columns.map((col) => (
-              <div key={col.columnIndex} className="p-2.5 rounded-xl bg-slate-950/80 border border-white/10 space-y-1.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-white truncate max-w-[170px]" title={col.rawHeaderLabel}>
-                    {col.rawHeaderLabel}
-                  </span>
-                  <span className="font-mono text-[10px] text-emerald-400">{col.confidencePct}%</span>
-                </div>
-                <select
-                  value={col.assignedRole}
-                  onChange={(e) => void handleColumnRoleChange(col.columnIndex, e.target.value as CanonicalPldColumnRole)}
-                  className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-white/15 text-[11px] text-[#00D1FF] font-semibold focus:outline-none"
-                >
-                  {ALLOWED_PLD_COLUMN_ROLES.map((role) => (
-                    <option key={role} value={role} className="bg-slate-900 text-slate-100">
-                      {PLD_COLUMN_ROLE_LABELS[role]}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-[10px] font-mono text-slate-400 truncate">
-                  Muestra protegida: {col.maskedSampleValue}
-                </div>
-              </div>
-            ))}
-          </div>
+          {analysis.stats.invalidRowsCount > 0 && (
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200">
+              Se detectaron {analysis.stats.invalidRowsCount} fila(s) con formato pendiente de revisión. Revisa el mapeo avanzado antes de sellar.
+            </div>
+          )}
 
-          {analysis.maskedPreviewRows.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-white/10">
-              <table className="w-full text-left text-[11px]">
-                <thead className="bg-white/5 text-slate-400 font-mono text-[10px]">
-                  <tr>
-                    <th className="py-1.5 px-3">Fila</th>
-                    <th className="py-1.5 px-3">Tipo ID</th>
-                    <th className="py-1.5 px-3">ID Enmascarado</th>
-                    <th className="py-1.5 px-3">Sujeto (Zero-PII)</th>
-                    <th className="py-1.5 px-3">Lista & Oficio</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 font-mono text-slate-200">
-                  {analysis.maskedPreviewRows.map((r) => (
-                    <tr key={`${r.rowNumber}-${r.blindIndexPrefix}`}>
-                      <td className="py-1.5 px-3 text-slate-400">#{r.rowNumber}</td>
-                      <td className="py-1.5 px-3 text-[#00D1FF] font-bold">{r.identifierType}</td>
-                      <td className="py-1.5 px-3">{r.identifierMasked}</td>
-                      <td className="py-1.5 px-3">{r.subjectMaskedName}</td>
-                      <td className="py-1.5 px-3 text-slate-400">{r.resolvedListType} · {r.officialReference}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {showAdvancedMapping && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+              {analysis.columns.map((col) => (
+                <div key={col.columnIndex} className="p-2.5 rounded-xl bg-slate-950/80 border border-white/10 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-white truncate max-w-[170px]" title={col.rawHeaderLabel}>
+                      {col.rawHeaderLabel}
+                    </span>
+                    <span className="font-mono text-[10px] text-emerald-400">{col.confidencePct}%</span>
+                  </div>
+                  <select
+                    value={col.assignedRole}
+                    onChange={(e) => void handleColumnRoleChange(col.columnIndex, e.target.value as CanonicalPldColumnRole)}
+                    className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-white/15 text-[11px] text-[#00D1FF] font-semibold focus:outline-none"
+                  >
+                    {ALLOWED_PLD_COLUMN_ROLES.map((role) => (
+                      <option key={role} value={role} className="bg-slate-900 text-slate-100">
+                        {PLD_COLUMN_ROLE_LABELS[role]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
 
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          disabled={analyzing}
-          onClick={() => void runSmartAnalysis(csvContent, preparedFile, mappingOverride)}
-          className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-all disabled:opacity-50"
-        >
-          {analyzing ? 'Analizando...' : 'Analizar y Previsualizar Estructura'}
-        </button>
+        {(showManualPaste || !preparedFile) && (
+          <button
+            type="button"
+            disabled={analyzing}
+            onClick={() => void runSmartAnalysis(resolveActiveIngestionCsv(preparedFile, csvContent), preparedFile, mappingOverride)}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-all disabled:opacity-50"
+          >
+            {analyzing ? 'Analizando...' : 'Analizar Estructura'}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => void handleIngestConfirmed()}
@@ -481,7 +557,7 @@ export const PldWatchlistIngestionCard: React.FC<PldWatchlistIngestionCardProps>
           className="px-5 py-2 rounded-xl bg-[#249E82] hover:bg-[#1e856e] text-white text-xs font-bold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50"
         >
           {ingestLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-          <span>Confirmar Mapeo y Sellar en Base Registro Inmutable</span>
+          <span>Confirmar y Sellar en Base Registro Inmutable</span>
         </button>
       </div>
     </div>
